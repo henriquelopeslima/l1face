@@ -1,6 +1,6 @@
 import { Bell, HalfMoon, SunLight, User, NavArrowDown } from 'iconoir-react';
 import { useTheme } from 'next-themes';
-import { Link, useNavigate } from 'react-router';
+import { Link } from 'react-router';
 import { Button } from '@/shared/components/ui/button';
 import {
   DropdownMenu,
@@ -13,6 +13,7 @@ import {
 import { Badge } from '@/shared/components/ui/badge';
 import { LogoLicitaOne } from '@/shared/components/icons/LogoLicitaOne';
 import fotoPerfil from '@/shared/assets/foto-perfil-placeholder.jpg';
+import { useAuth } from '@/features/auth/presentation/context/AuthContext';
 
 interface AppHeaderProps {
   breadcrumb?: string[];
@@ -20,10 +21,10 @@ interface AppHeaderProps {
 
 export function AppHeader({ breadcrumb = ['LicitaOne'] }: AppHeaderProps) {
   const { theme, setTheme } = useTheme();
-  const navigate = useNavigate();
+  const { session, logout } = useAuth();
 
-  const handleLogout = () => {
-    navigate('/login');
+  const handleLogout = async () => {
+    await logout();
   };
 
   return (
@@ -105,12 +106,12 @@ export function AppHeader({ breadcrumb = ['LicitaOne'] }: AppHeaderProps) {
               <Button variant="ghost" className="gap-3 h-11 px-3">
                 <img
                   src={fotoPerfil}
-                  alt="Foto de perfil de Lisvalder Paz"
+                  alt={`Foto de perfil de ${session?.user.nomeCompleto ?? '—'}`}
                   className="w-9 h-9 rounded-full object-cover"
                 />
                 <div className="hidden md:flex flex-col items-start">
-                  <span className="text-sm font-medium">Lisvalder Paz</span>
-                  <span className="text-xs text-muted-foreground">LP Soluções em Licitações</span>
+                  <span className="text-sm font-medium">{session?.user.nomeCompleto ?? '—'}</span>
+                  <span className="text-xs text-muted-foreground">{session?.licitante.nomeEmpresa ?? '—'}</span>
                 </div>
                 <NavArrowDown className="h-4 w-4 text-muted-foreground" />
               </Button>

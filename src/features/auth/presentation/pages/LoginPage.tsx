@@ -1,23 +1,43 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
-import { Checkbox } from '@/shared/components/ui/checkbox';
 import { LogoLicitaOne } from '@/shared/components/icons/LogoLicitaOne';
 import { Eye, EyeClosed, Page, EditPencil, GraphUp, Bell } from 'iconoir-react';
+import { useLogin } from '../hooks/useLogin';
 
 export function LoginPage() {
-  const navigate = useNavigate();
+  const { login, isLoading, error } = useLogin();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    navigate('/selecionar-vinculo');
+    setValidationError(null);
+
+    if (!email) {
+      setValidationError('Informe seu e-mail.');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setValidationError('Informe um e-mail válido.');
+      return;
+    }
+    if (!password || password.length < 8) {
+      setValidationError('A senha deve ter ao menos 8 caracteres.');
+      return;
+    }
+
+    try {
+      await login({ email, password });
+    } catch {
+      // error is surfaced via the `error` field from useLogin
+    }
   };
+
+  const displayError = validationError ?? error;
 
   return (
     <div className="h-full min-h-0 w-full flex items-center justify-center bg-background overflow-hidden">
@@ -115,26 +135,14 @@ export function LoginPage() {
                 </div>
               </div>
 
-              <div className="flex items-start gap-2">
-                <Checkbox
-                  id="terms"
-                  checked={acceptedTerms}
-                  onCheckedChange={(checked) => setAcceptedTerms(checked as boolean)}
-                />
-                <label htmlFor="terms" className="text-base text-muted-foreground leading-tight cursor-pointer">
-                  Concordo com os{' '}
-                  <button type="button" onClick={() => alert('Termos de uso em breve!')} className="text-primary hover:underline font-medium">
-                    Termos de Uso
-                  </button>
-                  {' e '}
-                  <button type="button" onClick={() => alert('Política de privacidade em breve!')} className="text-primary hover:underline font-medium">
-                    Política de Privacidade
-                  </button>
-                </label>
-              </div>
+              {displayError && (
+                <p role="alert" className="text-sm text-destructive">
+                  {displayError}
+                </p>
+              )}
 
-              <Button type="submit" className="w-full h-11 text-base" disabled={!acceptedTerms}>
-                Entrar
+              <Button type="submit" className="w-full h-11 text-base" disabled={isLoading}>
+                {isLoading ? 'Entrando...' : 'Entrar'}
               </Button>
 
               <p className="text-center text-base text-muted-foreground">
