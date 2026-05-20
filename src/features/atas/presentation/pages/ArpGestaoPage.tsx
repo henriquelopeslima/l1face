@@ -19,13 +19,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/shared/components/ui/select';
-import { Plus, Search, NavArrowDown, NavArrowUp } from 'iconoir-react';
+import { Plus, Search, NavArrowDown, NavArrowUp, WarningTriangle } from 'iconoir-react';
 
 interface Arp {
   id: string;
   orgaoGerenciador: string;
   objeto: string;
   numeroAta: string;
+  vigenciaInicial: string;
   vigenciaFinal: string;
   valorTotalRegistrado: number;
   saldoOrgao: number;
@@ -39,10 +40,10 @@ interface Arp {
 type StatusType = 'todas' | 'Ativa' | 'Próxima ao Vencimento' | 'Encerrada';
 
 const ARPS: Arp[] = [
-  { id: '1', orgaoGerenciador: 'Prefeitura de Fortaleza', objeto: 'Material de TI', numeroAta: 'ARP 012/2025', vigenciaFinal: '2026-06-30', valorTotalRegistrado: 600000, saldoOrgao: 320000, aceitaAdesao: true, saldoCarona: 480000, quantidadeContratos: 2, renovavel: true, status: 'Ativa' },
-  { id: '2', orgaoGerenciador: 'Governo do Estado do Ceará', objeto: 'Merenda Escolar', numeroAta: 'ARP 007/2025', vigenciaFinal: '2026-04-15', valorTotalRegistrado: 180000, saldoOrgao: 45000, aceitaAdesao: false, quantidadeContratos: 3, renovavel: false, status: 'Próxima ao Vencimento' },
-  { id: '3', orgaoGerenciador: 'Exército Brasileiro', objeto: 'Gêneros Alimentícios', numeroAta: 'ARP 003/2025', vigenciaFinal: '2026-10-20', valorTotalRegistrado: 300000, saldoOrgao: 180000, aceitaAdesao: true, saldoCarona: 0, quantidadeContratos: 4, renovavel: true, status: 'Ativa' },
-  { id: '4', orgaoGerenciador: 'Prefeitura de Russas', objeto: 'Serviços de TI', numeroAta: 'ARP 001/2024', vigenciaFinal: '2025-12-31', valorTotalRegistrado: 90000, saldoOrgao: 0, aceitaAdesao: false, quantidadeContratos: 2, renovavel: false, status: 'Encerrada' },
+  { id: '1', orgaoGerenciador: 'Prefeitura de Fortaleza', objeto: 'Material de TI', numeroAta: 'ARP 012/2025', vigenciaInicial: '2025-01-15', vigenciaFinal: '2026-06-30', valorTotalRegistrado: 600000, saldoOrgao: 320000, aceitaAdesao: true, saldoCarona: 480000, quantidadeContratos: 2, renovavel: true, status: 'Ativa' },
+  { id: '2', orgaoGerenciador: 'Governo do Estado do Ceará', objeto: 'Merenda Escolar', numeroAta: 'ARP 007/2025', vigenciaInicial: '2025-02-10', vigenciaFinal: '2026-04-15', valorTotalRegistrado: 180000, saldoOrgao: 45000, aceitaAdesao: false, quantidadeContratos: 3, renovavel: false, status: 'Próxima ao Vencimento' },
+  { id: '3', orgaoGerenciador: 'Exército Brasileiro', objeto: 'Gêneros Alimentícios', numeroAta: 'ARP 003/2025', vigenciaInicial: '2025-03-01', vigenciaFinal: '2026-10-20', valorTotalRegistrado: 300000, saldoOrgao: 180000, aceitaAdesao: true, saldoCarona: 0, quantidadeContratos: 4, renovavel: true, status: 'Ativa' },
+  { id: '4', orgaoGerenciador: 'Prefeitura de Russas', objeto: 'Serviços de TI', numeroAta: 'ARP 001/2024', vigenciaInicial: '2024-01-01', vigenciaFinal: '2025-12-31', valorTotalRegistrado: 90000, saldoOrgao: 0, aceitaAdesao: false, quantidadeContratos: 2, renovavel: false, status: 'Encerrada' },
 ];
 
 function formatCurrency(v: number) {
@@ -53,11 +54,20 @@ function formatDate(d: string) {
   return new Date(d).toLocaleDateString('pt-BR');
 }
 
-const statusVariants: Record<Arp['status'], string> = {
-  'Ativa': 'bg-[#06D6A0] text-white',
-  'Próxima ao Vencimento': 'bg-[#F39C12] text-white',
-  'Encerrada': 'bg-gray-500 text-white',
-};
+function calcularDiasRestantes(vigenciaFim: string): number {
+  const hoje = new Date();
+  const dataFim = new Date(vigenciaFim);
+  return Math.ceil((dataFim.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function getAlertaVencimento(vigenciaFim: string, status: string) {
+  if (status === 'Encerrada') return null;
+  const dias = calcularDiasRestantes(vigenciaFim);
+  if (dias < 30) return { cor: 'bg-[var(--danger)]', label: '< 30 dias' };
+  if (dias <= 90) return { cor: 'bg-[var(--warning)]', label: '30-90 dias' };
+  if (dias <= 180) return { cor: 'bg-primary', label: '90-180 dias' };
+  return null;
+}
 
 export function ArpGestaoPage() {
   const navigate = useNavigate();
@@ -71,6 +81,8 @@ export function ArpGestaoPage() {
     const matchStatus = statusFilter === 'todas' || arp.status === statusFilter;
     return matchSearch && matchStatus;
   });
+
+  const toggleExpand = (id: string) => setExpandedRow(expandedRow === id ? null : id);
 
   return (
     <div className="space-y-4 lg:space-y-6">
@@ -130,10 +142,23 @@ export function ArpGestaoPage() {
                   </TableRow>
                 ) : (
                   filtradas.flatMap((arp) => {
-                    const expanded = expandedRow === arp.id;
+                    const alerta = getAlertaVencimento(arp.vigenciaFinal, arp.status);
+                    const isExpanded = expandedRow === arp.id;
+                    const percentualConsumo = ((arp.valorTotalRegistrado - arp.saldoOrgao) / arp.valorTotalRegistrado) * 100;
+
                     return [
-                      <TableRow key={arp.id} className="cursor-pointer hover:bg-muted/50" onClick={() => setExpandedRow(expanded ? null : arp.id)}>
-                        <TableCell className="font-medium">{arp.numeroAta}</TableCell>
+                      <TableRow key={arp.id} className="cursor-pointer hover:bg-muted/50" onClick={() => toggleExpand(arp.id)}>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            {alerta && (
+                              <div
+                                className={`h-2 w-2 rounded-full shrink-0 ${alerta.cor}`}
+                                title={`Vencimento em ${alerta.label}`}
+                              />
+                            )}
+                            {arp.numeroAta}
+                          </div>
+                        </TableCell>
                         <TableCell>{arp.orgaoGerenciador}</TableCell>
                         <TableCell className="max-w-[200px] truncate">{arp.objeto}</TableCell>
                         <TableCell>{formatDate(arp.vigenciaFinal)}</TableCell>
@@ -145,22 +170,118 @@ export function ArpGestaoPage() {
                           </Button>
                         </TableCell>
                         <TableCell>
-                          <Badge className={statusVariants[arp.status]}>{arp.status}</Badge>
+                          <Badge
+                            variant={
+                              arp.status === 'Ativa' ? 'success'
+                              : arp.status === 'Próxima ao Vencimento' ? 'warning'
+                              : 'outline'
+                            }
+                          >
+                            {arp.status}
+                          </Badge>
                         </TableCell>
                         <TableCell>
-                          {expanded ? <NavArrowUp className="h-4 w-4" /> : <NavArrowDown className="h-4 w-4" />}
+                          {isExpanded ? <NavArrowUp className="h-4 w-4" /> : <NavArrowDown className="h-4 w-4" />}
                         </TableCell>
                       </TableRow>,
-                      expanded && (
-                        <TableRow key={`${arp.id}-ex`} className="bg-muted/20">
-                          <TableCell colSpan={9} className="py-4">
-                            <div className="flex flex-wrap gap-2 px-2">
-                              <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); navigate(`/atas/${arp.id}`); }}>Ver detalhes</Button>
-                              {arp.aceitaAdesao && (
-                                <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); navigate(`/atas/${arp.id}/registrar-adesao`); }}>Registrar adesão</Button>
+                      isExpanded && (
+                        <TableRow key={`${arp.id}-expanded`}>
+                          <TableCell colSpan={9} className="bg-muted/30">
+                            <div className="p-4 space-y-4">
+                              <div className="grid gap-4 lg:grid-cols-2">
+                                <div>
+                                  <p className="text-sm text-muted-foreground">Objeto completo</p>
+                                  <p className="font-medium">{arp.objeto}</p>
+                                </div>
+                                <div>
+                                  <p className="text-sm text-muted-foreground">Vigência</p>
+                                  <p className="font-medium">
+                                    {formatDate(arp.vigenciaInicial)} até {formatDate(arp.vigenciaFinal)}
+                                  </p>
+                                </div>
+                                <div>
+                                  <p className="text-sm text-muted-foreground mb-2">Consumo do Saldo do Órgão</p>
+                                  <div className="space-y-2">
+                                    <div className="flex justify-between text-sm">
+                                      <span>{formatCurrency(arp.valorTotalRegistrado - arp.saldoOrgao)}</span>
+                                      <span>{formatCurrency(arp.valorTotalRegistrado)}</span>
+                                    </div>
+                                    <div className="h-2 bg-border rounded-full overflow-hidden">
+                                      <div
+                                        className={`h-full ${
+                                          percentualConsumo < 80 ? 'bg-[var(--success)]'
+                                          : percentualConsumo < 95 ? 'bg-[var(--warning)]'
+                                          : 'bg-[var(--danger)]'
+                                        }`}
+                                        style={{ width: `${percentualConsumo}%` }}
+                                      />
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">{percentualConsumo.toFixed(1)}% consumido</p>
+                                  </div>
+                                </div>
+                                <div>
+                                  <p className="text-sm text-muted-foreground">Aceita Adesão (Carona)</p>
+                                  <p className="font-medium">{arp.aceitaAdesao ? 'Sim' : 'Não'}</p>
+                                  {arp.aceitaAdesao && arp.saldoCarona !== undefined && (
+                                    <p className="text-sm mt-1">
+                                      Saldo de Carona:{' '}
+                                      <span className={arp.saldoCarona === 0 ? 'text-danger font-medium' : 'text-success font-medium'}>
+                                        {formatCurrency(arp.saldoCarona)}
+                                      </span>
+                                    </p>
+                                  )}
+                                </div>
+                                <div>
+                                  <p className="text-sm text-muted-foreground">Renovável</p>
+                                  <p className="font-medium">{arp.renovavel ? 'Sim' : 'Não'}</p>
+                                </div>
+                              </div>
+
+                              <div className="flex flex-wrap gap-2 pt-4 border-t">
+                                <Button
+                                  variant="default"
+                                  size="sm"
+                                  onClick={(e) => { e.stopPropagation(); navigate(`/atas/${arp.id}`); }}
+                                >
+                                  Abrir Detalhes Completos
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={(e) => { e.stopPropagation(); navigate(`/atas/${arp.id}/gerar-contrato`); }}
+                                  disabled={arp.saldoOrgao === 0}
+                                >
+                                  Gerar Contrato
+                                </Button>
+                                {arp.aceitaAdesao && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={(e) => { e.stopPropagation(); navigate(`/atas/${arp.id}/registrar-adesao`); }}
+                                    disabled={arp.saldoCarona === 0}
+                                  >
+                                    Registrar Adesão
+                                  </Button>
+                                )}
+                              </div>
+
+                              {arp.saldoOrgao === 0 && (
+                                <div className="flex items-start gap-2 p-3 rounded-lg bg-[var(--danger-light)] border border-[var(--danger)]/20">
+                                  <WarningTriangle className="h-4 w-4 text-[var(--danger)] mt-0.5 shrink-0" />
+                                  <p className="text-sm text-[var(--danger)]">
+                                    Saldo do órgão esgotado. Não é possível gerar novos contratos para o órgão gerenciador.
+                                  </p>
+                                </div>
                               )}
-                              <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); navigate(`/atas/${arp.id}/gerar-contrato`); }}>Gerar contrato</Button>
-                              <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); navigate(`/atas/${arp.id}/visualizar`); }}>Visualizar</Button>
+
+                              {arp.aceitaAdesao && arp.saldoCarona === 0 && (
+                                <div className="flex items-start gap-2 p-3 rounded-lg bg-[var(--warning-light)] border border-[var(--warning)]/20">
+                                  <WarningTriangle className="h-4 w-4 text-[var(--warning)] mt-0.5 shrink-0" />
+                                  <p className="text-sm text-[var(--warning)]">
+                                    Saldo de carona esgotado. Não é possível registrar novas adesões.
+                                  </p>
+                                </div>
+                              )}
                             </div>
                           </TableCell>
                         </TableRow>

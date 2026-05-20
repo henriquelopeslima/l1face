@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card';
+import { Card, CardContent } from '@/shared/components/ui/card';
 import { RadioGroup, RadioGroupItem } from '@/shared/components/ui/radio-group';
 import { Textarea } from '@/shared/components/ui/textarea';
 import { Switch } from '@/shared/components/ui/switch';
@@ -24,9 +24,11 @@ import {
   WarningTriangle,
   InfoCircle,
   CloudUpload,
+  Download,
   Check,
   NavArrowLeft,
   NavArrowRight,
+  Page,
 } from 'iconoir-react';
 
 interface ItemArp {
@@ -58,6 +60,14 @@ function formatCurrency(v: number) {
   return v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
+const progressWidths = ['33%', '66%', '100%'];
+const stepLabels = ['Dados da ARP', 'Itens Registrados', 'Revisão e Confirmação'];
+const stepDescriptions = [
+  'Preencha as informações básicas da Ata de Registro',
+  'Adicione os itens que fazem parte da ARP',
+  'Revise todas as informações antes de finalizar',
+];
+
 export function CadastrarArp() {
   const navigate = useNavigate();
   const [etapaAtual, setEtapaAtual] = useState(1);
@@ -74,10 +84,12 @@ export function CadastrarArp() {
   });
 
   const [buscandoPNCP, setBuscandoPNCP] = useState(false);
+  const [buscandoCNPJ, setBuscandoCNPJ] = useState(false);
   const [cabecalhoPncpCarregado, setCabecalhoPncpCarregado] = useState(false);
   const [modoItens, setModoItens] = useState<'manual' | 'planilha'>('manual');
   const [itensArp, setItensArp] = useState<ItemArp[]>([]);
-  const [arquivoPlanilhaItens, setArquivoPlanilhaItens] = useState<File | null>(null);
+  const [arquivoPlanilha, setArquivoPlanilha] = useState<File | null>(null);
+  const [processandoPlanilha, setProcessandoPlanilha] = useState(false);
   const [processandoCadastro, setProcessandoCadastro] = useState(false);
   const [cadastroConcluido, setCadastroConcluido] = useState(false);
   const [progressoCadastro, setProgressoCadastro] = useState(0);
@@ -114,19 +126,25 @@ export function CadastrarArp() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dadosArp.numeroPNCP, cabecalhoPncpCarregado]);
 
+  const buscarCNPJ = async () => {
+    const cnpjLimpo = (dadosArp.cnpjContratante || '').replace(/\D/g, '');
+    if (cnpjLimpo.length !== 14) {
+      window.alert('Informe um CNPJ válido com 14 dígitos.');
+      return;
+    }
+    setBuscandoCNPJ(true);
+    try {
+      await new Promise((r) => setTimeout(r, 800));
+      setDadosArp((prev) => ({ ...prev, orgaoGerenciador: 'Órgão Consultado via CNPJ' }));
+    } finally {
+      setBuscandoCNPJ(false);
+    }
+  };
+
   const adicionarItem = () => {
     setItensArp((prev) => [
       ...prev,
-      {
-        id: `item-${Date.now()}`,
-        descricao: '',
-        unidadeMedida: '',
-        quantidadeRegistrada: 0,
-        quantidadeCarona: 0,
-        valorUnitario: 0,
-        valorTotal: 0,
-        valorPotencialCarona: 0,
-      },
+      { id: `item-${Date.now()}`, descricao: '', unidadeMedida: '', quantidadeRegistrada: 0, quantidadeCarona: 0, valorUnitario: 0, valorTotal: 0, valorPotencialCarona: 0 },
     ]);
   };
 
@@ -137,6 +155,9 @@ export function CadastrarArp() {
       prev.map((item) => {
         if (item.id !== id) return item;
         const updated = { ...item, [campo]: valor };
+        if (campo === 'quantidadeRegistrada' && dadosArp.aceitaAdesao) {
+          updated.quantidadeCarona = Number(valor) * 2;
+        }
         if (campo === 'quantidadeRegistrada' || campo === 'valorUnitario') {
           updated.valorTotal = Number(updated.quantidadeRegistrada) * Number(updated.valorUnitario);
         }
@@ -151,410 +172,604 @@ export function CadastrarArp() {
   const valorTotalRegistrado = itensArp.reduce((acc, i) => acc + i.valorTotal, 0);
   const valorPotencialCarona = dadosArp.aceitaAdesao ? itensArp.reduce((acc, i) => acc + i.valorPotencialCarona, 0) : 0;
 
-  const validarEtapa1 = () =>
-    dadosArp.modoEntrada === 'automatico'
-      ? cabecalhoPncpCarregado && !!dadosArp.orgaoGerenciador && !!dadosArp.objeto && !!dadosArp.vigenciaInicial && !!dadosArp.vigenciaFinal
-      : !!dadosArp.orgaoGerenciador && !!dadosArp.objeto && !!dadosArp.numeroAta && !!dadosArp.vigenciaInicial && !!dadosArp.vigenciaFinal;
+  const validarEtapa1 = () => {
+    if (dadosArp.modoEntrada === 'automatico' && !cabecalhoPncpCarregado) return false;
+    return !!dadosArp.orgaoGerenciador && !!dadosArp.objeto && !!dadosArp.numeroAta && !!dadosArp.vigenciaInicial && !!dadosArp.vigenciaFinal;
+  };
 
   const validarEtapa2 = () => {
-    if (modoItens === 'planilha') return arquivoPlanilhaItens !== null;
+    if (modoItens === 'planilha') return arquivoPlanilha !== null;
     return itensArp.length > 0 && itensArp.every((i) => i.descricao && i.unidadeMedida && i.quantidadeRegistrada > 0 && i.valorUnitario > 0);
   };
 
   const avancar = () => {
     if (etapaAtual === 1 && !validarEtapa1()) return;
     if (etapaAtual === 2 && !validarEtapa2()) return;
+
+    if (etapaAtual === 2 && modoItens === 'planilha' && arquivoPlanilha) {
+      setProcessandoPlanilha(true);
+      setTimeout(() => {
+        setItensArp([
+          { id: `item-${Date.now()}-1`, descricao: 'Item importado via planilha', unidadeMedida: 'un', quantidadeRegistrada: 100, quantidadeCarona: dadosArp.aceitaAdesao ? 200 : 0, valorUnitario: 45, valorTotal: 4500, valorPotencialCarona: dadosArp.aceitaAdesao ? 9000 : 0 },
+          { id: `item-${Date.now()}-2`, descricao: 'Segundo item importado', unidadeMedida: 'cx', quantidadeRegistrada: 40, quantidadeCarona: dadosArp.aceitaAdesao ? 80 : 0, valorUnitario: 120, valorTotal: 4800, valorPotencialCarona: dadosArp.aceitaAdesao ? 9600 : 0 },
+        ]);
+        setProcessandoPlanilha(false);
+        setEtapaAtual(3);
+      }, 1200);
+      return;
+    }
+
     if (etapaAtual < 3) setEtapaAtual((e) => e + 1);
   };
 
   const voltar = () => { if (etapaAtual > 1) setEtapaAtual((e) => e - 1); };
 
-  const concluir = () => {
+  const finalizarCadastro = async () => {
     setProcessandoCadastro(true);
-    const msgs = [
-      'Preparando informações da ata...',
-      'Validando dados e itens da ARP...',
-      'Registrando no sistema...',
-      'Concluído!',
-    ];
-    let pct = 0;
-    let msgIdx = 0;
-    const timer = setInterval(() => {
-      pct += 25 + Math.random() * 10;
-      if (pct >= 100) {
-        pct = 100;
-        setProgressoCadastro(100);
-        setEtapaProcessamento(msgs[3] ?? 'Concluído!');
-        clearInterval(timer);
-        setTimeout(() => setCadastroConcluido(true), 400);
-        return;
-      }
-      setProgressoCadastro(Math.min(pct, 90));
-      if (msgIdx < msgs.length - 2) {
-        msgIdx++;
-        setEtapaProcessamento(msgs[msgIdx] ?? '');
-      }
-    }, 600);
+    setProgressoCadastro(0);
+    setEtapaProcessamento('Preparando informações da ata...');
+    await new Promise((r) => setTimeout(r, 500));
+    setProgressoCadastro(30);
+    setEtapaProcessamento('Conferindo saldos e regras da ata...');
+    await new Promise((r) => setTimeout(r, 600));
+    setProgressoCadastro(70);
+    setEtapaProcessamento('Finalizando cadastro da ata...');
+    await new Promise((r) => setTimeout(r, 700));
+    setProgressoCadastro(100);
+    setProcessandoCadastro(false);
+    setCadastroConcluido(true);
+  };
+
+  const downloadTemplate = () => {
+    const link = document.createElement('a');
+    link.href = '#';
+    link.download = 'template-itens-arp.xlsx';
+    link.click();
   };
 
   if (processandoCadastro || cadastroConcluido) {
     return (
-      <CadastroSucesso
-        processando={processandoCadastro && !cadastroConcluido}
-        progresso={progressoCadastro}
-        titulo="Cadastrando ARP..."
-        descricao="Aguarde enquanto registramos a ata no sistema."
-        tituloSucesso="Ata cadastrada com sucesso!"
-        descricaoSucesso="A ARP foi registrada e está disponível na gestão de atas."
-        etapaAtual={etapaProcessamento}
-        onConcluir={() => navigate('/atas/gestao')}
-      />
+      <div className="space-y-4 lg:space-y-6">
+        <CadastroSucesso
+          processando={processandoCadastro && !cadastroConcluido}
+          progresso={progressoCadastro}
+          titulo="Processando cadastro de ata"
+          descricao="Estamos validando os dados e finalizando o cadastro da ARP com segurança."
+          tituloSucesso="Ata cadastrada com sucesso"
+          descricaoSucesso="A ARP foi registrada e está pronta para gestão de saldo, consumo e adesões."
+          etapaAtual={etapaProcessamento}
+          onConcluir={() => navigate('/atas/gestao')}
+        />
+      </div>
     );
   }
 
-  const etapas = [
-    { num: 1, label: 'Dados da ARP' },
-    { num: 2, label: 'Itens registrados' },
-    { num: 3, label: 'Revisão' },
-  ];
-
   return (
-    <div className="space-y-6">
-      {/* Progress steps */}
-      <div className="flex items-center gap-2">
-        {etapas.map((etapa, idx) => (
-          <div key={etapa.num} className="flex items-center gap-2">
-            <div
-              className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium transition-colors ${
-                etapaAtual > etapa.num
-                  ? 'bg-[#0050FF] text-white'
-                  : etapaAtual === etapa.num
-                    ? 'bg-[#0050FF] text-white ring-4 ring-[#0050FF]/20'
-                    : 'bg-muted text-muted-foreground'
-              }`}
-            >
-              {etapaAtual > etapa.num ? <Check className="h-4 w-4" /> : etapa.num}
-            </div>
-            <span className={`hidden sm:block text-sm ${etapaAtual === etapa.num ? 'font-medium' : 'text-muted-foreground'}`}>
-              {etapa.label}
-            </span>
-            {idx < etapas.length - 1 && <NavArrowRight className="h-4 w-4 text-muted-foreground" />}
-          </div>
-        ))}
-      </div>
-
-      {/* Etapa 1: Dados da ARP */}
+    <div className="space-y-4 lg:space-y-6">
+      {/* ETAPA 1 - DADOS DA ARP */}
       {etapaAtual === 1 && (
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Modo de entrada</CardTitle>
-              <CardDescription>Escolha como deseja informar os dados da ata.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <RadioGroup
-                value={dadosArp.modoEntrada}
-                onValueChange={(v) => setDadosArp((p) => ({ ...p, modoEntrada: v as 'automatico' | 'manual', cabecalhoPncpCarregado: false } as DadosArp))}
-                className="gap-4"
-              >
-                <div className="flex items-start gap-3 rounded-lg border border-border p-4">
-                  <RadioGroupItem value="automatico" id="modo-auto" className="mt-0.5" />
-                  <Label htmlFor="modo-auto" className="cursor-pointer space-y-1">
-                    <p className="font-medium">Busca automática via PNCP</p>
-                    <p className="text-sm text-muted-foreground">Informe o número da ARP no PNCP e preencheremos os dados automaticamente.</p>
-                  </Label>
-                </div>
-                <div className="flex items-start gap-3 rounded-lg border border-border p-4">
-                  <RadioGroupItem value="manual" id="modo-manual" className="mt-0.5" />
-                  <Label htmlFor="modo-manual" className="cursor-pointer space-y-1">
-                    <p className="font-medium">Preenchimento manual</p>
-                    <p className="text-sm text-muted-foreground">Digite todos os dados diretamente no formulário.</p>
-                  </Label>
-                </div>
-              </RadioGroup>
-            </CardContent>
-          </Card>
+        <Card>
+          <div className="p-4 lg:p-6 pb-0 space-y-4">
+            <div className="space-y-1">
+              <h2 className="text-lg lg:text-2xl font-medium">{stepLabels[0]}</h2>
+              <div className="flex items-start justify-between gap-4">
+                <p className="text-muted-foreground text-sm lg:text-base">{stepDescriptions[0]}</p>
+                <span className="text-primary font-bold text-base lg:text-lg shrink-0">Passo 1/3</span>
+              </div>
+            </div>
+            <div className="relative h-2 bg-primary/15 rounded-full overflow-hidden">
+              <div className="absolute left-0 top-0 h-full bg-primary rounded-full transition-all duration-300" style={{ width: progressWidths[0] }} />
+            </div>
+          </div>
 
-          {dadosArp.modoEntrada === 'automatico' && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Número da ARP no PNCP</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+          <CardContent className="space-y-4 lg:space-y-6">
+            <div className="flex items-center justify-between rounded-lg border border-border bg-muted/30 p-4">
+              <div className="space-y-0.5">
+                <Label htmlFor="modoManual" className="cursor-pointer">Preencher manualmente</Label>
+                <p className="text-muted-foreground text-xs lg:text-sm">Por padrão, os campos pré-preenchidos via API ficam somente leitura.</p>
+              </div>
+              <Switch
+                id="modoManual"
+                checked={dadosArp.modoEntrada === 'manual'}
+                onCheckedChange={(checked) => setDadosArp((p) => ({ ...p, modoEntrada: checked ? 'manual' : 'automatico' }))}
+              />
+            </div>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="numeroPNCP">Número da Ata no PNCP</Label>
                 <div className="flex gap-2">
                   <Input
-                    placeholder="Ex.: ARP 012/2025"
-                    value={dadosArp.numeroPNCP ?? ''}
+                    id="numeroPNCP"
+                    placeholder="Ex: ARP 012/2025"
+                    value={dadosArp.numeroPNCP || ''}
                     onChange={(e) => setDadosArp((p) => ({ ...p, numeroPNCP: e.target.value }))}
-                    className="flex-1"
                   />
-                  <Button type="button" variant="outline" onClick={buscarPNCP} disabled={buscandoPNCP}>
+                  <Button onClick={buscarPNCP} disabled={buscandoPNCP || !dadosArp.numeroPNCP}>
                     {buscandoPNCP ? 'Buscando...' : 'Buscar'}
                   </Button>
                 </div>
-                {cabecalhoPncpCarregado && (
-                  <Alert className="border-[#0050FF]/30 bg-[#EDF4FF]/50 dark:bg-[#0050FF]/10">
-                    <InfoCircle className="h-4 w-4 text-[#0050FF]" />
-                    <AlertTitle className="text-[#0050FF]">Dados carregados do PNCP</AlertTitle>
-                    <AlertDescription>
-                      <p><strong>Órgão:</strong> {dadosArp.orgaoGerenciador}</p>
-                      <p><strong>Objeto:</strong> {dadosArp.objeto}</p>
-                      <p><strong>Vigência:</strong> {dadosArp.vigenciaInicial} até {dadosArp.vigenciaFinal}</p>
+              </div>
+
+              {buscandoPNCP && (
+                <Alert>
+                  <InfoCircle className="h-4 w-4" />
+                  <AlertDescription>Buscando informações na base do PNCP...</AlertDescription>
+                </Alert>
+              )}
+
+              <h3 className="text-sm font-medium">Preenchidos via API (sempre exibidos)</h3>
+
+              {!cabecalhoPncpCarregado && (
+                <Alert>
+                  <InfoCircle className="h-4 w-4" />
+                  <AlertDescription>Buscando dados automáticos do PNCP para pré-preenchimento inicial.</AlertDescription>
+                </Alert>
+              )}
+              {cabecalhoPncpCarregado && (
+                <Alert>
+                  <InfoCircle className="h-4 w-4" />
+                  <AlertDescription>Campos pré-preenchidos carregados via API. Ative o toggle para editá-los, se necessário.</AlertDescription>
+                </Alert>
+              )}
+
+              <div className="grid gap-4 lg:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="orgaoGerenciador">Órgão gerenciador <span className="text-danger">*</span></Label>
+                  <Input
+                    id="orgaoGerenciador"
+                    value={dadosArp.orgaoGerenciador || ''}
+                    readOnly={dadosArp.modoEntrada !== 'manual'}
+                    onChange={(e) => setDadosArp((p) => ({ ...p, orgaoGerenciador: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="numeroAta">Nº da Ata <span className="text-danger">*</span></Label>
+                  <Input
+                    id="numeroAta"
+                    placeholder="Ex: ARP 012/2025"
+                    value={dadosArp.numeroAta}
+                    readOnly={dadosArp.modoEntrada !== 'manual'}
+                    onChange={(e) => setDadosArp((p) => ({ ...p, numeroAta: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2 lg:col-span-2">
+                  <Label htmlFor="objeto">Objeto da ARP <span className="text-danger">*</span></Label>
+                  <Textarea
+                    id="objeto"
+                    placeholder="Descreva o objeto da ARP"
+                    value={dadosArp.objeto}
+                    readOnly={dadosArp.modoEntrada !== 'manual'}
+                    onChange={(e) => setDadosArp((p) => ({ ...p, objeto: e.target.value }))}
+                    className="min-h-20"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="vigenciaInicial">Vigência inicial <span className="text-danger">*</span></Label>
+                  <Input
+                    id="vigenciaInicial"
+                    type="date"
+                    value={dadosArp.vigenciaInicial}
+                    readOnly={dadosArp.modoEntrada !== 'manual'}
+                    onChange={(e) => setDadosArp((p) => ({ ...p, vigenciaInicial: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="vigenciaFinal">Vigência final <span className="text-danger">*</span></Label>
+                  <Input
+                    id="vigenciaFinal"
+                    type="date"
+                    value={dadosArp.vigenciaFinal}
+                    readOnly={dadosArp.modoEntrada !== 'manual'}
+                    onChange={(e) => setDadosArp((p) => ({ ...p, vigenciaFinal: e.target.value }))}
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-4 lg:gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="cnpjContratante">CNPJ do Contratante (consulta automática)</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="cnpjContratante"
+                      placeholder="Ex: 12.345.678/0001-90"
+                      value={dadosArp.cnpjContratante || ''}
+                      onChange={(e) => setDadosArp((p) => ({ ...p, cnpjContratante: e.target.value }))}
+                    />
+                    <Button type="button" variant="outline" onClick={buscarCNPJ} disabled={buscandoCNPJ || !(dadosArp.cnpjContratante || '').trim()}>
+                      {buscandoCNPJ ? 'Consultando...' : 'Buscar CNPJ'}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between rounded-lg border border-border bg-muted/30 p-4">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="aceitaAdesao" className="cursor-pointer">Aceita Adesão (Carona)?</Label>
+                    <p className="text-muted-foreground text-xs lg:text-sm">Permite que outros órgãos adiram aos preços desta ARP</p>
+                  </div>
+                  <Switch
+                    id="aceitaAdesao"
+                    checked={dadosArp.aceitaAdesao}
+                    onCheckedChange={(v) => setDadosArp((p) => ({ ...p, aceitaAdesao: v }))}
+                  />
+                </div>
+
+                {dadosArp.aceitaAdesao && (
+                  <Alert>
+                    <InfoCircle className="h-4 w-4" />
+                    <AlertDescription className="text-sm">
+                      <strong>Atenção:</strong> Ao ativar a adesão, o sistema criará automaticamente um segundo saldo de carona para cada item (geralmente o dobro da quantidade registrada).
                     </AlertDescription>
                   </Alert>
                 )}
-              </CardContent>
-            </Card>
-          )}
 
-          {(dadosArp.modoEntrada === 'manual' || cabecalhoPncpCarregado) && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Dados da ata</CardTitle>
-              </CardHeader>
-              <CardContent className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="arp-orgao">Órgão gerenciador</Label>
-                  <Input
-                    id="arp-orgao"
-                    value={dadosArp.orgaoGerenciador ?? ''}
-                    onChange={(e) => setDadosArp((p) => ({ ...p, orgaoGerenciador: e.target.value }))}
-                    placeholder="Órgão que gerencia a ata"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="arp-numero">Número da ata</Label>
-                  <Input
-                    id="arp-numero"
-                    value={dadosArp.numeroAta}
-                    onChange={(e) => setDadosArp((p) => ({ ...p, numeroAta: e.target.value }))}
-                    placeholder="Ex.: ARP 012/2025"
-                    required
-                  />
-                </div>
-                <div className="space-y-2 sm:col-span-2">
-                  <Label htmlFor="arp-objeto">Objeto</Label>
-                  <Textarea
-                    id="arp-objeto"
-                    rows={3}
-                    value={dadosArp.objeto}
-                    onChange={(e) => setDadosArp((p) => ({ ...p, objeto: e.target.value }))}
-                    placeholder="Descreva o objeto da ata de registro de preços."
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="arp-vi">Vigência inicial</Label>
-                  <Input id="arp-vi" type="date" value={dadosArp.vigenciaInicial} onChange={(e) => setDadosArp((p) => ({ ...p, vigenciaInicial: e.target.value }))} required />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="arp-vf">Vigência final</Label>
-                  <Input id="arp-vf" type="date" value={dadosArp.vigenciaFinal} onChange={(e) => setDadosArp((p) => ({ ...p, vigenciaFinal: e.target.value }))} required />
-                </div>
-                <div className="flex items-center justify-between gap-4 rounded-lg border border-border p-3">
-                  <div>
-                    <p className="text-sm font-medium">Aceita adesão (carona)</p>
-                    <p className="text-xs text-muted-foreground">Permite que outros órgãos usem esta ata</p>
+                <div className="flex items-center justify-between rounded-lg border border-border bg-muted/30 p-4">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="renovavel" className="cursor-pointer">ARP Renovável?</Label>
+                    <p className="text-muted-foreground text-xs lg:text-sm">Indica se a ARP pode ser renovada após o vencimento</p>
                   </div>
-                  <Switch checked={dadosArp.aceitaAdesao} onCheckedChange={(v) => setDadosArp((p) => ({ ...p, aceitaAdesao: v }))} />
+                  <Switch
+                    id="renovavel"
+                    checked={dadosArp.renovavel}
+                    onCheckedChange={(v) => setDadosArp((p) => ({ ...p, renovavel: v }))}
+                  />
                 </div>
-                <div className="flex items-center justify-between gap-4 rounded-lg border border-border p-3">
-                  <div>
-                    <p className="text-sm font-medium">Renovável</p>
-                    <p className="text-xs text-muted-foreground">Pode ser renovada ao fim da vigência</p>
+
+                <div className="space-y-2">
+                  <Label htmlFor="anexoArp">Anexo da ARP (opcional)</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      id="anexoArp"
+                      type="file"
+                      accept=".pdf"
+                      onChange={(e) => setDadosArp((p) => ({ ...p, anexoArp: e.target.files?.[0] }))}
+                      className="cursor-pointer"
+                    />
+                    {dadosArp.anexoArp && (
+                      <Badge variant="outline" className="shrink-0">{dadosArp.anexoArp.name}</Badge>
+                    )}
                   </div>
-                  <Switch checked={dadosArp.renovavel} onCheckedChange={(v) => setDadosArp((p) => ({ ...p, renovavel: v }))} />
+                  <p className="text-muted-foreground text-xs">Envie o arquivo PDF da ARP assinada (opcional)</p>
                 </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
-      {/* Etapa 2: Itens */}
+      {/* ETAPA 2 - ITENS REGISTRADOS */}
       {etapaAtual === 2 && (
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Modo de inclusão de itens</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <RadioGroup value={modoItens} onValueChange={(v) => setModoItens(v as 'manual' | 'planilha')} className="gap-4">
-                <div className="flex items-start gap-3 rounded-lg border border-border p-4">
-                  <RadioGroupItem value="manual" id="modo-manual-itens" className="mt-0.5" />
-                  <Label htmlFor="modo-manual-itens" className="cursor-pointer">
-                    <p className="font-medium">Adicionar itens manualmente</p>
-                  </Label>
+        <Card>
+          <div className="p-4 lg:p-6 pb-0 space-y-4">
+            <div className="space-y-1">
+              <h2 className="text-lg lg:text-2xl font-medium">{stepLabels[1]}</h2>
+              <div className="flex items-start justify-between gap-4">
+                <p className="text-muted-foreground text-sm lg:text-base">{stepDescriptions[1]}</p>
+                <span className="text-primary font-bold text-base lg:text-lg shrink-0">Passo 2/3</span>
+              </div>
+            </div>
+            <div className="relative h-2 bg-primary/15 rounded-full overflow-hidden">
+              <div className="absolute left-0 top-0 h-full bg-primary rounded-full transition-all duration-300" style={{ width: progressWidths[1] }} />
+            </div>
+          </div>
+
+          <CardContent className="space-y-4 lg:space-y-6">
+            <div className="space-y-3">
+              <Label>Modo de Entrada</Label>
+              <RadioGroup value={modoItens} onValueChange={(v) => setModoItens(v as 'manual' | 'planilha')} className="flex flex-col lg:flex-row lg:gap-6">
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="manual" id="manual-itens" />
+                  <Label htmlFor="manual-itens" className="cursor-pointer">Adicionar Manualmente</Label>
                 </div>
-                <div className="flex items-start gap-3 rounded-lg border border-border p-4">
-                  <RadioGroupItem value="planilha" id="modo-planilha-itens" className="mt-0.5" />
-                  <Label htmlFor="modo-planilha-itens" className="cursor-pointer">
-                    <p className="font-medium">Importar via planilha</p>
-                  </Label>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="planilha" id="planilha-itens" />
+                  <Label htmlFor="planilha-itens" className="cursor-pointer">Importar via Planilha</Label>
                 </div>
               </RadioGroup>
-            </CardContent>
-          </Card>
+            </div>
 
-          {modoItens === 'planilha' && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Upload da planilha</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border p-8 transition-colors hover:bg-accent/50">
-                  <CloudUpload className="h-8 w-8 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">
-                    {arquivoPlanilhaItens ? arquivoPlanilhaItens.name : 'Clique para selecionar a planilha (.xlsx, .csv)'}
-                  </span>
-                  <input
-                    type="file"
-                    accept=".xlsx,.csv"
-                    className="sr-only"
-                    onChange={(e) => setArquivoPlanilhaItens(e.target.files?.[0] ?? null)}
-                  />
-                </label>
-              </CardContent>
-            </Card>
-          )}
-
-          {modoItens === 'manual' && (
-            <Card>
-              <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <CardTitle>Itens da ARP</CardTitle>
-                  <CardDescription>Adicione os itens com quantidades e valores registrados.</CardDescription>
+            {modoItens === 'planilha' && (
+              <div className="space-y-4 rounded-lg border border-border bg-muted/30 p-4 lg:p-6">
+                <div className="flex flex-col lg:flex-row gap-3">
+                  <Button variant="outline" onClick={downloadTemplate} className="flex-1">
+                    <Download className="h-4 w-4 mr-2" />
+                    Baixar Modelo de Planilha
+                  </Button>
                 </div>
-                <Button type="button" variant="outline" size="sm" className="gap-2 shrink-0" onClick={adicionarItem}>
-                  <Plus className="h-4 w-4" />
-                  Adicionar item
-                </Button>
-              </CardHeader>
-              <CardContent>
-                {itensArp.length === 0 ? (
-                  <Alert>
-                    <WarningTriangle className="h-4 w-4" />
-                    <AlertDescription>Nenhum item adicionado. Clique em "Adicionar item" para incluir.</AlertDescription>
-                  </Alert>
+
+                {!arquivoPlanilha ? (
+                  <div className="border-2 border-dashed border-border rounded-lg p-8 text-center space-y-3">
+                    <CloudUpload className="h-12 w-12 mx-auto text-muted-foreground" />
+                    <div>
+                      <p className="text-sm lg:text-base">Arraste o arquivo aqui ou clique para selecionar</p>
+                      <p className="text-muted-foreground text-xs lg:text-sm">Formato aceito: .xlsx, .xls</p>
+                    </div>
+                    <Input type="file" accept=".xlsx,.xls" className="hidden" id="upload-planilha" onChange={(e) => setArquivoPlanilha(e.target.files?.[0] || null)} />
+                    <Button variant="outline" asChild>
+                      <label htmlFor="upload-planilha" className="cursor-pointer">Selecionar Arquivo</label>
+                    </Button>
+                  </div>
                 ) : (
-                  <TableComponent>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Descrição</TableHead>
-                        <TableHead className="w-[90px]">Unidade</TableHead>
-                        <TableHead className="w-[90px]">Qtd. Reg.</TableHead>
-                        {dadosArp.aceitaAdesao && <TableHead className="w-[90px]">Qtd. Carona</TableHead>}
-                        <TableHead className="w-[110px]">Valor unit. (R$)</TableHead>
-                        <TableHead className="w-[110px]">Total (R$)</TableHead>
-                        <TableHead className="w-[48px]" />
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {itensArp.map((item) => (
-                        <TableRow key={item.id}>
-                          <TableCell>
-                            <Input value={item.descricao} onChange={(e) => atualizarItem(item.id, 'descricao', e.target.value)} placeholder="Descrição" />
-                          </TableCell>
-                          <TableCell>
-                            <Input value={item.unidadeMedida} onChange={(e) => atualizarItem(item.id, 'unidadeMedida', e.target.value)} placeholder="UN" />
-                          </TableCell>
-                          <TableCell>
-                            <Input type="number" min="0" value={item.quantidadeRegistrada} onChange={(e) => atualizarItem(item.id, 'quantidadeRegistrada', Number(e.target.value))} placeholder="0" />
-                          </TableCell>
-                          {dadosArp.aceitaAdesao && (
-                            <TableCell>
-                              <Input type="number" min="0" value={item.quantidadeCarona} onChange={(e) => atualizarItem(item.id, 'quantidadeCarona', Number(e.target.value))} placeholder="0" />
-                            </TableCell>
-                          )}
-                          <TableCell>
-                            <Input type="number" min="0" step="0.01" value={item.valorUnitario} onChange={(e) => atualizarItem(item.id, 'valorUnitario', Number(e.target.value))} placeholder="0,00" />
-                          </TableCell>
-                          <TableCell className="text-right text-sm font-medium">{formatCurrency(item.valorTotal)}</TableCell>
-                          <TableCell>
-                            <Button type="button" variant="ghost" size="icon" className="text-destructive" onClick={() => removerItem(item.id)} aria-label="Remover item">
-                              <Trash className="h-4 w-4" />
-                            </Button>
-                          </TableCell>
+                  <div className="border border-success bg-success/10 rounded-lg p-4 space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3">
+                        <Page className="h-8 w-8 text-success" />
+                        <div>
+                          <p className="font-medium text-sm">{arquivoPlanilha.name}</p>
+                          <p className="text-muted-foreground text-xs">{(arquivoPlanilha.size / 1024).toFixed(2)} KB</p>
+                        </div>
+                      </div>
+                      <Button variant="ghost" size="sm" onClick={() => setArquivoPlanilha(null)}>
+                        <Trash className="h-4 w-4 text-danger" />
+                      </Button>
+                    </div>
+                    <Alert>
+                      <Check className="h-4 w-4 text-success" />
+                      <AlertDescription className="text-sm">Arquivo pronto para processamento. Ao avançar, os itens serão importados.</AlertDescription>
+                    </Alert>
+                  </div>
+                )}
+
+                {processandoPlanilha && (
+                  <Alert>
+                    <InfoCircle className="h-4 w-4" />
+                    <AlertDescription>Processando planilha e validando itens...</AlertDescription>
+                  </Alert>
+                )}
+              </div>
+            )}
+
+            {modoItens === 'manual' && (
+              <div className="space-y-4">
+                {itensArp.length > 0 ? (
+                  <div className="overflow-x-auto border rounded-lg">
+                    <TableComponent>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="min-w-[200px]">Descrição</TableHead>
+                          <TableHead className="min-w-[120px]">Unidade</TableHead>
+                          <TableHead className="min-w-[100px]">Qtd. Registrada</TableHead>
+                          {dadosArp.aceitaAdesao && <TableHead className="min-w-[100px]">Qtd. Carona</TableHead>}
+                          <TableHead className="min-w-[120px]">Valor Unit.</TableHead>
+                          <TableHead className="min-w-[120px]">Valor Total</TableHead>
+                          {dadosArp.aceitaAdesao && <TableHead className="min-w-[120px]">Potencial Carona</TableHead>}
+                          <TableHead className="w-[60px]" />
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </TableComponent>
+                      </TableHeader>
+                      <TableBody>
+                        {itensArp.map((item) => (
+                          <TableRow key={item.id}>
+                            <TableCell>
+                              <Input placeholder="Ex: Notebook i7 16GB" value={item.descricao} onChange={(e) => atualizarItem(item.id, 'descricao', e.target.value)} />
+                            </TableCell>
+                            <TableCell>
+                              <Input placeholder="ex: un, kg" value={item.unidadeMedida} onChange={(e) => atualizarItem(item.id, 'unidadeMedida', e.target.value)} />
+                            </TableCell>
+                            <TableCell>
+                              <Input type="number" min="0" step="0.01" placeholder="0" value={item.quantidadeRegistrada || ''} onChange={(e) => atualizarItem(item.id, 'quantidadeRegistrada', Number(e.target.value))} />
+                            </TableCell>
+                            {dadosArp.aceitaAdesao && (
+                              <TableCell>
+                                <Input type="number" min="0" step="0.01" placeholder="0" value={item.quantidadeCarona || ''} onChange={(e) => atualizarItem(item.id, 'quantidadeCarona', Number(e.target.value))} />
+                              </TableCell>
+                            )}
+                            <TableCell>
+                              <Input type="number" min="0" step="0.01" placeholder="0,00" value={item.valorUnitario || ''} onChange={(e) => atualizarItem(item.id, 'valorUnitario', Number(e.target.value))} />
+                            </TableCell>
+                            <TableCell>
+                              <span className="text-sm">{formatCurrency(item.valorTotal)}</span>
+                            </TableCell>
+                            {dadosArp.aceitaAdesao && (
+                              <TableCell>
+                                <span className="text-sm text-success">{formatCurrency(item.valorPotencialCarona)}</span>
+                              </TableCell>
+                            )}
+                            <TableCell>
+                              <Button variant="ghost" size="sm" onClick={() => removerItem(item.id)}>
+                                <Trash className="h-4 w-4 text-danger" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </TableComponent>
+                  </div>
+                ) : (
+                  <div className="border-2 border-dashed border-border rounded-lg p-8 text-center">
+                    <Page className="h-10 w-10 lg:h-12 lg:w-12 mx-auto text-muted-foreground mb-2" />
+                    <p className="text-muted-foreground text-sm lg:text-base">Nenhum item adicionado ainda</p>
+                  </div>
+                )}
+
+                <Button onClick={adicionarItem} variant="outline" className="w-full lg:w-auto">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Adicionar Item
+                </Button>
+
+                {dadosArp.aceitaAdesao && itensArp.length > 0 && (
+                  <Alert>
+                    <InfoCircle className="h-4 w-4" />
+                    <AlertDescription className="text-sm">
+                      As quantidades de carona são preenchidas automaticamente com o dobro da quantidade registrada, mas podem ser editadas conforme especificado no instrumento.
+                    </AlertDescription>
+                  </Alert>
                 )}
 
                 {itensArp.length > 0 && (
-                  <div className="mt-4 flex flex-col gap-1 text-sm border-t pt-4">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Valor total registrado</span>
-                      <span className="font-semibold">{formatCurrency(valorTotalRegistrado)}</span>
+                  <div className="space-y-3 pt-4 border-t">
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium">Valor Total Registrado:</span>
+                      <span className="text-lg font-medium text-primary">{formatCurrency(valorTotalRegistrado)}</span>
                     </div>
                     {dadosArp.aceitaAdesao && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Potencial de carona</span>
-                        <span className="font-semibold text-[#0050FF]">{formatCurrency(valorPotencialCarona)}</span>
-                      </div>
+                      <>
+                        <div className="flex justify-between items-center">
+                          <span className="font-medium">Valor Potencial de Carona:</span>
+                          <span className="text-lg font-medium text-success">{formatCurrency(valorPotencialCarona)}</span>
+                        </div>
+                        <div className="flex justify-between items-center p-3 bg-primary/10 rounded-lg">
+                          <span className="font-medium">Potencial Total de Vendas:</span>
+                          <span className="text-xl font-bold text-primary">{formatCurrency(valorTotalRegistrado + valorPotencialCarona)}</span>
+                        </div>
+                      </>
                     )}
                   </div>
                 )}
-              </CardContent>
-            </Card>
-          )}
-        </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       )}
 
-      {/* Etapa 3: Revisão */}
+      {/* ETAPA 3 - REVISÃO E CONFIRMAÇÃO */}
       {etapaAtual === 3 && (
-        <div className="space-y-6">
+        <div className="space-y-4 lg:space-y-6">
           <Card>
-            <CardHeader>
-              <CardTitle>Revisão da ARP</CardTitle>
-              <CardDescription>Confira as informações antes de concluir o cadastro.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div>
-                  <p className="text-xs text-muted-foreground">Órgão gerenciador</p>
-                  <p className="font-medium">{dadosArp.orgaoGerenciador || '—'}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Número da ata</p>
-                  <p className="font-medium">{dadosArp.numeroAta || '—'}</p>
-                </div>
-                <div className="sm:col-span-2">
-                  <p className="text-xs text-muted-foreground">Objeto</p>
-                  <p className="font-medium">{dadosArp.objeto || '—'}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Vigência</p>
-                  <p className="font-medium">{dadosArp.vigenciaInicial} → {dadosArp.vigenciaFinal}</p>
-                </div>
-                <div className="flex gap-3">
-                  {dadosArp.aceitaAdesao && <Badge className="bg-[#06D6A0] text-white">Aceita adesão</Badge>}
-                  {dadosArp.renovavel && <Badge variant="outline">Renovável</Badge>}
+            <div className="p-4 lg:p-6 pb-0 space-y-4">
+              <div className="space-y-1">
+                <h2 className="text-lg lg:text-2xl font-medium">{stepLabels[2]}</h2>
+                <div className="flex items-start justify-between gap-4">
+                  <p className="text-muted-foreground text-sm lg:text-base">{stepDescriptions[2]}</p>
+                  <span className="text-primary font-bold text-base lg:text-lg shrink-0">Passo 3/3</span>
                 </div>
               </div>
-              <div className="border-t pt-4">
-                <p className="text-sm text-muted-foreground">{itensArp.length} itens cadastrados · Total: {formatCurrency(valorTotalRegistrado)}</p>
+              <div className="relative h-2 bg-primary/15 rounded-full overflow-hidden">
+                <div className="absolute left-0 top-0 h-full bg-primary rounded-full transition-all duration-300" style={{ width: progressWidths[2] }} />
+              </div>
+            </div>
+
+            <CardContent className="space-y-6">
+              <Alert>
+                <WarningTriangle className="h-4 w-4" />
+                <AlertTitle>Atenção</AlertTitle>
+                <AlertDescription>
+                  O Nº da Ata e os valores registrados <strong>não poderão ser alterados</strong> após a criação sem contato com o suporte.
+                </AlertDescription>
+              </Alert>
+
+              <div className="grid gap-4 lg:grid-cols-2">
+                <div>
+                  <p className="text-sm text-muted-foreground">Órgão gerenciador</p>
+                  <p className="font-medium">{dadosArp.orgaoGerenciador}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Nº da Ata</p>
+                  <p className="font-medium text-primary">{dadosArp.numeroAta}</p>
+                </div>
+                <div className="lg:col-span-2">
+                  <p className="text-sm text-muted-foreground">Objeto da ARP</p>
+                  <p className="font-medium">{dadosArp.objeto}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Vigência</p>
+                  <p className="font-medium">
+                    {dadosArp.vigenciaInicial ? new Date(dadosArp.vigenciaInicial).toLocaleDateString('pt-BR') : '—'} até{' '}
+                    {dadosArp.vigenciaFinal ? new Date(dadosArp.vigenciaFinal).toLocaleDateString('pt-BR') : '—'}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Aceita Adesão (Carona)</p>
+                  <p className="font-medium">{dadosArp.aceitaAdesao ? 'Sim' : 'Não'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Renovável</p>
+                  <p className="font-medium">{dadosArp.renovavel ? 'Sim' : 'Não'}</p>
+                </div>
+                {dadosArp.anexoArp && (
+                  <div>
+                    <p className="text-sm text-muted-foreground">Anexo</p>
+                    <p className="font-medium">{dadosArp.anexoArp.name}</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <div className="p-4 lg:p-6 pb-0">
+              <h3 className="text-base lg:text-lg font-medium">Itens Registrados</h3>
+            </div>
+            <CardContent className="pt-4">
+              <div className="overflow-x-auto border rounded-lg">
+                <TableComponent>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Descrição</TableHead>
+                      <TableHead>Unidade</TableHead>
+                      <TableHead className="text-right">Qtd. Registrada</TableHead>
+                      {dadosArp.aceitaAdesao && <TableHead className="text-right">Qtd. Carona</TableHead>}
+                      <TableHead className="text-right">Valor Unit.</TableHead>
+                      <TableHead className="text-right">Valor Total</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {itensArp.map((item) => (
+                      <TableRow key={item.id}>
+                        <TableCell>{item.descricao}</TableCell>
+                        <TableCell>{item.unidadeMedida}</TableCell>
+                        <TableCell className="text-right">{item.quantidadeRegistrada.toLocaleString('pt-BR')}</TableCell>
+                        {dadosArp.aceitaAdesao && <TableCell className="text-right">{item.quantidadeCarona.toLocaleString('pt-BR')}</TableCell>}
+                        <TableCell className="text-right">{formatCurrency(item.valorUnitario)}</TableCell>
+                        <TableCell className="text-right">{formatCurrency(item.valorTotal)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </TableComponent>
+              </div>
+
+              <div className="mt-6 pt-6 border-t space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="font-medium">Valor Total Registrado:</span>
+                  <span className="text-lg font-medium">{formatCurrency(valorTotalRegistrado)}</span>
+                </div>
+                {dadosArp.aceitaAdesao && (
+                  <>
+                    <div className="flex justify-between items-center">
+                      <span className="font-medium">Valor Potencial de Carona:</span>
+                      <span className="text-lg font-medium text-success">{formatCurrency(valorPotencialCarona)}</span>
+                    </div>
+                    <div className="flex justify-between items-center p-4 bg-primary/10 rounded-lg">
+                      <span className="text-lg font-bold">Potencial Total de Vendas:</span>
+                      <span className="text-2xl font-bold text-primary">{formatCurrency(valorTotalRegistrado + valorPotencialCarona)}</span>
+                    </div>
+                  </>
+                )}
               </div>
             </CardContent>
           </Card>
         </div>
       )}
 
-      {/* Navigation */}
-      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between sm:gap-3">
-        <Button type="button" variant="outline" onClick={voltar} disabled={etapaAtual === 1}>
-          <NavArrowLeft className="h-4 w-4 mr-2" />
-          Voltar
-        </Button>
+      {/* Botões de Navegação */}
+      <div className="flex gap-3 justify-end pt-4 border-t">
+        {etapaAtual > 1 ? (
+          <Button variant="outline" onClick={voltar} size="lg">
+            <NavArrowLeft className="h-4 w-4 mr-2" />
+            Voltar
+          </Button>
+        ) : (
+          <Button variant="outline" onClick={() => navigate('/atas/gestao')} size="lg">
+            Cancelar
+          </Button>
+        )}
+
         {etapaAtual < 3 ? (
-          <Button type="button" onClick={avancar}>
-            Próximo
+          <Button
+            onClick={avancar}
+            disabled={
+              processandoPlanilha ||
+              (etapaAtual === 1 && !validarEtapa1()) ||
+              (etapaAtual === 2 && !validarEtapa2())
+            }
+            size="lg"
+          >
+            Avançar
             <NavArrowRight className="h-4 w-4 ml-2" />
           </Button>
         ) : (
-          <Button type="button" onClick={concluir}>
-            Concluir cadastro
+          <Button onClick={finalizarCadastro} size="lg">
+            <Check className="h-4 w-4 mr-2" />
+            Finalizar Cadastro
           </Button>
         )}
       </div>
