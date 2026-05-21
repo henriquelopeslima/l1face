@@ -14,7 +14,7 @@ export function InstrumentosContratoCadastrarPage() {
       />
       <div className="space-y-1">
         <h1 className="text-xl font-semibold sm:text-2xl lg:text-4xl">Cadastrar contrato</h1>
-        <p className="text-muted-foreground text-sm lg:text-base">Preencha os dados do instrumento contratual.</p>
+        <p className="text-muted-foreground text-sm lg:text-base">Instrumento clássico — vigência, renovação e anexos conforme o modelo acordado.</p>
       </div>
       <CadastrarContrato />
     </div>
