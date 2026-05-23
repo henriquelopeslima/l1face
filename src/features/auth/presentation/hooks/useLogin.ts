@@ -13,8 +13,8 @@ export function useLogin(): UseLoginReturn {
   const navigate = useNavigate();
 
   const handleLogin = async (credentials: LoginCredentials) => {
-    await login(credentials);
-    navigate('/selecionar-vinculo');
+    const licitante = await login(credentials);
+    navigate(licitante ? '/' : '/selecionar-vinculo');
   };
 
   return { login: handleLogin, isLoading, error };

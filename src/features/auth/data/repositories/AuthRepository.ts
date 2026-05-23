@@ -1,3 +1,4 @@
+import { apiFetch } from '@/shared/infrastructure/apiClient';
 import { mapApiMeToUser } from '../mappers/authMappers';
 import type { LoginCredentials } from '../../domain/entities/authSession';
 import type { RegisterCredentials } from '../../domain/entities/registerCredentials';
@@ -9,10 +10,8 @@ export class AuthRepository implements IAuthRepository {
   async register(credentials: RegisterCredentials): Promise<void> {
     let response: Response;
     try {
-      response = await fetch('/api/users/register-with-bidder', {
+      response = await apiFetch('/api/users/register-with-bidder', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({
           nome: credentials.nome,
           email: credentials.email,
@@ -38,10 +37,8 @@ export class AuthRepository implements IAuthRepository {
   async login(credentials: LoginCredentials): Promise<void> {
     let response: Response;
     try {
-      response = await fetch('/api/login', {
+      response = await apiFetch('/api/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ email: credentials.email, password: credentials.password }),
       });
     } catch {
@@ -59,10 +56,7 @@ export class AuthRepository implements IAuthRepository {
 
   async logout(): Promise<void> {
     try {
-      await fetch('/api/logout', {
-        method: 'POST',
-        credentials: 'include',
-      });
+      await apiFetch('/api/logout', { method: 'POST' });
     } catch {
       // cookie expiry handled client-side even on network failure
     }
@@ -71,9 +65,7 @@ export class AuthRepository implements IAuthRepository {
   async getMe(): Promise<User> {
     let response: Response;
     try {
-      response = await fetch('/api/me', {
-        credentials: 'include',
-      });
+      response = await apiFetch('/api/me', { method: 'GET' });
     } catch {
       throw new AuthError('Serviço indisponível. Verifique sua conexão e tente novamente.');
     }

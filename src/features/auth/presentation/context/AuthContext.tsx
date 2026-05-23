@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useReducer, type ReactNode } from 'react';
+import { setActiveLicitanteId } from '@/shared/infrastructure/apiClient';
 import { AuthRepository } from '../../data/repositories/AuthRepository';
 import type { AuthSession, LoginCredentials } from '../../domain/entities/authSession';
 import type { Licitante } from '../../domain/entities/licitante';
@@ -16,10 +17,10 @@ interface AuthContextValue {
   isLoading: boolean;
   isAuthenticated: boolean;
   error: string | null;
-  login: (credentials: LoginCredentials) => Promise<void>;
+  login: (credentials: LoginCredentials) => Promise<Licitante | null>;
   logout: () => Promise<void>;
   selectLicitante: (licitante: Licitante) => void;
-  register: (credentials: RegisterCredentials) => Promise<void>;
+  register: (credentials: RegisterCredentials) => Promise<Licitante | null>;
 }
 
 interface AuthState {
@@ -75,24 +76,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     getMeUseCase
       .execute()
       .then((user) => {
-        dispatch({ type: 'SET_USER', user, licitante: resolveAutoLicitante(user) });
+        const licitante = resolveAutoLicitante(user);
+        setActiveLicitanteId(licitante?.id ?? null);
+        dispatch({ type: 'SET_USER', user, licitante });
       })
-      .catch((err: unknown) => {
-        if (err instanceof UnauthenticatedError) {
-          dispatch({ type: 'LOGOUT' });
-        } else {
-          dispatch({ type: 'LOGOUT' });
-        }
+      .catch(() => {
+        setActiveLicitanteId(null);
+        dispatch({ type: 'LOGOUT' });
       });
   }, []);
 
-  const login = async (credentials: LoginCredentials) => {
+  const login = async (credentials: LoginCredentials): Promise<Licitante | null> => {
     dispatch({ type: 'LOADING' });
     try {
       await loginUseCase.execute(credentials);
       const user = await getMeUseCase.execute();
-      dispatch({ type: 'SET_USER', user, licitante: resolveAutoLicitante(user) });
+      const licitante = resolveAutoLicitante(user);
+      setActiveLicitanteId(licitante?.id ?? null);
+      dispatch({ type: 'SET_USER', user, licitante });
+      return licitante;
     } catch (err: unknown) {
+      setActiveLicitanteId(null);
       const message = err instanceof Error ? err.message : 'Erro ao realizar login.';
       dispatch({ type: 'SET_ERROR', error: message });
       throw err;
@@ -101,16 +105,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     await logoutUseCase.execute();
+    setActiveLicitanteId(null);
     dispatch({ type: 'LOGOUT' });
   };
 
-  const register = async (credentials: RegisterCredentials) => {
+  const register = async (credentials: RegisterCredentials): Promise<Licitante | null> => {
     dispatch({ type: 'LOADING' });
     try {
       await registerUseCase.execute(credentials);
       const user = await getMeUseCase.execute();
-      dispatch({ type: 'SET_USER', user, licitante: resolveAutoLicitante(user) });
+      const licitante = resolveAutoLicitante(user);
+      setActiveLicitanteId(licitante?.id ?? null);
+      dispatch({ type: 'SET_USER', user, licitante });
+      return licitante;
     } catch (err: unknown) {
+      setActiveLicitanteId(null);
       const message = err instanceof Error ? err.message : 'Erro ao realizar cadastro.';
       dispatch({ type: 'SET_ERROR', error: message });
       throw err;
@@ -118,6 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const selectLicitante = (licitante: Licitante) => {
+    setActiveLicitanteId(licitante.id);
     dispatch({ type: 'SELECT_LICITANTE', licitante });
   };
 
