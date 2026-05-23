@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
@@ -8,6 +9,7 @@ import { useLogin } from '../hooks/useLogin';
 
 export function LoginPage() {
   const { login, isLoading, error } = useLogin();
+  const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -147,7 +149,7 @@ export function LoginPage() {
 
               <p className="text-center text-base text-muted-foreground">
                 Não tem uma conta?{' '}
-                <button type="button" onClick={() => alert('Funcionalidade de cadastro em breve!')} className="text-primary hover:underline font-semibold">
+                <button type="button" onClick={() => navigate('/cadastro')} className="text-primary hover:underline font-semibold">
                   Criar conta
                 </button>
               </p>

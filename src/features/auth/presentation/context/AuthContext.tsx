@@ -2,11 +2,13 @@ import { createContext, useContext, useEffect, useReducer, type ReactNode } from
 import { AuthRepository } from '../../data/repositories/AuthRepository';
 import type { AuthSession, LoginCredentials } from '../../domain/entities/authSession';
 import type { Licitante } from '../../domain/entities/licitante';
+import type { RegisterCredentials } from '../../domain/entities/registerCredentials';
 import type { User } from '../../domain/entities/user';
 import { UnauthenticatedError } from '../../domain/errors/authErrors';
 import { GetMeUseCase } from '../../domain/usecases/GetMeUseCase';
 import { LoginUseCase } from '../../domain/usecases/LoginUseCase';
 import { LogoutUseCase } from '../../domain/usecases/LogoutUseCase';
+import { RegisterUseCase } from '../../domain/usecases/RegisterUseCase';
 
 interface AuthContextValue {
   session: AuthSession | null;
@@ -17,6 +19,7 @@ interface AuthContextValue {
   login: (credentials: LoginCredentials) => Promise<void>;
   logout: () => Promise<void>;
   selectLicitante: (licitante: Licitante) => void;
+  register: (credentials: RegisterCredentials) => Promise<void>;
 }
 
 interface AuthState {
@@ -54,6 +57,7 @@ const repository = new AuthRepository();
 const loginUseCase = new LoginUseCase(repository);
 const getMeUseCase = new GetMeUseCase(repository);
 const logoutUseCase = new LogoutUseCase(repository);
+const registerUseCase = new RegisterUseCase(repository);
 
 function resolveAutoLicitante(user: User): Licitante | null {
   return user.licitantes.length === 1 && user.licitantes[0] ? user.licitantes[0] : null;
@@ -100,6 +104,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'LOGOUT' });
   };
 
+  const register = async (credentials: RegisterCredentials) => {
+    dispatch({ type: 'LOADING' });
+    try {
+      await registerUseCase.execute(credentials);
+      const user = await getMeUseCase.execute();
+      dispatch({ type: 'SET_USER', user, licitante: resolveAutoLicitante(user) });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Erro ao realizar cadastro.';
+      dispatch({ type: 'SET_ERROR', error: message });
+      throw err;
+    }
+  };
+
   const selectLicitante = (licitante: Licitante) => {
     dispatch({ type: 'SELECT_LICITANTE', licitante });
   };
@@ -116,6 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     login,
     logout,
     selectLicitante,
+    register,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

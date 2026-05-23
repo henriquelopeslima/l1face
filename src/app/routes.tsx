@@ -4,6 +4,7 @@ import { RootLayout } from '@/shared/components/layout/RootLayout';
 import { SelecionarVinculoLayout } from '@/shared/components/layout/SelecionarVinculoLayout';
 import { ProtectedRoute } from '@/shared/components/guards/ProtectedRoute';
 import { LoginPage } from '@/features/auth/presentation/pages/LoginPage';
+import { RegisterPage } from '@/features/auth/presentation/pages/RegisterPage';
 import { SelecionarVinculoPage } from '@/features/auth/presentation/pages/SelecionarVinculoPage';
 import { DashboardPage } from '@/features/dashboard/presentation/pages/DashboardPage';
 import { InstrumentosGestaoPage } from '@/features/instrumentos/presentation/pages/InstrumentosGestaoPage';
@@ -37,6 +38,10 @@ export const router = createBrowserRouter([
       {
         path: '/login',
         Component: LoginPage,
+      },
+      {
+        path: '/cadastro',
+        Component: RegisterPage,
       },
       {
         path: '/selecionar-vinculo',
