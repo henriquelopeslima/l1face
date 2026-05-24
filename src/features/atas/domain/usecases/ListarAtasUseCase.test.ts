@@ -22,6 +22,7 @@ const ataFixture: Ata = {
 function makeRepo(overrides?: Partial<IAtasRepository>): IAtasRepository {
   return {
     listarAtas: vi.fn().mockResolvedValue([ataFixture]),
+    getAta: vi.fn().mockResolvedValue(null),
     ...overrides,
   };
 }

@@ -1,5 +1,5 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan:
-specs/005-e2e-auth-tests/plan.md
+specs/006-ata-detail-view/plan.md
 <!-- SPECKIT END -->
