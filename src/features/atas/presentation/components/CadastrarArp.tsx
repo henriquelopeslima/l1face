@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
@@ -16,7 +16,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/shared/components/ui/table';
-import { Badge } from '@/shared/components/ui/badge';
 import { CadastroSucesso } from '@/shared/components/feedback/CadastroSucesso';
 import {
   Plus,
@@ -30,30 +29,35 @@ import {
   NavArrowRight,
   Page,
 } from 'iconoir-react';
+import { useCriarAta } from '../hooks/useCriarAta';
+import { useConsultarAtaPncp } from '../hooks/useConsultarAtaPncp';
+import type { CriarAtaInput, ItemAtaInput } from '../../domain/entities/criarAta';
 
 interface ItemArp {
   id: string;
+  numeroItem: number;
   descricao: string;
   unidadeMedida: string;
-  quantidadeRegistrada: number;
-  quantidadeCarona: number;
-  valorUnitario: number;
+  qtdRegistrada: number;
+  qtdParaCarona: number;
+  valorEstimado: number;
   valorTotal: number;
   valorPotencialCarona: number;
 }
 
 interface DadosArp {
   modoEntrada: 'automatico' | 'manual';
-  numeroPNCP?: string;
-  cnpjContratante?: string;
-  orgaoGerenciador?: string;
-  objeto: string;
-  numeroAta: string;
-  vigenciaInicial: string;
-  vigenciaFinal: string;
+  codigoPncp: string;
+  cnpjOrgaoGerenciador: string;
+  nomeOrgaoGerenciador: string;
+  numero: string;
+  descricao: string;
+  dataInicioVigencia: string;
+  dataFimVigencia: string;
   aceitaAdesao: boolean;
   renovavel: boolean;
-  anexoArp?: File;
+  numeroPncp: string | null;
+  anexoUrl: string;
 }
 
 function formatCurrency(v: number) {
@@ -70,81 +74,71 @@ const stepDescriptions = [
 
 export function CadastrarArp() {
   const navigate = useNavigate();
+  const { criarAta, isLoading: isSaving, error: saveError } = useCriarAta();
+  const { consultar: consultarPncp, isLoading: isBuscandoPNCP, error: pncpError, dados: dadosPncp } = useConsultarAtaPncp();
+
   const [etapaAtual, setEtapaAtual] = useState(1);
+  const [cadastroConcluido, setCadastroConcluido] = useState(false);
 
   const [dadosArp, setDadosArp] = useState<DadosArp>({
     modoEntrada: 'automatico',
-    numeroPNCP: 'ARP 012/2025',
-    objeto: '',
-    numeroAta: '',
-    vigenciaInicial: '',
-    vigenciaFinal: '',
+    codigoPncp: '',
+    cnpjOrgaoGerenciador: '',
+    nomeOrgaoGerenciador: '',
+    numero: '',
+    descricao: '',
+    dataInicioVigencia: '',
+    dataFimVigencia: '',
     aceitaAdesao: false,
     renovavel: false,
+    numeroPncp: null,
+    anexoUrl: '',
   });
 
-  const [buscandoPNCP, setBuscandoPNCP] = useState(false);
-  const [buscandoCNPJ, setBuscandoCNPJ] = useState(false);
-  const [cabecalhoPncpCarregado, setCabecalhoPncpCarregado] = useState(false);
   const [modoItens, setModoItens] = useState<'manual' | 'planilha'>('manual');
   const [itensArp, setItensArp] = useState<ItemArp[]>([]);
   const [arquivoPlanilha, setArquivoPlanilha] = useState<File | null>(null);
   const [processandoPlanilha, setProcessandoPlanilha] = useState(false);
-  const [processandoCadastro, setProcessandoCadastro] = useState(false);
-  const [cadastroConcluido, setCadastroConcluido] = useState(false);
-  const [progressoCadastro, setProgressoCadastro] = useState(0);
-  const [etapaProcessamento, setEtapaProcessamento] = useState('Preparando informações da ata...');
 
   useEffect(() => {
-    setCabecalhoPncpCarregado(false);
-  }, [dadosArp.numeroPNCP]);
-
-  const buscarPNCP = async () => {
-    if (!dadosArp.numeroPNCP) return;
-    setBuscandoPNCP(true);
-    try {
-      await new Promise((r) => setTimeout(r, 800));
-      setDadosArp((prev) => ({
-        ...prev,
-        orgaoGerenciador: 'Prefeitura Municipal de Russas',
-        objeto: 'Aquisição de Material de Escritório',
-        numeroAta: prev.numeroPNCP ?? '',
-        vigenciaInicial: '2025-01-15',
-        vigenciaFinal: '2027-01-14',
-        aceitaAdesao: true,
-        renovavel: true,
-      }));
-      setCabecalhoPncpCarregado(true);
-    } finally {
-      setBuscandoPNCP(false);
-    }
-  };
+    if (!dadosPncp) return;
+    setDadosArp((prev) => ({
+      ...prev,
+      nomeOrgaoGerenciador: dadosPncp.orgaoNome,
+      cnpjOrgaoGerenciador: dadosPncp.orgaoCnpj,
+      descricao: dadosPncp.descricao,
+      dataInicioVigencia: dadosPncp.dataInicioVigencia,
+      dataFimVigencia: dadosPncp.dataFimVigencia,
+      numeroPncp: dadosPncp.numeroControlePncp,
+    }));
+  }, [dadosPncp]);
 
   useEffect(() => {
-    if (!dadosArp.numeroPNCP || cabecalhoPncpCarregado || buscandoPNCP) return;
-    buscarPNCP();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dadosArp.numeroPNCP, cabecalhoPncpCarregado]);
+    if (!dadosArp.aceitaAdesao) {
+      setItensArp((prev) => prev.map((item) => ({ ...item, qtdParaCarona: 0, valorPotencialCarona: 0 })));
+    }
+  }, [dadosArp.aceitaAdesao]);
 
-  const buscarCNPJ = async () => {
-    const cnpjLimpo = (dadosArp.cnpjContratante || '').replace(/\D/g, '');
-    if (cnpjLimpo.length !== 14) {
-      window.alert('Informe um CNPJ válido com 14 dígitos.');
-      return;
-    }
-    setBuscandoCNPJ(true);
-    try {
-      await new Promise((r) => setTimeout(r, 800));
-      setDadosArp((prev) => ({ ...prev, orgaoGerenciador: 'Órgão Consultado via CNPJ' }));
-    } finally {
-      setBuscandoCNPJ(false);
-    }
-  };
+  const buscarPNCP = useCallback(() => {
+    if (!dadosArp.codigoPncp.trim()) return;
+    void consultarPncp(dadosArp.codigoPncp.trim());
+  }, [dadosArp.codigoPncp, consultarPncp]);
 
   const adicionarItem = () => {
+    const proximoNumero = itensArp.length > 0 ? Math.max(...itensArp.map((i) => i.numeroItem)) + 1 : 1;
     setItensArp((prev) => [
       ...prev,
-      { id: `item-${Date.now()}`, descricao: '', unidadeMedida: '', quantidadeRegistrada: 0, quantidadeCarona: 0, valorUnitario: 0, valorTotal: 0, valorPotencialCarona: 0 },
+      {
+        id: `item-${Date.now()}`,
+        numeroItem: proximoNumero,
+        descricao: '',
+        unidadeMedida: '',
+        qtdRegistrada: 0,
+        qtdParaCarona: 0,
+        valorEstimado: 0,
+        valorTotal: 0,
+        valorPotencialCarona: 0,
+      },
     ]);
   };
 
@@ -155,14 +149,11 @@ export function CadastrarArp() {
       prev.map((item) => {
         if (item.id !== id) return item;
         const updated = { ...item, [campo]: valor };
-        if (campo === 'quantidadeRegistrada' && dadosArp.aceitaAdesao) {
-          updated.quantidadeCarona = Number(valor) * 2;
+        if (campo === 'qtdRegistrada' || campo === 'valorEstimado') {
+          updated.valorTotal = Number(updated.qtdRegistrada) * Number(updated.valorEstimado);
         }
-        if (campo === 'quantidadeRegistrada' || campo === 'valorUnitario') {
-          updated.valorTotal = Number(updated.quantidadeRegistrada) * Number(updated.valorUnitario);
-        }
-        if (campo === 'quantidadeCarona' || campo === 'valorUnitario') {
-          updated.valorPotencialCarona = Number(updated.quantidadeCarona) * Number(updated.valorUnitario);
+        if ((campo === 'qtdParaCarona' || campo === 'valorEstimado') && dadosArp.aceitaAdesao) {
+          updated.valorPotencialCarona = Number(updated.qtdParaCarona) * Number(updated.valorEstimado);
         }
         return updated;
       })
@@ -172,14 +163,27 @@ export function CadastrarArp() {
   const valorTotalRegistrado = itensArp.reduce((acc, i) => acc + i.valorTotal, 0);
   const valorPotencialCarona = dadosArp.aceitaAdesao ? itensArp.reduce((acc, i) => acc + i.valorPotencialCarona, 0) : 0;
 
-  const validarEtapa1 = () => {
-    if (dadosArp.modoEntrada === 'automatico' && !cabecalhoPncpCarregado) return false;
-    return !!dadosArp.orgaoGerenciador && !!dadosArp.objeto && !!dadosArp.numeroAta && !!dadosArp.vigenciaInicial && !!dadosArp.vigenciaFinal;
+  const numeroItemDuplicado = (): boolean => {
+    const nums = itensArp.map((i) => i.numeroItem);
+    return new Set(nums).size !== nums.length;
   };
+
+  const validarEtapa1 = () =>
+    !!dadosArp.nomeOrgaoGerenciador &&
+    !!dadosArp.cnpjOrgaoGerenciador &&
+    !!dadosArp.numero &&
+    !!dadosArp.descricao &&
+    !!dadosArp.dataInicioVigencia &&
+    !!dadosArp.dataFimVigencia &&
+    dadosArp.dataFimVigencia > dadosArp.dataInicioVigencia;
 
   const validarEtapa2 = () => {
     if (modoItens === 'planilha') return arquivoPlanilha !== null;
-    return itensArp.length > 0 && itensArp.every((i) => i.descricao && i.unidadeMedida && i.quantidadeRegistrada > 0 && i.valorUnitario > 0);
+    return (
+      itensArp.length > 0 &&
+      !numeroItemDuplicado() &&
+      itensArp.every((i) => i.descricao && i.unidadeMedida && i.qtdRegistrada > 0 && i.valorEstimado > 0)
+    );
   };
 
   const avancar = () => {
@@ -190,8 +194,28 @@ export function CadastrarArp() {
       setProcessandoPlanilha(true);
       setTimeout(() => {
         setItensArp([
-          { id: `item-${Date.now()}-1`, descricao: 'Item importado via planilha', unidadeMedida: 'un', quantidadeRegistrada: 100, quantidadeCarona: dadosArp.aceitaAdesao ? 200 : 0, valorUnitario: 45, valorTotal: 4500, valorPotencialCarona: dadosArp.aceitaAdesao ? 9000 : 0 },
-          { id: `item-${Date.now()}-2`, descricao: 'Segundo item importado', unidadeMedida: 'cx', quantidadeRegistrada: 40, quantidadeCarona: dadosArp.aceitaAdesao ? 80 : 0, valorUnitario: 120, valorTotal: 4800, valorPotencialCarona: dadosArp.aceitaAdesao ? 9600 : 0 },
+          {
+            id: `item-${Date.now()}-1`,
+            numeroItem: 1,
+            descricao: 'Item importado via planilha',
+            unidadeMedida: 'UN',
+            qtdRegistrada: 100,
+            qtdParaCarona: dadosArp.aceitaAdesao ? 200 : 0,
+            valorEstimado: 45,
+            valorTotal: 4500,
+            valorPotencialCarona: dadosArp.aceitaAdesao ? 9000 : 0,
+          },
+          {
+            id: `item-${Date.now()}-2`,
+            numeroItem: 2,
+            descricao: 'Segundo item importado',
+            unidadeMedida: 'CX',
+            qtdRegistrada: 40,
+            qtdParaCarona: dadosArp.aceitaAdesao ? 80 : 0,
+            valorEstimado: 120,
+            valorTotal: 4800,
+            valorPotencialCarona: dadosArp.aceitaAdesao ? 9600 : 0,
+          },
         ]);
         setProcessandoPlanilha(false);
         setEtapaAtual(3);
@@ -202,22 +226,40 @@ export function CadastrarArp() {
     if (etapaAtual < 3) setEtapaAtual((e) => e + 1);
   };
 
-  const voltar = () => { if (etapaAtual > 1) setEtapaAtual((e) => e - 1); };
+  const voltar = () => {
+    if (etapaAtual > 1) setEtapaAtual((e) => e - 1);
+  };
 
   const finalizarCadastro = async () => {
-    setProcessandoCadastro(true);
-    setProgressoCadastro(0);
-    setEtapaProcessamento('Preparando informações da ata...');
-    await new Promise((r) => setTimeout(r, 500));
-    setProgressoCadastro(30);
-    setEtapaProcessamento('Conferindo saldos e regras da ata...');
-    await new Promise((r) => setTimeout(r, 600));
-    setProgressoCadastro(70);
-    setEtapaProcessamento('Finalizando cadastro da ata...');
-    await new Promise((r) => setTimeout(r, 700));
-    setProgressoCadastro(100);
-    setProcessandoCadastro(false);
-    setCadastroConcluido(true);
+    const cnpjLimpo = dadosArp.cnpjOrgaoGerenciador.replace(/\D/g, '');
+
+    const itensInput: ItemAtaInput[] = itensArp.map((item) => ({
+      numeroItem: item.numeroItem,
+      descricao: item.descricao,
+      unidadeMedida: item.unidadeMedida,
+      valorEstimado: item.valorEstimado,
+      qtdRegistrada: item.qtdRegistrada,
+      qtdParaCarona: dadosArp.aceitaAdesao ? item.qtdParaCarona : 0,
+    }));
+
+    const input: CriarAtaInput = {
+      numero: dadosArp.numero,
+      descricao: dadosArp.descricao,
+      cnpjOrgaoGerenciador: cnpjLimpo,
+      nomeOrgaoGerenciador: dadosArp.nomeOrgaoGerenciador,
+      dataInicioVigencia: dadosArp.dataInicioVigencia,
+      dataFimVigencia: dadosArp.dataFimVigencia,
+      aceitaAdesao: dadosArp.aceitaAdesao,
+      renovavel: dadosArp.renovavel,
+      numeroPncp: dadosArp.numeroPncp,
+      anexoUrl: dadosArp.anexoUrl || null,
+      itens: itensInput,
+    };
+
+    const result = await criarAta(input);
+    if (result) {
+      setCadastroConcluido(true);
+    }
   };
 
   const downloadTemplate = () => {
@@ -227,17 +269,17 @@ export function CadastrarArp() {
     link.click();
   };
 
-  if (processandoCadastro || cadastroConcluido) {
+  if (isSaving || cadastroConcluido) {
     return (
       <div className="space-y-4 lg:space-y-6">
         <CadastroSucesso
-          processando={processandoCadastro && !cadastroConcluido}
-          progresso={progressoCadastro}
+          processando={isSaving && !cadastroConcluido}
+          progresso={isSaving ? 50 : 100}
           titulo="Processando cadastro de ata"
           descricao="Estamos validando os dados e finalizando o cadastro da ARP com segurança."
           tituloSucesso="Ata cadastrada com sucesso"
           descricaoSucesso="A ARP foi registrada e está pronta para gestão de saldo, consumo e adesões."
-          etapaAtual={etapaProcessamento}
+          etapaAtual={isSaving ? 'Enviando dados da ata...' : 'Concluído'}
           onConcluir={() => navigate('/atas/gestao')}
         />
       </div>
@@ -266,7 +308,7 @@ export function CadastrarArp() {
             <div className="flex items-center justify-between rounded-lg border border-border bg-muted/30 p-4">
               <div className="space-y-0.5">
                 <Label htmlFor="modoManual" className="cursor-pointer">Preencher manualmente</Label>
-                <p className="text-muted-foreground text-xs lg:text-sm">Por padrão, os campos pré-preenchidos via API ficam somente leitura.</p>
+                <p className="text-muted-foreground text-xs lg:text-sm">Por padrão, os campos pré-preenchidos via PNCP ficam somente leitura.</p>
               </div>
               <Switch
                 id="modoManual"
@@ -277,111 +319,99 @@ export function CadastrarArp() {
 
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="numeroPNCP">Número da Ata no PNCP</Label>
+                <Label htmlFor="codigoPncp">Código da Ata no PNCP</Label>
                 <div className="flex gap-2">
                   <Input
-                    id="numeroPNCP"
-                    placeholder="Ex: ARP 012/2025"
-                    value={dadosArp.numeroPNCP || ''}
-                    onChange={(e) => setDadosArp((p) => ({ ...p, numeroPNCP: e.target.value }))}
+                    id="codigoPncp"
+                    placeholder="Ex: 19876424000142-1-000189/2025-000016"
+                    value={dadosArp.codigoPncp}
+                    onChange={(e) => setDadosArp((p) => ({ ...p, codigoPncp: e.target.value }))}
                   />
-                  <Button onClick={buscarPNCP} disabled={buscandoPNCP || !dadosArp.numeroPNCP}>
-                    {buscandoPNCP ? 'Buscando...' : 'Buscar'}
+                  <Button onClick={buscarPNCP} disabled={isBuscandoPNCP || !dadosArp.codigoPncp.trim()}>
+                    {isBuscandoPNCP ? 'Buscando...' : 'Buscar'}
                   </Button>
                 </div>
+                {pncpError && (
+                  <Alert variant="destructive">
+                    <WarningTriangle className="h-4 w-4" />
+                    <AlertDescription>{pncpError}</AlertDescription>
+                  </Alert>
+                )}
+                {dadosPncp && (
+                  <Alert>
+                    <InfoCircle className="h-4 w-4" />
+                    <AlertDescription>Campos pré-preenchidos via PNCP. Ative o toggle para editá-los, se necessário.</AlertDescription>
+                  </Alert>
+                )}
               </div>
-
-              {buscandoPNCP && (
-                <Alert>
-                  <InfoCircle className="h-4 w-4" />
-                  <AlertDescription>Buscando informações na base do PNCP...</AlertDescription>
-                </Alert>
-              )}
-
-              <h3 className="text-sm font-medium">Preenchidos via API (sempre exibidos)</h3>
-
-              {!cabecalhoPncpCarregado && (
-                <Alert>
-                  <InfoCircle className="h-4 w-4" />
-                  <AlertDescription>Buscando dados automáticos do PNCP para pré-preenchimento inicial.</AlertDescription>
-                </Alert>
-              )}
-              {cabecalhoPncpCarregado && (
-                <Alert>
-                  <InfoCircle className="h-4 w-4" />
-                  <AlertDescription>Campos pré-preenchidos carregados via API. Ative o toggle para editá-los, se necessário.</AlertDescription>
-                </Alert>
-              )}
 
               <div className="grid gap-4 lg:grid-cols-2">
                 <div className="space-y-2">
-                  <Label htmlFor="orgaoGerenciador">Órgão gerenciador <span className="text-danger">*</span></Label>
+                  <Label htmlFor="nomeOrgaoGerenciador">Órgão gerenciador <span className="text-danger">*</span></Label>
                   <Input
-                    id="orgaoGerenciador"
-                    value={dadosArp.orgaoGerenciador || ''}
-                    readOnly={dadosArp.modoEntrada !== 'manual'}
-                    onChange={(e) => setDadosArp((p) => ({ ...p, orgaoGerenciador: e.target.value }))}
+                    id="nomeOrgaoGerenciador"
+                    placeholder="Nome do órgão gerenciador"
+                    value={dadosArp.nomeOrgaoGerenciador}
+                    readOnly={dadosArp.modoEntrada !== 'manual' && !!dadosPncp}
+                    onChange={(e) => setDadosArp((p) => ({ ...p, nomeOrgaoGerenciador: e.target.value }))}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="numeroAta">Nº da Ata <span className="text-danger">*</span></Label>
+                  <Label htmlFor="cnpjOrgaoGerenciador">CNPJ do órgão gerenciador <span className="text-danger">*</span></Label>
                   <Input
-                    id="numeroAta"
-                    placeholder="Ex: ARP 012/2025"
-                    value={dadosArp.numeroAta}
-                    readOnly={dadosArp.modoEntrada !== 'manual'}
-                    onChange={(e) => setDadosArp((p) => ({ ...p, numeroAta: e.target.value }))}
+                    id="cnpjOrgaoGerenciador"
+                    placeholder="Ex: 12.345.678/0001-90"
+                    value={dadosArp.cnpjOrgaoGerenciador}
+                    readOnly={dadosArp.modoEntrada !== 'manual' && !!dadosPncp}
+                    onChange={(e) => setDadosArp((p) => ({ ...p, cnpjOrgaoGerenciador: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="numero">Nº da Ata <span className="text-danger">*</span></Label>
+                  <Input
+                    id="numero"
+                    placeholder="Ex: 001/2026"
+                    value={dadosArp.numero}
+                    onChange={(e) => setDadosArp((p) => ({ ...p, numero: e.target.value }))}
                   />
                 </div>
                 <div className="space-y-2 lg:col-span-2">
-                  <Label htmlFor="objeto">Objeto da ARP <span className="text-danger">*</span></Label>
+                  <Label htmlFor="descricao">Objeto da ARP <span className="text-danger">*</span></Label>
                   <Textarea
-                    id="objeto"
+                    id="descricao"
                     placeholder="Descreva o objeto da ARP"
-                    value={dadosArp.objeto}
-                    readOnly={dadosArp.modoEntrada !== 'manual'}
-                    onChange={(e) => setDadosArp((p) => ({ ...p, objeto: e.target.value }))}
+                    value={dadosArp.descricao}
+                    readOnly={dadosArp.modoEntrada !== 'manual' && !!dadosPncp}
+                    onChange={(e) => setDadosArp((p) => ({ ...p, descricao: e.target.value }))}
                     className="min-h-20"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="vigenciaInicial">Vigência inicial <span className="text-danger">*</span></Label>
+                  <Label htmlFor="dataInicioVigencia">Vigência inicial <span className="text-danger">*</span></Label>
                   <Input
-                    id="vigenciaInicial"
+                    id="dataInicioVigencia"
                     type="date"
-                    value={dadosArp.vigenciaInicial}
-                    readOnly={dadosArp.modoEntrada !== 'manual'}
-                    onChange={(e) => setDadosArp((p) => ({ ...p, vigenciaInicial: e.target.value }))}
+                    value={dadosArp.dataInicioVigencia}
+                    readOnly={dadosArp.modoEntrada !== 'manual' && !!dadosPncp}
+                    onChange={(e) => setDadosArp((p) => ({ ...p, dataInicioVigencia: e.target.value }))}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="vigenciaFinal">Vigência final <span className="text-danger">*</span></Label>
+                  <Label htmlFor="dataFimVigencia">Vigência final <span className="text-danger">*</span></Label>
                   <Input
-                    id="vigenciaFinal"
+                    id="dataFimVigencia"
                     type="date"
-                    value={dadosArp.vigenciaFinal}
-                    readOnly={dadosArp.modoEntrada !== 'manual'}
-                    onChange={(e) => setDadosArp((p) => ({ ...p, vigenciaFinal: e.target.value }))}
+                    value={dadosArp.dataFimVigencia}
+                    readOnly={dadosArp.modoEntrada !== 'manual' && !!dadosPncp}
+                    onChange={(e) => setDadosArp((p) => ({ ...p, dataFimVigencia: e.target.value }))}
                   />
+                  {dadosArp.dataInicioVigencia && dadosArp.dataFimVigencia && dadosArp.dataFimVigencia <= dadosArp.dataInicioVigencia && (
+                    <p className="text-danger text-xs">A vigência final deve ser posterior à vigência inicial.</p>
+                  )}
                 </div>
               </div>
 
               <div className="grid gap-4 lg:gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="cnpjContratante">CNPJ do Contratante (consulta automática)</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      id="cnpjContratante"
-                      placeholder="Ex: 12.345.678/0001-90"
-                      value={dadosArp.cnpjContratante || ''}
-                      onChange={(e) => setDadosArp((p) => ({ ...p, cnpjContratante: e.target.value }))}
-                    />
-                    <Button type="button" variant="outline" onClick={buscarCNPJ} disabled={buscandoCNPJ || !(dadosArp.cnpjContratante || '').trim()}>
-                      {buscandoCNPJ ? 'Consultando...' : 'Buscar CNPJ'}
-                    </Button>
-                  </div>
-                </div>
-
                 <div className="flex items-center justify-between rounded-lg border border-border bg-muted/30 p-4">
                   <div className="space-y-0.5">
                     <Label htmlFor="aceitaAdesao" className="cursor-pointer">Aceita Adesão (Carona)?</Label>
@@ -398,7 +428,7 @@ export function CadastrarArp() {
                   <Alert>
                     <InfoCircle className="h-4 w-4" />
                     <AlertDescription className="text-sm">
-                      <strong>Atenção:</strong> Ao ativar a adesão, o sistema criará automaticamente um segundo saldo de carona para cada item (geralmente o dobro da quantidade registrada).
+                      <strong>Atenção:</strong> Ao ativar a adesão, informe a quantidade para carona em cada item.
                     </AlertDescription>
                   </Alert>
                 )}
@@ -416,20 +446,15 @@ export function CadastrarArp() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="anexoArp">Anexo da ARP (opcional)</Label>
-                  <div className="flex items-center gap-2">
-                    <Input
-                      id="anexoArp"
-                      type="file"
-                      accept=".pdf"
-                      onChange={(e) => setDadosArp((p) => ({ ...p, anexoArp: e.target.files?.[0] }))}
-                      className="cursor-pointer"
-                    />
-                    {dadosArp.anexoArp && (
-                      <Badge variant="outline" className="shrink-0">{dadosArp.anexoArp.name}</Badge>
-                    )}
-                  </div>
-                  <p className="text-muted-foreground text-xs">Envie o arquivo PDF da ARP assinada (opcional)</p>
+                  <Label htmlFor="anexoUrl">URL do Anexo da ARP (opcional)</Label>
+                  <Input
+                    id="anexoUrl"
+                    type="url"
+                    placeholder="https://pncp.gov.br/atas/..."
+                    value={dadosArp.anexoUrl}
+                    onChange={(e) => setDadosArp((p) => ({ ...p, anexoUrl: e.target.value }))}
+                  />
+                  <p className="text-muted-foreground text-xs">Informe a URL do documento PDF da ARP assinada (opcional)</p>
                 </div>
               </div>
             </div>
@@ -521,13 +546,21 @@ export function CadastrarArp() {
 
             {modoItens === 'manual' && (
               <div className="space-y-4">
+                {numeroItemDuplicado() && (
+                  <Alert variant="destructive">
+                    <WarningTriangle className="h-4 w-4" />
+                    <AlertDescription>Existem itens com o mesmo número. Cada item deve ter um número único.</AlertDescription>
+                  </Alert>
+                )}
+
                 {itensArp.length > 0 ? (
                   <div className="overflow-x-auto border rounded-lg">
                     <TableComponent>
                       <TableHeader>
                         <TableRow>
+                          <TableHead className="w-[80px]">Nº Item</TableHead>
                           <TableHead className="min-w-[200px]">Descrição</TableHead>
-                          <TableHead className="min-w-[120px]">Unidade</TableHead>
+                          <TableHead className="min-w-[100px]">Unidade</TableHead>
                           <TableHead className="min-w-[100px]">Qtd. Registrada</TableHead>
                           {dadosArp.aceitaAdesao && <TableHead className="min-w-[100px]">Qtd. Carona</TableHead>}
                           <TableHead className="min-w-[120px]">Valor Unit.</TableHead>
@@ -540,21 +573,31 @@ export function CadastrarArp() {
                         {itensArp.map((item) => (
                           <TableRow key={item.id}>
                             <TableCell>
+                              <Input
+                                type="number"
+                                min="1"
+                                step="1"
+                                value={item.numeroItem || ''}
+                                onChange={(e) => atualizarItem(item.id, 'numeroItem', Number(e.target.value))}
+                                className="w-16"
+                              />
+                            </TableCell>
+                            <TableCell>
                               <Input placeholder="Ex: Notebook i7 16GB" value={item.descricao} onChange={(e) => atualizarItem(item.id, 'descricao', e.target.value)} />
                             </TableCell>
                             <TableCell>
-                              <Input placeholder="ex: un, kg" value={item.unidadeMedida} onChange={(e) => atualizarItem(item.id, 'unidadeMedida', e.target.value)} />
+                              <Input placeholder="ex: UN, KG" value={item.unidadeMedida} onChange={(e) => atualizarItem(item.id, 'unidadeMedida', e.target.value)} />
                             </TableCell>
                             <TableCell>
-                              <Input type="number" min="0" step="0.01" placeholder="0" value={item.quantidadeRegistrada || ''} onChange={(e) => atualizarItem(item.id, 'quantidadeRegistrada', Number(e.target.value))} />
+                              <Input type="number" min="0" step="0.01" placeholder="0" value={item.qtdRegistrada || ''} onChange={(e) => atualizarItem(item.id, 'qtdRegistrada', Number(e.target.value))} />
                             </TableCell>
                             {dadosArp.aceitaAdesao && (
                               <TableCell>
-                                <Input type="number" min="0" step="0.01" placeholder="0" value={item.quantidadeCarona || ''} onChange={(e) => atualizarItem(item.id, 'quantidadeCarona', Number(e.target.value))} />
+                                <Input type="number" min="0" step="0.01" placeholder="0" value={item.qtdParaCarona || ''} onChange={(e) => atualizarItem(item.id, 'qtdParaCarona', Number(e.target.value))} />
                               </TableCell>
                             )}
                             <TableCell>
-                              <Input type="number" min="0" step="0.01" placeholder="0,00" value={item.valorUnitario || ''} onChange={(e) => atualizarItem(item.id, 'valorUnitario', Number(e.target.value))} />
+                              <Input type="number" min="0" step="0.01" placeholder="0,00" value={item.valorEstimado || ''} onChange={(e) => atualizarItem(item.id, 'valorEstimado', Number(e.target.value))} />
                             </TableCell>
                             <TableCell>
                               <span className="text-sm">{formatCurrency(item.valorTotal)}</span>
@@ -590,7 +633,7 @@ export function CadastrarArp() {
                   <Alert>
                     <InfoCircle className="h-4 w-4" />
                     <AlertDescription className="text-sm">
-                      As quantidades de carona são preenchidas automaticamente com o dobro da quantidade registrada, mas podem ser editadas conforme especificado no instrumento.
+                      Informe a quantidade disponível para adesão (carona) em cada item.
                     </AlertDescription>
                   </Alert>
                 )}
@@ -647,24 +690,36 @@ export function CadastrarArp() {
                 </AlertDescription>
               </Alert>
 
+              {saveError && (
+                <Alert variant="destructive">
+                  <WarningTriangle className="h-4 w-4" />
+                  <AlertTitle>Erro ao cadastrar ata</AlertTitle>
+                  <AlertDescription>{saveError}</AlertDescription>
+                </Alert>
+              )}
+
               <div className="grid gap-4 lg:grid-cols-2">
                 <div>
                   <p className="text-sm text-muted-foreground">Órgão gerenciador</p>
-                  <p className="font-medium">{dadosArp.orgaoGerenciador}</p>
+                  <p className="font-medium">{dadosArp.nomeOrgaoGerenciador}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">CNPJ do órgão</p>
+                  <p className="font-medium">{dadosArp.cnpjOrgaoGerenciador}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Nº da Ata</p>
-                  <p className="font-medium text-primary">{dadosArp.numeroAta}</p>
+                  <p className="font-medium text-primary">{dadosArp.numero}</p>
                 </div>
                 <div className="lg:col-span-2">
                   <p className="text-sm text-muted-foreground">Objeto da ARP</p>
-                  <p className="font-medium">{dadosArp.objeto}</p>
+                  <p className="font-medium">{dadosArp.descricao}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Vigência</p>
                   <p className="font-medium">
-                    {dadosArp.vigenciaInicial ? new Date(dadosArp.vigenciaInicial).toLocaleDateString('pt-BR') : '—'} até{' '}
-                    {dadosArp.vigenciaFinal ? new Date(dadosArp.vigenciaFinal).toLocaleDateString('pt-BR') : '—'}
+                    {dadosArp.dataInicioVigencia ? new Date(dadosArp.dataInicioVigencia + 'T00:00:00').toLocaleDateString('pt-BR') : '—'} até{' '}
+                    {dadosArp.dataFimVigencia ? new Date(dadosArp.dataFimVigencia + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}
                   </p>
                 </div>
                 <div>
@@ -675,10 +730,10 @@ export function CadastrarArp() {
                   <p className="text-sm text-muted-foreground">Renovável</p>
                   <p className="font-medium">{dadosArp.renovavel ? 'Sim' : 'Não'}</p>
                 </div>
-                {dadosArp.anexoArp && (
+                {dadosArp.anexoUrl && (
                   <div>
-                    <p className="text-sm text-muted-foreground">Anexo</p>
-                    <p className="font-medium">{dadosArp.anexoArp.name}</p>
+                    <p className="text-sm text-muted-foreground">URL do Anexo</p>
+                    <p className="font-medium text-sm break-all">{dadosArp.anexoUrl}</p>
                   </div>
                 )}
               </div>
@@ -694,6 +749,7 @@ export function CadastrarArp() {
                 <TableComponent>
                   <TableHeader>
                     <TableRow>
+                      <TableHead className="w-[80px]">Nº Item</TableHead>
                       <TableHead>Descrição</TableHead>
                       <TableHead>Unidade</TableHead>
                       <TableHead className="text-right">Qtd. Registrada</TableHead>
@@ -705,11 +761,12 @@ export function CadastrarArp() {
                   <TableBody>
                     {itensArp.map((item) => (
                       <TableRow key={item.id}>
+                        <TableCell>{item.numeroItem}</TableCell>
                         <TableCell>{item.descricao}</TableCell>
                         <TableCell>{item.unidadeMedida}</TableCell>
-                        <TableCell className="text-right">{item.quantidadeRegistrada.toLocaleString('pt-BR')}</TableCell>
-                        {dadosArp.aceitaAdesao && <TableCell className="text-right">{item.quantidadeCarona.toLocaleString('pt-BR')}</TableCell>}
-                        <TableCell className="text-right">{formatCurrency(item.valorUnitario)}</TableCell>
+                        <TableCell className="text-right">{item.qtdRegistrada.toLocaleString('pt-BR')}</TableCell>
+                        {dadosArp.aceitaAdesao && <TableCell className="text-right">{item.qtdParaCarona.toLocaleString('pt-BR')}</TableCell>}
+                        <TableCell className="text-right">{formatCurrency(item.valorEstimado)}</TableCell>
                         <TableCell className="text-right">{formatCurrency(item.valorTotal)}</TableCell>
                       </TableRow>
                     ))}
@@ -767,9 +824,9 @@ export function CadastrarArp() {
             <NavArrowRight className="h-4 w-4 ml-2" />
           </Button>
         ) : (
-          <Button onClick={finalizarCadastro} size="lg">
+          <Button onClick={() => void finalizarCadastro()} disabled={isSaving} size="lg">
             <Check className="h-4 w-4 mr-2" />
-            Finalizar Cadastro
+            {isSaving ? 'Cadastrando...' : 'Finalizar Cadastro'}
           </Button>
         )}
       </div>
