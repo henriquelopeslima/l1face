@@ -124,7 +124,7 @@ export function RegisterPage() {
                     <FormItem>
                       <FormLabel>Nome completo</FormLabel>
                       <FormControl>
-                        <Input placeholder="João Silva" className="h-11 bg-[#f9fafb]" {...field} />
+                        <Input placeholder="João Silva" className="h-11 bg-[#f9fafb]" data-testid="register-nome" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -138,7 +138,7 @@ export function RegisterPage() {
                     <FormItem>
                       <FormLabel>E-mail</FormLabel>
                       <FormControl>
-                        <Input type="email" placeholder="seu@email.com" className="h-11 bg-[#f9fafb]" {...field} />
+                        <Input type="email" placeholder="seu@email.com" className="h-11 bg-[#f9fafb]" data-testid="register-email" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -157,6 +157,7 @@ export function RegisterPage() {
                             type={showPassword ? 'text' : 'password'}
                             placeholder="•••••••••"
                             className="h-11 pr-10 bg-[#f9fafb]"
+                            data-testid="register-password"
                             {...field}
                           />
                           <button
@@ -183,6 +184,7 @@ export function RegisterPage() {
                         <Input
                           placeholder="00.000.000/0000-00"
                           className="h-11 bg-[#f9fafb]"
+                          data-testid="register-cnpj"
                           {...field}
                           onChange={(e) => field.onChange(formatCnpj(e.target.value))}
                         />
@@ -199,7 +201,7 @@ export function RegisterPage() {
                     <FormItem>
                       <FormLabel>Razão social</FormLabel>
                       <FormControl>
-                        <Input placeholder="Empresa Exemplo Ltda" className="h-11 bg-[#f9fafb]" {...field} />
+                        <Input placeholder="Empresa Exemplo Ltda" className="h-11 bg-[#f9fafb]" data-testid="register-razao-social" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -207,12 +209,12 @@ export function RegisterPage() {
                 />
 
                 {error && (
-                  <p role="alert" className="text-sm text-destructive">
+                  <p role="alert" data-testid="register-error" className="text-sm text-destructive">
                     {error}
                   </p>
                 )}
 
-                <Button type="submit" className="w-full h-11 text-base" disabled={isLoading}>
+                <Button type="submit" className="w-full h-11 text-base" disabled={isLoading} data-testid="register-submit">
                   {isLoading ? 'Criando conta...' : 'Criar conta'}
                 </Button>
 
@@ -222,6 +224,7 @@ export function RegisterPage() {
                     type="button"
                     onClick={() => navigate('/login')}
                     className="text-primary hover:underline font-semibold"
+                    data-testid="register-link-login"
                   >
                     Entrar
                   </button>

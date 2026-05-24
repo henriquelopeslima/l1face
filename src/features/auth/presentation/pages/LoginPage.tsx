@@ -103,6 +103,7 @@ export function LoginPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   required
                   className="h-11 bg-[#f9fafb]"
+                  data-testid="login-email"
                 />
               </div>
 
@@ -126,6 +127,7 @@ export function LoginPage() {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                     className="h-11 pr-10 bg-[#f9fafb]"
+                    data-testid="login-password"
                   />
                   <button
                     type="button"
@@ -138,18 +140,18 @@ export function LoginPage() {
               </div>
 
               {displayError && (
-                <p role="alert" className="text-sm text-destructive">
+                <p role="alert" data-testid="login-error" className="text-sm text-destructive">
                   {displayError}
                 </p>
               )}
 
-              <Button type="submit" className="w-full h-11 text-base" disabled={isLoading}>
+              <Button type="submit" className="w-full h-11 text-base" disabled={isLoading} data-testid="login-submit">
                 {isLoading ? 'Entrando...' : 'Entrar'}
               </Button>
 
               <p className="text-center text-base text-muted-foreground">
                 Não tem uma conta?{' '}
-                <button type="button" onClick={() => navigate('/cadastro')} className="text-primary hover:underline font-semibold">
+                <button type="button" onClick={() => navigate('/cadastro')} className="text-primary hover:underline font-semibold" data-testid="login-link-cadastro">
                   Criar conta
                 </button>
               </p>
