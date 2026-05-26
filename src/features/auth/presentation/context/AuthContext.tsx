@@ -54,6 +54,8 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+const LICITANTE_ID_KEY = 'licitanteId';
+
 const repository = new AuthRepository();
 const loginUseCase = new LoginUseCase(repository);
 const getMeUseCase = new GetMeUseCase(repository);
@@ -61,7 +63,9 @@ const logoutUseCase = new LogoutUseCase(repository);
 const registerUseCase = new RegisterUseCase(repository);
 
 function resolveAutoLicitante(user: User): Licitante | null {
-  return user.licitantes.length === 1 && user.licitantes[0] ? user.licitantes[0] : null;
+  if (user.licitantes.length === 1 && user.licitantes[0]) return user.licitantes[0];
+  const savedId = localStorage.getItem(LICITANTE_ID_KEY);
+  return user.licitantes.find((l) => l.id === savedId) ?? null;
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -82,6 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       })
       .catch(() => {
         setActiveLicitanteId(null);
+        localStorage.removeItem(LICITANTE_ID_KEY);
         dispatch({ type: 'LOGOUT' });
       });
   }, []);
@@ -106,6 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     await logoutUseCase.execute();
     setActiveLicitanteId(null);
+    localStorage.removeItem(LICITANTE_ID_KEY);
     dispatch({ type: 'LOGOUT' });
   };
 
@@ -127,6 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const selectLicitante = (licitante: Licitante) => {
+    localStorage.setItem(LICITANTE_ID_KEY, licitante.id);
     setActiveLicitanteId(licitante.id);
     dispatch({ type: 'SELECT_LICITANTE', licitante });
   };
