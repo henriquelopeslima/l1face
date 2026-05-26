@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
@@ -12,6 +12,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/shared/components/ui/aler
 import { Table as TableComponent, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/shared/components/ui/table';
 import { Badge } from '@/shared/components/ui/badge';
 import { CadastroSucesso } from '@/shared/components/feedback/CadastroSucesso';
+import { useConsultarContratoPncp } from '../hooks/useConsultarContratoPncp';
 import {
   Page,
   Plus,
@@ -40,8 +41,6 @@ interface DadosContrato {
   modoEntrada: 'automatico' | 'manual';
   numeroPNCP?: string;
   cnpjContratante?: string;
-  empenho: string;
-  tipoEmpenho: 'ordinario' | 'global' | 'estimativo' | '';
   orgaoContratante?: string;
   secretaria?: string;
   objeto: string;
@@ -50,7 +49,9 @@ interface DadosContrato {
   vigenciaFinal: string;
   enderecoEntrega: string;
   prazoEntrega: number;
+  tipoPrazoEntrega: 'corrido' | 'util';
   prazoPagamento: number;
+  tipoPrazoPagamento: 'corrido' | 'util';
   renovavel: boolean;
   arpOrigem?: string;
   anexoContrato?: File;
@@ -70,6 +71,7 @@ const contratosExistentes = [
 
 export function CadastrarContrato() {
   const navigate = useNavigate();
+  const { consultar: consultarPncp, isLoading: isBuscandoPNCP, error: pncpError, dados: dadosPncp } = useConsultarContratoPncp();
   const [etapaAtual, setEtapaAtual] = useState(1);
 
   const [metodoEntrada, setMetodoEntrada] = useState<'manual' | 'excel'>('manual');
@@ -78,27 +80,22 @@ export function CadastrarContrato() {
 
   const [dadosContrato, setDadosContrato] = useState<DadosContrato>({
     modoEntrada: 'automatico',
-    numeroPNCP: '042/2024',
-    empenho: '',
-    tipoEmpenho: '',
+    numeroPNCP: '',
     objeto: '',
     numeroInstrumento: '',
     vigenciaInicial: '',
     vigenciaFinal: '',
     enderecoEntrega: '',
     prazoEntrega: 0,
+    tipoPrazoEntrega: 'corrido',
     prazoPagamento: 0,
+    tipoPrazoPagamento: 'corrido',
     renovavel: false,
   });
 
   const [erroNumeroInstrumento, setErroNumeroInstrumento] = useState('');
-  const [buscandoPNCP, setBuscandoPNCP] = useState(false);
   const [buscandoCNPJContratante, setBuscandoCNPJContratante] = useState(false);
   const [cabecalhoPncpCarregado, setCabecalhoPncpCarregado] = useState(false);
-
-  useEffect(() => {
-    setCabecalhoPncpCarregado(false);
-  }, [dadosContrato.numeroPNCP]);
 
   const [modoItens, setModoItens] = useState<'manual' | 'planilha'>('manual');
   const [itensContrato, setItensContrato] = useState<ItemContrato[]>([]);
@@ -127,8 +124,6 @@ export function CadastrarContrato() {
     setTimeout(() => {
       setDadosContrato({
         modoEntrada: 'manual',
-        empenho: '2024NE000123',
-        tipoEmpenho: 'global',
         orgaoContratante: 'Prefeitura Municipal de Russas',
         secretaria: 'SEMED',
         objeto: 'Aquisição de gêneros alimentícios para merenda escolar',
@@ -137,7 +132,9 @@ export function CadastrarContrato() {
         vigenciaFinal: '2026-03-31',
         enderecoEntrega: 'Av. Principal, 123 - Centro',
         prazoEntrega: 15,
+        tipoPrazoEntrega: 'util',
         prazoPagamento: 30,
+        tipoPrazoPagamento: 'corrido',
         renovavel: true,
       });
       setItensContrato([
@@ -150,40 +147,32 @@ export function CadastrarContrato() {
     }, 2000);
   };
 
-  const buscarPNCP = async () => {
-    if (!dadosContrato.numeroPNCP) return;
-    setBuscandoPNCP(true);
-    try {
-      const response = await fetch(
-        `https://pncp.gov.br/api/consulta/v1/contratos/${encodeURIComponent(dadosContrato.numeroPNCP.trim())}`
-      );
-      if (!response.ok) throw new Error('Falha ao consultar PNCP');
-      const data = await response.json();
-      const payload = Array.isArray(data) ? data[0] : data;
-      setDadosContrato((prev) => ({
-        ...prev,
-        orgaoContratante: payload?.orgaoEntidade?.razaoSocial || prev.orgaoContratante || 'Órgão não informado',
-        secretaria: payload?.unidadeOrgao?.nomeUnidade || prev.secretaria || 'Unidade não informada',
-        objeto: payload?.objetoContrato || prev.objeto,
-      }));
-      setCabecalhoPncpCarregado(true);
-    } catch {
-      setDadosContrato((prev) => ({
-        ...prev,
-        orgaoContratante: 'Prefeitura Municipal de Russas',
-        secretaria: 'SEMED',
-        objeto: 'Aquisição de gêneros alimentícios para merenda escolar',
-      }));
-      setCabecalhoPncpCarregado(true);
-    } finally {
-      setBuscandoPNCP(false);
-    }
-  };
+  useEffect(() => {
+    if (!dadosPncp) return;
+    setDadosContrato((prev) => ({
+      ...prev,
+      cnpjContratante: dadosPncp.cnpjDoContratante,
+      orgaoContratante: dadosPncp.orgaoDoContratante,
+      secretaria: dadosPncp.unidade,
+      objeto: dadosPncp.objeto,
+      numeroInstrumento: dadosPncp.nDoInstrumento,
+      vigenciaInicial: dadosPncp.vigenciaInicial,
+      vigenciaFinal: dadosPncp.vigenciaFinal,
+    }));
+    setCabecalhoPncpCarregado(true);
+  }, [dadosPncp]);
 
   useEffect(() => {
-    if (!dadosContrato.numeroPNCP || cabecalhoPncpCarregado || buscandoPNCP) return;
-    buscarPNCP();
-  }, [dadosContrato.numeroPNCP, cabecalhoPncpCarregado]);
+    if (pncpError) {
+      setDadosContrato((prev) => ({ ...prev, modoEntrada: 'manual' }));
+    }
+  }, [pncpError]);
+
+  const buscarPNCP = useCallback(() => {
+    if (!dadosContrato.numeroPNCP?.trim()) return;
+    setCabecalhoPncpCarregado(false);
+    void consultarPncp(dadosContrato.numeroPNCP.trim());
+  }, [dadosContrato.numeroPNCP, consultarPncp]);
 
   const buscarContratantePorCNPJ = async () => {
     const cnpjLimpo = (dadosContrato.cnpjContratante || '').replace(/\D/g, '');
@@ -220,10 +209,13 @@ export function CadastrarContrato() {
 
   const calcularValorTotal = () => itensContrato.reduce((acc, i) => acc + i.valorTotal, 0);
 
+  const isManual = dadosContrato.modoEntrada === 'manual';
+  const readonlyCls = !isManual ? 'bg-muted text-muted-foreground cursor-not-allowed select-none' : '';
+
   const validarEtapaDados = () => {
-    if (!dadosContrato.numeroPNCP || !cabecalhoPncpCarregado) return false;
+    if (!isManual && (!dadosContrato.numeroPNCP || (!cabecalhoPncpCarregado && !pncpError))) return false;
     return !!(dadosContrato.orgaoContratante && dadosContrato.secretaria && dadosContrato.objeto &&
-      dadosContrato.empenho && dadosContrato.tipoEmpenho && dadosContrato.numeroInstrumento &&
+      dadosContrato.numeroInstrumento &&
       dadosContrato.vigenciaInicial && dadosContrato.vigenciaFinal && dadosContrato.enderecoEntrega &&
       dadosContrato.prazoEntrega > 0 && dadosContrato.prazoPagamento > 0 && !erroNumeroInstrumento);
   };
@@ -456,67 +448,76 @@ export function CadastrarContrato() {
             </div>
 
             <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="numeroPNCP">Número do Contrato no PNCP</Label>
-                <div className="flex gap-2">
-                  <Input id="numeroPNCP" placeholder="Ex: 042/2024" value={dadosContrato.numeroPNCP || ''}
-                    onChange={(e) => setDadosContrato({ ...dadosContrato, numeroPNCP: e.target.value })} />
-                  <Button onClick={buscarPNCP} disabled={buscandoPNCP || !dadosContrato.numeroPNCP}>
-                    {buscandoPNCP ? 'Buscando...' : 'Buscar'}
-                  </Button>
+              {!isManual && (
+                <div className="space-y-2">
+                  <Label htmlFor="numeroPNCP">Número do Contrato no PNCP <span className="text-destructive">*</span></Label>
+                  <div className="flex gap-2">
+                    <Input id="numeroPNCP" placeholder="Ex: 24098477000110-2-000270/2026" value={dadosContrato.numeroPNCP || ''}
+                      onChange={(e) => setDadosContrato({ ...dadosContrato, numeroPNCP: e.target.value, })} />
+                    <Button onClick={buscarPNCP} disabled={isBuscandoPNCP || !dadosContrato.numeroPNCP?.trim()}>
+                      {isBuscandoPNCP ? 'Buscando...' : 'Buscar'}
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {buscandoPNCP && (
+              {!isManual && isBuscandoPNCP && (
                 <Alert><InfoCircle className="h-4 w-4" /><AlertDescription>Buscando informações na base do PNCP...</AlertDescription></Alert>
               )}
 
-              <h3 className="text-sm font-medium">Preenchidos automaticamente (somente leitura)</h3>
-              {!cabecalhoPncpCarregado && (
-                <Alert><InfoCircle className="h-4 w-4" /><AlertDescription>Buscando dados automáticos do PNCP para pré-preenchimento inicial.</AlertDescription></Alert>
+              {!isManual && pncpError && (
+                <Alert variant="destructive">
+                  <WarningTriangle className="h-4 w-4" />
+                  <AlertTitle>Erro ao buscar no PNCP</AlertTitle>
+                  <AlertDescription>{pncpError} Os campos foram liberados para preenchimento manual.</AlertDescription>
+                </Alert>
+              )}
+
+              {!isManual && (
+                <h3 className="text-sm font-medium">Preenchidos automaticamente (somente leitura)</h3>
               )}
 
               <div className="grid gap-4 lg:grid-cols-2">
+                <div className="space-y-2 lg:col-span-2">
+                  <Label>CNPJ do Contratante {isManual && <span className="text-destructive">*</span>}</Label>
+                  <div className="flex gap-2">
+                    <Input placeholder="Ex: 12.345.678/0001-90" value={dadosContrato.cnpjContratante || ''}
+                      readOnly={!isManual}
+                      className={readonlyCls}
+                      onChange={(e) => setDadosContrato({ ...dadosContrato, cnpjContratante: e.target.value })} />
+                    {isManual && (
+                      <Button type="button" variant="outline" onClick={buscarContratantePorCNPJ} disabled={buscandoCNPJContratante}>
+                        {buscandoCNPJContratante ? 'Consultando...' : 'Buscar CNPJ'}
+                      </Button>
+                    )}
+                  </div>
+                </div>
                 <div className="space-y-2">
                   <Label>Órgão Contratante</Label>
-                  <Input value={dadosContrato.orgaoContratante || ''} readOnly={dadosContrato.modoEntrada !== 'manual'}
+                  <Input value={dadosContrato.orgaoContratante || ''} readOnly={!isManual}
+                    className={readonlyCls}
                     onChange={(e) => setDadosContrato({ ...dadosContrato, orgaoContratante: e.target.value })} />
                 </div>
                 <div className="space-y-2">
                   <Label>Secretaria / Unidade</Label>
-                  <Input value={dadosContrato.secretaria || ''} readOnly={dadosContrato.modoEntrada !== 'manual'}
+                  <Input value={dadosContrato.secretaria || ''} readOnly={!isManual}
+                    className={readonlyCls}
                     onChange={(e) => setDadosContrato({ ...dadosContrato, secretaria: e.target.value })} />
                 </div>
                 <div className="space-y-2 lg:col-span-2">
                   <Label>Objeto</Label>
-                  <Textarea value={dadosContrato.objeto || ''} readOnly={dadosContrato.modoEntrada !== 'manual'}
-                    onChange={(e) => setDadosContrato({ ...dadosContrato, objeto: e.target.value })} className="min-h-20" />
+                  <Textarea value={dadosContrato.objeto || ''} readOnly={!isManual}
+                    onChange={(e) => setDadosContrato({ ...dadosContrato, objeto: e.target.value })} className={`min-h-20 ${readonlyCls}`} />
                 </div>
               </div>
 
-              <h3 className="text-sm font-medium pt-2">Preenchimento manual obrigatório</h3>
-              <div className="grid gap-4 lg:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="empenho">Empenho <span className="text-destructive">*</span></Label>
-                  <Input id="empenho" placeholder="Ex: 2024NE000123" value={dadosContrato.empenho}
-                    onChange={(e) => setDadosContrato({ ...dadosContrato, empenho: e.target.value })} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Tipo de Empenho <span className="text-destructive">*</span></Label>
-                  <Select value={dadosContrato.tipoEmpenho} onValueChange={(v) => setDadosContrato({ ...dadosContrato, tipoEmpenho: v as 'ordinario' | 'global' | 'estimativo' })}>
-                    <SelectTrigger><SelectValue placeholder="Selecione o tipo" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ordinario">Ordinário</SelectItem>
-                      <SelectItem value="global">Global</SelectItem>
-                      <SelectItem value="estimativo">Estimativo</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="grid gap-4 lg:grid-cols-3">
                 <div className="space-y-2">
                   <Label>Nº do Instrumento <span className="text-destructive">*</span></Label>
                   <Input placeholder="Ex: 042/2024" value={dadosContrato.numeroInstrumento}
+                    readOnly={!isManual}
                     onChange={(e) => setDadosContrato({ ...dadosContrato, numeroInstrumento: e.target.value })}
-                    className={erroNumeroInstrumento ? 'border-destructive' : ''} />
+                    className={`${erroNumeroInstrumento ? 'border-destructive' : ''} ${readonlyCls}`} />
                   {erroNumeroInstrumento && (
                     <p className="text-destructive text-sm flex items-center gap-1">
                       <WarningTriangle className="h-3 w-3" />{erroNumeroInstrumento}
@@ -525,43 +526,51 @@ export function CadastrarContrato() {
                 </div>
                 <div className="space-y-2">
                   <Label>Vigência Inicial <span className="text-destructive">*</span></Label>
-                  <Input type="date" value={dadosContrato.vigenciaInicial}
+                  <Input type="date" value={dadosContrato.vigenciaInicial} readOnly={!isManual}
+                    className={readonlyCls}
                     onChange={(e) => setDadosContrato({ ...dadosContrato, vigenciaInicial: e.target.value })} />
                 </div>
                 <div className="space-y-2">
                   <Label>Vigência Final <span className="text-destructive">*</span></Label>
-                  <Input type="date" value={dadosContrato.vigenciaFinal}
+                  <Input type="date" value={dadosContrato.vigenciaFinal} readOnly={!isManual}
+                    className={readonlyCls}
                     onChange={(e) => setDadosContrato({ ...dadosContrato, vigenciaFinal: e.target.value })} />
                 </div>
-                <div className="space-y-2 lg:col-span-2">
-                  <Label>Endereço de Entrega <span className="text-destructive">*</span></Label>
-                  <Input placeholder="Ex: Rua Principal, 123 - Centro" value={dadosContrato.enderecoEntrega}
-                    onChange={(e) => setDadosContrato({ ...dadosContrato, enderecoEntrega: e.target.value })} />
+              </div>
+
+              <h3 className="text-sm font-medium pt-2">Preenchimento manual obrigatório</h3>
+              <div className="grid gap-4 lg:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Prazo de Entrega <span className="text-destructive">*</span></Label>
+                  <div className="flex gap-2">
+                    <Input type="number" min="1" placeholder="Ex: 15" value={dadosContrato.prazoEntrega || ''}
+                      onChange={(e) => setDadosContrato({ ...dadosContrato, prazoEntrega: Number(e.target.value) })} />
+                    <Select value={dadosContrato.tipoPrazoEntrega} onValueChange={(v) => setDadosContrato({ ...dadosContrato, tipoPrazoEntrega: v as 'corrido' | 'util' })}>
+                      <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="corrido">Corrido</SelectItem>
+                        <SelectItem value="util">Útil</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
                 <div className="space-y-2">
-                  <Label>Prazo de Entrega (dias úteis) <span className="text-destructive">*</span></Label>
-                  <Input type="number" min="1" placeholder="Ex: 15" value={dadosContrato.prazoEntrega || ''}
-                    onChange={(e) => setDadosContrato({ ...dadosContrato, prazoEntrega: Number(e.target.value) })} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Prazo de Pagamento (dias) <span className="text-destructive">*</span></Label>
-                  <Input type="number" min="1" placeholder="Ex: 30" value={dadosContrato.prazoPagamento || ''}
-                    onChange={(e) => setDadosContrato({ ...dadosContrato, prazoPagamento: Number(e.target.value) })} />
+                  <Label>Prazo de Pagamento <span className="text-destructive">*</span></Label>
+                  <div className="flex gap-2">
+                    <Input type="number" min="1" placeholder="Ex: 30" value={dadosContrato.prazoPagamento || ''}
+                      onChange={(e) => setDadosContrato({ ...dadosContrato, prazoPagamento: Number(e.target.value) })} />
+                    <Select value={dadosContrato.tipoPrazoPagamento} onValueChange={(v) => setDadosContrato({ ...dadosContrato, tipoPrazoPagamento: v as 'corrido' | 'util' })}>
+                      <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="corrido">Corrido</SelectItem>
+                        <SelectItem value="util">Útil</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
 
               <div className="grid gap-4 lg:gap-6">
-                <div className="space-y-2">
-                  <Label>CNPJ do Contratante (consulta automática)</Label>
-                  <div className="flex gap-2">
-                    <Input placeholder="Ex: 12.345.678/0001-90" value={dadosContrato.cnpjContratante || ''}
-                      onChange={(e) => setDadosContrato({ ...dadosContrato, cnpjContratante: e.target.value })} />
-                    <Button type="button" variant="outline" onClick={buscarContratantePorCNPJ} disabled={buscandoCNPJContratante}>
-                      {buscandoCNPJContratante ? 'Consultando...' : 'Buscar CNPJ'}
-                    </Button>
-                  </div>
-                </div>
-
                 <div className="flex items-center justify-between rounded-lg border border-border bg-muted/30 p-4">
                   <div className="space-y-0.5">
                     <Label htmlFor="renovavel" className="cursor-pointer">Contrato Renovável?</Label>
@@ -773,8 +782,6 @@ export function CadastrarContrato() {
                 <div><p className="text-muted-foreground text-sm">Órgão Contratante</p><p className="font-medium">{dadosContrato.orgaoContratante}</p></div>
                 <div><p className="text-muted-foreground text-sm">Secretaria / Unidade</p><p className="font-medium">{dadosContrato.secretaria}</p></div>
                 <div className="lg:col-span-2"><p className="text-muted-foreground text-sm">Objeto do Contrato</p><p className="font-medium">{dadosContrato.objeto}</p></div>
-                <div><p className="text-muted-foreground text-sm">Empenho</p><p className="font-medium">{dadosContrato.empenho}</p></div>
-                <div><p className="text-muted-foreground text-sm">Tipo de Empenho</p><p className="font-medium capitalize">{dadosContrato.tipoEmpenho || '-'}</p></div>
                 <div><p className="text-muted-foreground text-sm">Nº do Instrumento</p><p className="font-medium text-primary">{dadosContrato.numeroInstrumento}</p></div>
                 <div>
                   <p className="text-muted-foreground text-sm">Vigência</p>
@@ -784,8 +791,8 @@ export function CadastrarContrato() {
                   </p>
                 </div>
                 <div><p className="text-muted-foreground text-sm">Endereço de Entrega</p><p className="font-medium">{dadosContrato.enderecoEntrega}</p></div>
-                <div><p className="text-muted-foreground text-sm">Prazo de Entrega</p><p className="font-medium">{dadosContrato.prazoEntrega} dias úteis</p></div>
-                <div><p className="text-muted-foreground text-sm">Prazo de Pagamento</p><p className="font-medium">{dadosContrato.prazoPagamento} dias</p></div>
+                <div><p className="text-muted-foreground text-sm">Prazo de Entrega</p><p className="font-medium">{dadosContrato.prazoEntrega} dias {dadosContrato.tipoPrazoEntrega === 'util' ? 'úteis' : 'corridos'}</p></div>
+                <div><p className="text-muted-foreground text-sm">Prazo de Pagamento</p><p className="font-medium">{dadosContrato.prazoPagamento} dias {dadosContrato.tipoPrazoPagamento === 'util' ? 'úteis' : 'corridos'}</p></div>
                 <div><p className="text-muted-foreground text-sm">Renovável</p><p className="font-medium">{dadosContrato.renovavel ? 'Sim' : 'Não'}</p></div>
               </div>
             </CardContent>
