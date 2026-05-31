@@ -1,17 +1,16 @@
-export type TipoInstrumentoContratual = 'contrato' | 'nota-empenho' | 'outro';
+export type TipoInstrumento = 'CONTRATO' | 'EMPENHO';
+
+export type StatusInstrumento = 'ATIVA' | 'PROXIMA_AO_VENCIMENTO' | 'ENCERRADA';
 
 export interface InstrumentoListagem {
   id: string;
-  tipo: TipoInstrumentoContratual;
-  numeroInstrumento: string;
-  isARP: boolean;
-  orgaoContratante: string;
-  secretaria: string;
+  tipo: TipoInstrumento;
+  numero: string | null;
+  orgao: string;
+  unidade: string;
   objeto: string;
-  vigenciaInicio: string;
-  vigenciaFim: string;
-  prazoEntregaOF?: string;
-  valorGlobal: number;
-  saldoAtual: number;
-  status: 'em-execucao' | 'proximo-vencimento' | 'encerrado' | 'renovavel';
+  prazoFinal: string | null;
+  valor: number;
+  saldo: number;
+  status: StatusInstrumento;
 }

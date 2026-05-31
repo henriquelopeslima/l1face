@@ -15,23 +15,10 @@ import {
 } from '@/shared/components/ui/table';
 import { Search, Plus, Page, NavArrowDown, NavArrowUp, Cart } from 'iconoir-react';
 import { cn } from '@/shared/components/ui/utils';
-import type { InstrumentoListagem, TipoInstrumentoContratual } from '@/features/instrumentos/domain/entities/instrumentoContratual';
+import { useListarInstrumentos } from '../hooks/useListarInstrumentos';
+import type { TipoInstrumento, StatusInstrumento, InstrumentoListagem } from '@/features/instrumentos/domain/entities/instrumentoContratual';
 
-type FiltroSegmento = 'todos' | 'contrato' | 'empenho';
-
-const INSTRUMENTOS_MOCK: InstrumentoListagem[] = [
-  { id: 'CT-001', tipo: 'contrato', numeroInstrumento: '042/2024', isARP: false, orgaoContratante: 'Prefeitura Municipal de Russas', secretaria: 'SEMED', objeto: 'Merenda Escolar', vigenciaInicio: '2024-04-01', vigenciaFim: '2026-03-31', valorGlobal: 250000, saldoAtual: 28000, status: 'proximo-vencimento' },
-  { id: 'CT-002', tipo: 'contrato', numeroInstrumento: '118/2025', isARP: false, orgaoContratante: 'Governo do Estado do Ceará', secretaria: 'SEDUC', objeto: 'Material de Expediente', vigenciaInicio: '2025-01-15', vigenciaFim: '2026-06-15', valorGlobal: 80000, saldoAtual: 52000, status: 'em-execucao' },
-  { id: 'NE-001', tipo: 'nota-empenho', numeroInstrumento: 'NE 88442/2025', isARP: false, orgaoContratante: 'Prefeitura de Fortaleza', secretaria: 'SMS', objeto: 'Medicamentos diversos', vigenciaInicio: '2025-03-01', vigenciaFim: '', prazoEntregaOF: '2026-02-15', valorGlobal: 120000, saldoAtual: 88000, status: 'em-execucao' },
-  { id: 'OU-001', tipo: 'outro', numeroInstrumento: 'ACT-03/2025', isARP: false, orgaoContratante: 'Câmara Municipal de Aquiraz', secretaria: 'Administrativo', objeto: 'Termo de cooperação técnica', vigenciaInicio: '2025-06-01', vigenciaFim: '2027-05-31', valorGlobal: 45000, saldoAtual: 45000, status: 'em-execucao' },
-  { id: 'CT-003', tipo: 'contrato', numeroInstrumento: '203/2025', isARP: true, orgaoContratante: 'Prefeitura de Fortaleza', secretaria: 'SMS', objeto: 'Material Hospitalar', vigenciaInicio: '2025-02-10', vigenciaFim: '2026-09-10', valorGlobal: 420000, saldoAtual: 310000, status: 'em-execucao' },
-  { id: 'NE-002', tipo: 'nota-empenho', numeroInstrumento: 'NE 55223/2025', isARP: false, orgaoContratante: 'Secretaria de Educação de Fortaleza', secretaria: 'SEDFOR', objeto: 'Equipamentos de informática e impressoras', vigenciaInicio: '2025-04-15', vigenciaFim: '', prazoEntregaOF: '2025-12-20', valorGlobal: 95000, saldoAtual: 72500, status: 'em-execucao' },
-];
-
-function dataReferenciaAlerta(row: InstrumentoListagem): string {
-  if (row.tipo === 'nota-empenho' && row.prazoEntregaOF) return row.prazoEntregaOF;
-  return row.vigenciaFim;
-}
+type FiltroSegmento = 'todos' | 'CONTRATO' | 'EMPENHO';
 
 function calcularDiasRestantes(dataAlvo: string): number {
   if (!dataAlvo) return Infinity;
@@ -44,23 +31,21 @@ function formatCurrency(value: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
 }
 
-function formatDate(date: string) {
+function formatDate(date: string | null) {
   if (!date) return '—';
   return new Date(date).toLocaleDateString('pt-BR');
 }
 
-function badgeTipo(t: TipoInstrumentoContratual) {
-  if (t === 'contrato') return <Badge className="border-0 bg-[#0050FF] text-white hover:bg-[#0050FF]/90">Contrato</Badge>;
-  if (t === 'nota-empenho') return <Badge className="border-0 bg-[#4B5563] text-white hover:bg-[#4B5563]/90">Empenho</Badge>;
-  return <Badge variant="outline" className="border-border bg-muted/80 text-muted-foreground">Outro</Badge>;
+function badgeTipo(t: TipoInstrumento) {
+  if (t === 'CONTRATO') return <Badge className="border-0 bg-[#0050FF] text-white hover:bg-[#0050FF]/90">Contrato</Badge>;
+  return <Badge className="border-0 bg-[#4B5563] text-white hover:bg-[#4B5563]/90">Empenho</Badge>;
 }
 
-function getStatusBadge(status: InstrumentoListagem['status']) {
+function getStatusBadge(status: StatusInstrumento) {
   switch (status) {
-    case 'em-execucao': return <Badge className="bg-[#0050FF] text-white border-[#0050FF]">Em execução</Badge>;
-    case 'proximo-vencimento': return <Badge className="bg-[#F39C12] text-white border-[#F39C12]">Próx. vencimento</Badge>;
-    case 'encerrado': return <Badge className="bg-gray-500 text-white border-gray-500">Encerrado</Badge>;
-    case 'renovavel': return <Badge className="bg-[#06D6A0] text-white border-[#06D6A0]">Renovável</Badge>;
+    case 'ATIVA': return <Badge className="bg-[#0050FF] text-white border-[#0050FF]">Em execução</Badge>;
+    case 'PROXIMA_AO_VENCIMENTO': return <Badge className="bg-[#F39C12] text-white border-[#F39C12]">Próx. vencimento</Badge>;
+    case 'ENCERRADA': return <Badge className="bg-gray-500 text-white border-gray-500">Encerrado</Badge>;
     default: return <Badge variant="outline">{status}</Badge>;
   }
 }
@@ -69,9 +54,11 @@ export function InstrumentosGestaoPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const raw = searchParams.get('tipo');
-  const segmento: FiltroSegmento = raw === 'contrato' || raw === 'empenho' ? (raw as FiltroSegmento) : 'todos';
+  const segmento: FiltroSegmento = raw === 'CONTRATO' || raw === 'EMPENHO' ? (raw as FiltroSegmento) : 'todos';
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
+
+  const { instrumentos, isLoading, error } = useListarInstrumentos();
 
   const setSegmento = (s: FiltroSegmento) => {
     const next = new URLSearchParams(searchParams);
@@ -81,25 +68,47 @@ export function InstrumentosGestaoPage() {
   };
 
   const filtrados = useMemo(() => {
-    return INSTRUMENTOS_MOCK.filter((row) => {
-      if (segmento === 'contrato' && row.tipo !== 'contrato') return false;
-      if (segmento === 'empenho' && row.tipo !== 'nota-empenho') return false;
+    return instrumentos.filter((row) => {
+      if (segmento === 'CONTRATO' && row.tipo !== 'CONTRATO') return false;
+      if (segmento === 'EMPENHO' && row.tipo !== 'EMPENHO') return false;
       const q = searchTerm.toLowerCase();
-      return !q || row.objeto.toLowerCase().includes(q) || row.numeroInstrumento.toLowerCase().includes(q) || row.orgaoContratante.toLowerCase().includes(q) || row.secretaria.toLowerCase().includes(q);
+      return !q || row.objeto.toLowerCase().includes(q) || (row.numero ?? '').toLowerCase().includes(q) || row.orgao.toLowerCase().includes(q) || row.unidade.toLowerCase().includes(q);
     });
-  }, [segmento, searchTerm]);
+  }, [segmento, searchTerm, instrumentos]);
 
   const stats = useMemo(() => ({
-    total: INSTRUMENTOS_MOCK.length,
-    contratos: INSTRUMENTOS_MOCK.filter((r) => r.tipo === 'contrato').length,
-    empenhos: INSTRUMENTOS_MOCK.filter((r) => r.tipo === 'nota-empenho').length,
-  }), []);
+    total: instrumentos.length,
+    contratos: instrumentos.filter((r) => r.tipo === 'CONTRATO').length,
+    empenhos: instrumentos.filter((r) => r.tipo === 'EMPENHO').length,
+  }), [instrumentos]);
 
   const segmentButtons: { id: FiltroSegmento; label: string }[] = [
     { id: 'todos', label: 'Todos' },
-    { id: 'contrato', label: 'Contratos' },
-    { id: 'empenho', label: 'Empenhos' },
+    { id: 'CONTRATO', label: 'Contratos' },
+    { id: 'EMPENHO', label: 'Empenhos' },
   ];
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4 lg:space-y-6">
+        <Breadcrumb items={[{ label: 'Página inicial', href: '/' }, { label: 'Instrumentos' }, { label: 'Gestão' }]} />
+        <div className="flex items-center justify-center py-20">
+          <p className="text-muted-foreground text-sm">Carregando instrumentos...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-4 lg:space-y-6">
+        <Breadcrumb items={[{ label: 'Página inicial', href: '/' }, { label: 'Instrumentos' }, { label: 'Gestão' }]} />
+        <Card>
+          <CardContent className="p-6 text-center text-destructive">{error}</CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4 lg:space-y-6">
@@ -109,7 +118,7 @@ export function InstrumentosGestaoPage() {
         <div className="space-y-1">
           <h1 className="text-lg font-semibold sm:text-xl lg:text-4xl">Instrumentos contratuais</h1>
           <p className="text-muted-foreground text-xs sm:text-sm lg:text-base">
-            Listagem unificada de contratos, notas de empenho e demais instrumentos.
+            Listagem unificada de contratos e notas de empenho.
           </p>
         </div>
         <Button className="gap-2" onClick={() => navigate('/instrumentos/cadastrar')}>
@@ -162,7 +171,7 @@ export function InstrumentosGestaoPage() {
                 <TableHead className="w-[100px]">Nº</TableHead>
                 <TableHead className="min-w-[140px]">Cliente / Unidade</TableHead>
                 <TableHead className="min-w-[120px]">Objeto</TableHead>
-                <TableHead className="w-[110px]">Vigência / Prazo</TableHead>
+                <TableHead className="w-[110px]">Prazo final</TableHead>
                 <TableHead className="w-[100px] text-right">Valor</TableHead>
                 <TableHead className="w-[100px] text-right">Saldo</TableHead>
                 <TableHead className="w-[120px]">Status</TableHead>
@@ -172,36 +181,36 @@ export function InstrumentosGestaoPage() {
             <TableBody>
               {filtrados.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="py-10 text-center text-muted-foreground">Nenhum instrumento encontrado.</TableCell>
+                  <TableCell colSpan={9} className="py-10 text-center text-muted-foreground">
+                    {instrumentos.length === 0
+                      ? 'Nenhum instrumento cadastrado. Clique em "Cadastrar" para começar.'
+                      : 'Nenhum instrumento encontrado para os filtros aplicados.'}
+                  </TableCell>
                 </TableRow>
               ) : (
                 filtrados.flatMap((row) => {
-                  const ref = dataReferenciaAlerta(row);
-                  const dias = calcularDiasRestantes(ref);
+                  const dias = row.prazoFinal ? calcularDiasRestantes(row.prazoFinal) : Infinity;
                   const expanded = expandedRow === row.id;
-                  const colVig = row.tipo === 'nota-empenho' ? (
-                    <div><p className="font-mono text-xs">{formatDate(row.prazoEntregaOF ?? '')}</p><p className="text-[10px] text-muted-foreground">Prazo entrega (OF)</p></div>
-                  ) : (
-                    <div><p className="font-mono text-xs">{formatDate(row.vigenciaFim)}</p><p className="text-[10px] text-muted-foreground">Fim vigência</p></div>
-                  );
 
                   return [
                     <TableRow key={row.id} className="cursor-pointer border-b hover:bg-accent/50" onClick={() => setExpandedRow(expanded ? null : row.id)}>
                       <TableCell className="pl-6">{badgeTipo(row.tipo)}</TableCell>
                       <TableCell className="font-mono text-xs font-medium">
-                        <div className="flex items-center gap-1">
-                          {row.numeroInstrumento}
-                          {row.isARP && <Badge variant="outline" className="h-4 px-1 text-[9px]">ARP</Badge>}
-                        </div>
+                        {row.numero ?? '—'}
                       </TableCell>
                       <TableCell>
-                        <p className="truncate text-xs font-medium">{row.orgaoContratante}</p>
-                        <p className="truncate text-[11px] text-muted-foreground">{row.secretaria}</p>
+                        <p className="truncate text-xs font-medium">{row.orgao}</p>
+                        <p className="truncate text-[11px] text-muted-foreground">{row.unidade}</p>
                       </TableCell>
                       <TableCell><p className="line-clamp-2 text-xs">{row.objeto}</p></TableCell>
-                      <TableCell>{colVig}</TableCell>
-                      <TableCell className="text-right font-mono text-xs tabular-nums">{formatCurrency(row.valorGlobal)}</TableCell>
-                      <TableCell className="text-right font-mono text-xs font-semibold tabular-nums">{formatCurrency(row.saldoAtual)}</TableCell>
+                      <TableCell>
+                        <div>
+                          <p className="font-mono text-xs">{formatDate(row.prazoFinal)}</p>
+                          {row.prazoFinal && <p className="text-[10px] text-muted-foreground">Fim vigência</p>}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-right font-mono text-xs tabular-nums">{formatCurrency(row.valor)}</TableCell>
+                      <TableCell className="text-right font-mono text-xs font-semibold tabular-nums">{formatCurrency(row.saldo)}</TableCell>
                       <TableCell>{getStatusBadge(row.status)}</TableCell>
                       <TableCell>
                         {expanded ? <NavArrowUp className="h-4 w-4 text-muted-foreground" /> : <NavArrowDown className="h-4 w-4 text-muted-foreground" />}
@@ -212,23 +221,21 @@ export function InstrumentosGestaoPage() {
                         <TableCell colSpan={9} className="py-4">
                           <div className="grid gap-3 px-2 text-sm sm:grid-cols-2">
                             <div>
-                              <p className="text-xs font-medium text-muted-foreground">Referência para alerta</p>
-                              <p className="font-mono text-sm">{formatDate(ref)}</p>
-                              <p className="mt-1 text-xs text-muted-foreground">
-                                {row.tipo === 'nota-empenho' ? 'Empenhos: prazo da OF mais antiga em aberto.' : 'Contratos / outros: data fim de vigência.'}
-                                {dias !== Infinity && <span className="mt-1 block">{dias} dias em relação a hoje (mock).</span>}
-                              </p>
+                              <p className="text-xs font-medium text-muted-foreground">Prazo final</p>
+                              <p className="font-mono text-sm">{formatDate(row.prazoFinal)}</p>
+                              {row.prazoFinal && dias !== Infinity && (
+                                <p className="mt-1 text-xs text-muted-foreground">{dias} dias em relação a hoje.</p>
+                              )}
                             </div>
                             <div className="flex flex-wrap justify-end gap-2">
                               <Button
                                 variant="outline"
                                 size="sm"
                                 className="gap-2"
-                                disabled={!row.id.startsWith('CT-') && !row.id.startsWith('NE-')}
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  if (row.id.startsWith('CT-')) navigate(`/contratos/detalhes/${row.id}`);
-                                  else if (row.id.startsWith('NE-')) navigate(`/notas-empenho/detalhes/${row.id}`);
+                                  if (row.tipo === 'CONTRATO') navigate(`/contratos/detalhes/${row.id}`);
+                                  else navigate(`/notas-empenho/detalhes/${row.id}`);
                                 }}
                               >
                                 <Page className="h-4 w-4" />
@@ -257,28 +264,34 @@ export function InstrumentosGestaoPage() {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input placeholder="Buscar..." className="pl-10" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
         </div>
-        {filtrados.map((row) => (
+        {filtrados.length === 0 && (
+          <p className="py-8 text-center text-sm text-muted-foreground">
+            {instrumentos.length === 0
+              ? 'Nenhum instrumento cadastrado. Clique em "Cadastrar" para começar.'
+              : 'Nenhum instrumento encontrado.'}
+          </p>
+        )}
+        {filtrados.map((row: InstrumentoListagem) => (
           <Card key={row.id}>
             <CardContent className="space-y-2 p-4 text-sm">
               <div className="flex items-start justify-between gap-2">
                 {badgeTipo(row.tipo)}
                 {getStatusBadge(row.status)}
               </div>
-              <p className="font-mono font-semibold">{row.numeroInstrumento}</p>
-              <p className="text-xs text-muted-foreground">{row.orgaoContratante}</p>
+              <p className="font-mono font-semibold">{row.numero ?? '—'}</p>
+              <p className="text-xs text-muted-foreground">{row.orgao}</p>
               <p className="text-xs">{row.objeto}</p>
               <div className="flex justify-between border-t pt-2 text-xs">
-                <span className="text-muted-foreground">{row.tipo === 'nota-empenho' ? 'Prazo OF' : 'Vigência fim'}</span>
-                <span className="font-mono">{formatDate(dataReferenciaAlerta(row))}</span>
+                <span className="text-muted-foreground">Prazo final</span>
+                <span className="font-mono">{formatDate(row.prazoFinal)}</span>
               </div>
               <Button
                 variant="outline"
                 size="sm"
                 className="w-full"
-                disabled={!row.id.startsWith('CT-') && !row.id.startsWith('NE-')}
                 onClick={() => {
-                  if (row.id.startsWith('CT-')) navigate(`/contratos/detalhes/${row.id}`);
-                  else if (row.id.startsWith('NE-')) navigate(`/notas-empenho/detalhes/${row.id}`);
+                  if (row.tipo === 'CONTRATO') navigate(`/contratos/detalhes/${row.id}`);
+                  else navigate(`/notas-empenho/detalhes/${row.id}`);
                 }}
               >
                 Abrir detalhes

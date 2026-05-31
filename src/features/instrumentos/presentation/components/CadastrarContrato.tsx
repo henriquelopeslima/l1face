@@ -13,6 +13,9 @@ import { Table as TableComponent, TableBody, TableCell, TableHead, TableHeader, 
 import { Badge } from '@/shared/components/ui/badge';
 import { CadastroSucesso } from '@/shared/components/feedback/CadastroSucesso';
 import { useConsultarContratoPncp } from '../hooks/useConsultarContratoPncp';
+import { useCriarContrato } from '../hooks/useCriarContrato';
+import { useListarAtas } from '@/features/atas/presentation/hooks/useListarAtas';
+import type { CriarContratoInput, ItemInstrumentoInput } from '../../domain/entities/criarContrato';
 import {
   Page,
   Plus,
@@ -57,21 +60,12 @@ interface DadosContrato {
   anexoContrato?: File;
 }
 
-const arpsDisponiveis = [
-  { id: '1', numero: 'ARP 042/2024', orgaoGerenciador: 'Prefeitura de Fortaleza', saldo: 150000 },
-  { id: '2', numero: 'ARP 118/2025', orgaoGerenciador: 'Governo do Estado', saldo: 320000 },
-  { id: '3', numero: 'ARP 203/2025', orgaoGerenciador: 'Ministério da Saúde', saldo: 580000 },
-];
-
-const contratosExistentes = [
-  { numeroInstrumento: '042/2024', orgaoContratante: 'Prefeitura Municipal de Russas' },
-  { numeroInstrumento: '118/2025', orgaoContratante: 'Governo do Estado do Ceará' },
-  { numeroInstrumento: '203/2025', orgaoContratante: 'Prefeitura de Fortaleza' },
-];
 
 export function CadastrarContrato() {
   const navigate = useNavigate();
   const { consultar: consultarPncp, isLoading: isBuscandoPNCP, error: pncpError, dados: dadosPncp } = useConsultarContratoPncp();
+  const { criar: criarContrato, isLoading: isSalvando, error: erroSalvar } = useCriarContrato();
+  const { atas } = useListarAtas();
   const [etapaAtual, setEtapaAtual] = useState(1);
 
   const [metodoEntrada, setMetodoEntrada] = useState<'manual' | 'excel'>('manual');
@@ -93,30 +87,16 @@ export function CadastrarContrato() {
     renovavel: false,
   });
 
-  const [erroNumeroInstrumento, setErroNumeroInstrumento] = useState('');
+  const [erroNumeroInstrumento] = useState('');
   const [buscandoCNPJContratante, setBuscandoCNPJContratante] = useState(false);
   const [cabecalhoPncpCarregado, setCabecalhoPncpCarregado] = useState(false);
 
   const [modoItens, setModoItens] = useState<'manual' | 'planilha'>('manual');
   const [itensContrato, setItensContrato] = useState<ItemContrato[]>([]);
-  const [salvandoMock, setSalvandoMock] = useState(false);
   const [processandoCadastro, setProcessandoCadastro] = useState(false);
   const [cadastroConcluido, setCadastroConcluido] = useState(false);
   const [progressoCadastro, setProgressoCadastro] = useState(0);
   const [etapaProcessamento, setEtapaProcessamento] = useState('Preparando informações do cadastro...');
-
-  useEffect(() => {
-    if (dadosContrato.numeroInstrumento && dadosContrato.orgaoContratante) {
-      const existe = contratosExistentes.find(
-        (c) =>
-          c.numeroInstrumento === dadosContrato.numeroInstrumento &&
-          c.orgaoContratante === dadosContrato.orgaoContratante
-      );
-      setErroNumeroInstrumento(existe ? 'Já existe um contrato com este número para este órgão.' : '');
-    } else {
-      setErroNumeroInstrumento('');
-    }
-  }, [dadosContrato.numeroInstrumento, dadosContrato.orgaoContratante]);
 
   const processarArquivoExcel = async (file: File) => {
     setProcessandoExcel(true);
@@ -216,12 +196,11 @@ export function CadastrarContrato() {
     if (!isManual && (!dadosContrato.numeroPNCP || (!cabecalhoPncpCarregado && !pncpError))) return false;
     return !!(dadosContrato.orgaoContratante && dadosContrato.secretaria && dadosContrato.objeto &&
       dadosContrato.numeroInstrumento &&
-      dadosContrato.vigenciaInicial && dadosContrato.vigenciaFinal && dadosContrato.enderecoEntrega &&
-      dadosContrato.prazoEntrega > 0 && dadosContrato.prazoPagamento > 0 && !erroNumeroInstrumento);
+      dadosContrato.vigenciaInicial && dadosContrato.vigenciaFinal && !erroNumeroInstrumento);
   };
 
   const validarEtapaItens = () =>
-    itensContrato.length > 0 &&
+    itensContrato.length === 0 ||
     itensContrato.every((i) => i.descricao && i.unidadeMedida && i.quantidadeTotal > 0 && i.valorUnitario > 0);
 
   const avancar = () => {
@@ -236,32 +215,49 @@ export function CadastrarContrato() {
 
   const voltar = () => setEtapaAtual(etapaAtual - 1);
 
-  const aguardar = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
   const finalizarCadastro = async () => {
-    setSalvandoMock(true);
-    try {
-      if (metodoEntrada === 'excel' || modoItens === 'planilha') {
-        setProcessandoCadastro(true);
-        setProgressoCadastro(0);
-        setEtapaProcessamento('Validando estrutura do arquivo...');
-        await aguardar(500);
-        setProgressoCadastro(25);
-        setEtapaProcessamento('Convertendo dados para o formato da plataforma...');
-        await aguardar(650);
-        setProgressoCadastro(65);
-        setEtapaProcessamento('Finalizando cadastro e índices de consulta...');
-        await aguardar(700);
-        setProgressoCadastro(100);
-      }
+    setProcessandoCadastro(true);
+    setProgressoCadastro(0);
+    setEtapaProcessamento('Enviando dados do contrato...');
+
+    const itensInput: ItemInstrumentoInput[] = itensContrato.map((i) => ({
+      descricao: i.descricao,
+      unidadeMedida: i.unidadeMedida,
+      quantidadeTotal: i.quantidadeTotal,
+      valorUnitario: i.valorUnitario,
+      valorTotal: i.valorTotal,
+    }));
+
+    const input: CriarContratoInput = {
+      numero: dadosContrato.numeroInstrumento,
+      orgaoContratante: dadosContrato.orgaoContratante ?? '',
+      unidade: dadosContrato.secretaria ?? '',
+      objeto: dadosContrato.objeto,
+      vigenciaInicial: dadosContrato.vigenciaInicial,
+      vigenciaFinal: dadosContrato.vigenciaFinal,
+      renovavel: dadosContrato.renovavel,
+      ...(dadosContrato.numeroPNCP ? { numeroPncp: dadosContrato.numeroPNCP } : {}),
+      ...(dadosContrato.arpOrigem ? { ataId: dadosContrato.arpOrigem } : {}),
+      ...(dadosContrato.enderecoEntrega ? { enderecoEntrega: dadosContrato.enderecoEntrega } : {}),
+      ...(dadosContrato.prazoEntrega > 0 ? { prazoEntrega: dadosContrato.prazoEntrega } : {}),
+      ...(dadosContrato.prazoEntrega > 0 ? { tipoPrazoEntrega: dadosContrato.tipoPrazoEntrega === 'util' ? 'UTEIS' : 'CORRIDOS' } : {}),
+      ...(dadosContrato.prazoPagamento > 0 ? { prazoPagamento: dadosContrato.prazoPagamento } : {}),
+      ...(dadosContrato.prazoPagamento > 0 ? { tipoPrazoPagamento: dadosContrato.tipoPrazoPagamento === 'util' ? 'UTEIS' : 'CORRIDOS' } : {}),
+      ...(itensInput.length > 0 ? { itens: itensInput } : {}),
+    };
+
+    setProgressoCadastro(40);
+    setEtapaProcessamento('Salvando contrato...');
+
+    const instrumentoId = await criarContrato(input);
+
+    if (instrumentoId) {
+      setProgressoCadastro(100);
       setProcessandoCadastro(false);
       setCadastroConcluido(true);
-    } catch {
-      window.alert('Não foi possível salvar. Tente novamente.');
+    } else {
       setProcessandoCadastro(false);
       setProgressoCadastro(0);
-    } finally {
-      setSalvandoMock(false);
     }
   };
 
@@ -279,18 +275,25 @@ export function CadastrarContrato() {
     link.click();
   };
 
-  const arpSelecionada = arpsDisponiveis.find((a) => a.id === dadosContrato.arpOrigem);
+  const arpSelecionada = atas.find((a) => a.id === dadosContrato.arpOrigem);
 
   if (processandoCadastro || cadastroConcluido) {
     return (
       <div className="space-y-4 lg:space-y-6">
+        {erroSalvar && !processandoCadastro && (
+          <Alert variant="destructive">
+            <WarningTriangle className="h-4 w-4" />
+            <AlertTitle>Erro ao cadastrar</AlertTitle>
+            <AlertDescription>{erroSalvar}</AlertDescription>
+          </Alert>
+        )}
         <CadastroSucesso
           processando={processandoCadastro && !cadastroConcluido}
           progresso={progressoCadastro}
-          titulo="Processando cadastro de contrato"
-          descricao="Estamos processando o arquivo e validando os itens para garantir consistência dos dados."
+          titulo="Salvando contrato..."
+          descricao="Estamos registrando o contrato e seus itens."
           tituloSucesso="Contrato cadastrado com sucesso"
-          descricaoSucesso="O contrato e seus itens foram registrados com sucesso. Você já pode acompanhar em Gestão de contratos."
+          descricaoSucesso="O contrato e seus itens foram registrados com sucesso. Você já pode acompanhar em Instrumentos."
           etapaAtual={etapaProcessamento}
           onConcluir={() => navigate('/instrumentos/gestao')}
         />
@@ -587,8 +590,8 @@ export function CadastrarContrato() {
                     <SelectTrigger><SelectValue placeholder="Selecione uma ARP (opcional)" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">Nenhuma ARP</SelectItem>
-                      {arpsDisponiveis.map((a) => (
-                        <SelectItem key={a.id} value={a.id}>{a.numero} - {a.orgaoGerenciador}</SelectItem>
+                      {atas.map((a) => (
+                        <SelectItem key={a.id} value={a.id}>{a.numero} — {a.orgaoGerenciador.nome}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -596,7 +599,7 @@ export function CadastrarContrato() {
                     <Alert>
                       <InfoCircle className="h-4 w-4" />
                       <AlertDescription>
-                        <strong>{arpSelecionada.numero}</strong> — {arpSelecionada.orgaoGerenciador} — Saldo:{' '}
+                        <strong>{arpSelecionada.numero}</strong> — {arpSelecionada.orgaoGerenciador.nome} — Saldo:{' '}
                         {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(arpSelecionada.saldo)}
                       </AlertDescription>
                     </Alert>
@@ -832,9 +835,9 @@ export function CadastrarContrato() {
               </div>
               <div className="flex gap-3 justify-end pt-4 border-t mt-6">
                 <Button variant="outline" onClick={voltar} size="lg"><NavArrowLeft className="h-4 w-4 mr-2" />Voltar</Button>
-                <Button onClick={finalizarCadastro} disabled={salvandoMock} size="lg">
+                <Button onClick={finalizarCadastro} disabled={isSalvando} size="lg">
                   <Check className="h-4 w-4 mr-2" />
-                  {salvandoMock ? 'Salvando...' : 'Finalizar Cadastro'}
+                  {isSalvando ? 'Salvando...' : 'Finalizar Cadastro'}
                 </Button>
               </div>
             </CardContent>

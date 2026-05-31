@@ -4,8 +4,8 @@ import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
 import { Textarea } from '@/shared/components/ui/textarea';
-import { Switch } from '@/shared/components/ui/switch';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
 import { Separator } from '@/shared/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from '@/shared/components/ui/alert';
 import {
@@ -16,7 +16,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/shared/components/ui/table';
-import { InfoCircle, Plus, Trash, CloudUpload, Wallet } from 'iconoir-react';
+import { InfoCircle, Plus, Trash, CloudUpload, Wallet, WarningTriangle } from 'iconoir-react';
+import { useCriarEmpenho } from '../hooks/useCriarEmpenho';
+import { useListarAtas } from '@/features/atas/presentation/hooks/useListarAtas';
+import type { CriarEmpenhoInput, ItemInstrumentoInput } from '../../domain/entities/criarContrato';
 
 interface ItemLinha {
   id: string;
@@ -26,11 +29,9 @@ interface ItemLinha {
   valorUnitario: string;
 }
 
-interface OFLinha {
-  id: string;
-  numero: string;
-  prazoEntrega: string;
-  observacao: string;
+function parseBRL(s: string): number {
+  const n = Number(s.replace(/\./g, '').replace(',', '.'));
+  return Number.isFinite(n) ? n : 0;
 }
 
 function formatBRLInput(raw: string): string {
@@ -40,26 +41,17 @@ function formatBRLInput(raw: string): string {
   return n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-function parseBRL(s: string): number {
-  const n = Number(s.replace(/\./g, '').replace(',', '.'));
-  return Number.isFinite(n) ? n : 0;
-}
-
 export function CadastrarNotaEmpenho() {
   const navigate = useNavigate();
-  const [numeroNE, setNumeroNE] = useState('');
+  const { criar: criarEmpenho, isLoading: isSalvando, error: erroSalvar } = useCriarEmpenho();
+  const { atas } = useListarAtas();
+
+  const [numeroPncp, setNumeroPncp] = useState('');
+  const [ataId, setAtaId] = useState('');
   const [orgao, setOrgao] = useState('');
   const [secretaria, setSecretaria] = useState('');
   const [objeto, setObjeto] = useState('');
-  const [valorEmpenhadoStr, setValorEmpenhadoStr] = useState('');
-  const [saldoInicialStr, setSaldoInicialStr] = useState('');
-  const [prazoEntregaObjeto, setPrazoEntregaObjeto] = useState('');
-  const [admiteReforco, setAdmiteReforco] = useState(true);
-  const [admiteAcrescimo, setAdmiteAcrescimo] = useState(true);
-  const [admiteSupressao, setAdmiteSupressao] = useState(true);
-  const [admiteAnulacao, setAdmiteAnulacao] = useState(true);
   const [itens, setItens] = useState<ItemLinha[]>([]);
-  const [ofs, setOfs] = useState<OFLinha[]>([]);
   const [anexo, setAnexo] = useState<File | null>(null);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -76,41 +68,42 @@ export function CadastrarNotaEmpenho() {
     setItens((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
   };
 
-  const addOF = () => {
-    setOfs((prev) => [
-      ...prev,
-      { id: crypto.randomUUID(), numero: '', prazoEntrega: '', observacao: '' },
-    ]);
-  };
-
-  const removeOF = (id: string) => setOfs((prev) => prev.filter((r) => r.id !== id));
-
-  const updateOF = (id: string, patch: Partial<OFLinha>) => {
-    setOfs((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
-  };
-
-  const salvar = (e: React.FormEvent) => {
+  const salvar = async (e: React.FormEvent) => {
     e.preventDefault();
     setErro(null);
-    const valor = parseBRL(valorEmpenhadoStr);
-    const saldo = saldoInicialStr ? parseBRL(saldoInicialStr) : valor;
-    if (!numeroNE.trim() || !orgao.trim() || !objeto.trim()) {
-      setErro('Preencha número da NE, órgão e objeto.');
+
+    if (!orgao.trim() || !secretaria.trim() || !objeto.trim()) {
+      setErro('Preencha órgão, unidade e objeto.');
       return;
     }
-    if (!prazoEntregaObjeto) {
-      setErro('Informe o prazo final para entrega do objeto.');
-      return;
+
+    const itensInput: ItemInstrumentoInput[] = itens
+      .filter((i) => i.descricao && i.unidadeMedida)
+      .map((i) => {
+        const qtd = parseBRL(i.quantidade);
+        const val = parseBRL(i.valorUnitario);
+        return {
+          descricao: i.descricao,
+          unidadeMedida: i.unidadeMedida,
+          quantidadeTotal: qtd,
+          valorUnitario: val,
+          valorTotal: qtd * val,
+        };
+      });
+
+    const input: CriarEmpenhoInput = {
+      orgaoContratante: orgao.trim(),
+      unidade: secretaria.trim(),
+      objeto: objeto.trim(),
+      ...(numeroPncp.trim() ? { numeroPncp: numeroPncp.trim() } : {}),
+      ...(ataId ? { ataId } : {}),
+      ...(itensInput.length > 0 ? { itens: itensInput } : {}),
+    };
+
+    const instrumentoId = await criarEmpenho(input);
+    if (instrumentoId) {
+      navigate('/instrumentos/gestao');
     }
-    if (valor <= 0) {
-      setErro('Informe o valor empenhado (valor maior que zero).');
-      return;
-    }
-    if (saldo < 0 || saldo > valor) {
-      setErro('O saldo inicial não pode ser negativo nem maior que o valor empenhado.');
-      return;
-    }
-    navigate('/instrumentos/gestao?tipo=empenho');
   };
 
   return (
@@ -121,15 +114,17 @@ export function CadastrarNotaEmpenho() {
           Sobre as notas de empenho
         </AlertTitle>
         <AlertDescription className="!block w-full min-w-0 text-pretty text-xs leading-normal text-muted-foreground">
-          Use o <span className="font-semibold text-foreground/85">prazo de entrega</span> e das OFs — não vigência por término. Não é renovável; alterações: reforço, acréscimo, supressão ou anulação.
+          Informe órgão, unidade e objeto. Os itens são opcionais no cadastro inicial.
         </AlertDescription>
       </Alert>
 
-      {erro ? (
+      {(erro ?? erroSalvar) && (
         <Alert variant="destructive">
-          <AlertDescription>{erro}</AlertDescription>
+          <WarningTriangle className="h-4 w-4" />
+          <AlertTitle>Atenção</AlertTitle>
+          <AlertDescription>{erro ?? erroSalvar}</AlertDescription>
         </Alert>
-      ) : null}
+      )}
 
       <Card>
         <CardHeader>
@@ -141,17 +136,28 @@ export function CadastrarNotaEmpenho() {
         </CardHeader>
         <CardContent className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2 sm:col-span-1">
-            <Label htmlFor="ne-numero">Número da nota de empenho</Label>
+            <Label htmlFor="ne-numero-pncp">Código PNCP (opcional)</Label>
             <Input
-              id="ne-numero"
-              placeholder="Ex.: NE 88442/2025"
-              value={numeroNE}
-              onChange={(e) => setNumeroNE(e.target.value)}
-              required
+              id="ne-numero-pncp"
+              placeholder="Ex.: 12345678000195-2-000001/2026"
+              value={numeroPncp}
+              onChange={(e) => setNumeroPncp(e.target.value)}
             />
           </div>
           <div className="space-y-2 sm:col-span-1">
-            <Label htmlFor="ne-orgao">Órgão / entidade</Label>
+            <Label htmlFor="ne-ata">ARP de Origem (opcional)</Label>
+            <Select value={ataId || 'none'} onValueChange={(v) => setAtaId(v === 'none' ? '' : v)}>
+              <SelectTrigger id="ne-ata"><SelectValue placeholder="Selecione uma ARP (opcional)" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Nenhuma ARP</SelectItem>
+                {atas.map((a) => (
+                  <SelectItem key={a.id} value={a.id}>{a.numero} — {a.orgaoGerenciador.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2 sm:col-span-1">
+            <Label htmlFor="ne-orgao">Órgão / entidade <span className="text-destructive">*</span></Label>
             <Input
               id="ne-orgao"
               placeholder="Órgão contratante"
@@ -160,17 +166,18 @@ export function CadastrarNotaEmpenho() {
               required
             />
           </div>
-          <div className="space-y-2 sm:col-span-2">
-            <Label htmlFor="ne-secretaria">Unidade / secretaria</Label>
+          <div className="space-y-2 sm:col-span-1">
+            <Label htmlFor="ne-secretaria">Unidade / secretaria <span className="text-destructive">*</span></Label>
             <Input
               id="ne-secretaria"
               placeholder="Ex.: Secretaria Municipal de Saúde"
               value={secretaria}
               onChange={(e) => setSecretaria(e.target.value)}
+              required
             />
           </div>
           <div className="space-y-2 sm:col-span-2">
-            <Label htmlFor="ne-objeto">Objeto do empenho</Label>
+            <Label htmlFor="ne-objeto">Objeto do empenho <span className="text-destructive">*</span></Label>
             <Textarea
               id="ne-objeto"
               rows={4}
@@ -180,74 +187,6 @@ export function CadastrarNotaEmpenho() {
               required
             />
           </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Valores e prazo de entrega</CardTitle>
-          <CardDescription>
-            O valor empenhado e o saldo; o prazo é a referência principal para alertas.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="ne-valor">Valor empenhado (R$)</Label>
-            <Input
-              id="ne-valor"
-              inputMode="decimal"
-              placeholder="0,00"
-              value={valorEmpenhadoStr}
-              onChange={(e) => setValorEmpenhadoStr(formatBRLInput(e.target.value))}
-              required
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="ne-saldo">Saldo inicial (R$)</Label>
-            <Input
-              id="ne-saldo"
-              inputMode="decimal"
-              placeholder="Igual ao empenhado se vazio"
-              value={saldoInicialStr}
-              onChange={(e) => setSaldoInicialStr(formatBRLInput(e.target.value))}
-            />
-            <p className="text-xs text-muted-foreground">Deixe em branco para assumir o mesmo valor do empenho.</p>
-          </div>
-          <div className="space-y-2 sm:col-span-2">
-            <Label htmlFor="ne-prazo">Prazo final para entrega do objeto</Label>
-            <Input
-              id="ne-prazo"
-              type="date"
-              value={prazoEntregaObjeto}
-              onChange={(e) => setPrazoEntregaObjeto(e.target.value)}
-              required
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Movimentações admitidas</CardTitle>
-          <CardDescription>
-            Indique quais tipos de alteração este instrumento poderá receber após o cadastro.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4 sm:grid-cols-2">
-          {[
-            { key: 'reforco', label: 'Reforço de empenho', desc: 'Ampliação do valor original', checked: admiteReforco, setter: setAdmiteReforco },
-            { key: 'acrescimo', label: 'Acréscimo', desc: 'Aumento de quantidade / escopo contratado', checked: admiteAcrescimo, setter: setAdmiteAcrescimo },
-            { key: 'supressao', label: 'Supressão', desc: 'Redução de valor ou quantidade', checked: admiteSupressao, setter: setAdmiteSupressao },
-            { key: 'anulacao', label: 'Anulação', desc: 'Cancelamento do empenho', checked: admiteAnulacao, setter: setAdmiteAnulacao },
-          ].map(({ key, label, desc, checked, setter }) => (
-            <div key={key} className="flex items-center justify-between gap-4 rounded-lg border border-border p-3">
-              <div>
-                <p className="text-sm font-medium">{label}</p>
-                <p className="text-xs text-muted-foreground">{desc}</p>
-              </div>
-              <Switch checked={checked} onCheckedChange={setter} />
-            </div>
-          ))}
         </CardContent>
       </Card>
 
@@ -305,55 +244,6 @@ export function CadastrarNotaEmpenho() {
       </Card>
 
       <Card>
-        <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <CardTitle>Ordens de fornecimento (OF)</CardTitle>
-            <CardDescription>OFs vinculadas; o prazo de cada OF alimenta o acompanhamento de entrega.</CardDescription>
-          </div>
-          <Button type="button" variant="outline" size="sm" className="gap-2 shrink-0" onClick={addOF}>
-            <Plus className="h-4 w-4" />
-            Adicionar OF
-          </Button>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {ofs.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Nenhuma OF. Inclua ao menos uma quando houver pedido em aberto.</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nº OF</TableHead>
-                  <TableHead className="w-[140px]">Prazo entrega</TableHead>
-                  <TableHead>Observação</TableHead>
-                  <TableHead className="w-[48px]" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {ofs.map((row) => (
-                  <TableRow key={row.id}>
-                    <TableCell>
-                      <Input value={row.numero} onChange={(e) => updateOF(row.id, { numero: e.target.value })} placeholder="OF 12/2025" />
-                    </TableCell>
-                    <TableCell>
-                      <Input type="date" value={row.prazoEntrega} onChange={(e) => updateOF(row.id, { prazoEntrega: e.target.value })} />
-                    </TableCell>
-                    <TableCell>
-                      <Input value={row.observacao} onChange={(e) => updateOF(row.id, { observacao: e.target.value })} placeholder="Opcional" />
-                    </TableCell>
-                    <TableCell>
-                      <Button type="button" variant="ghost" size="icon" className="text-destructive" onClick={() => removeOF(row.id)} aria-label="Remover OF">
-                        <Trash className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
         <CardHeader>
           <CardTitle>Anexo</CardTitle>
           <CardDescription>Documento PDF da nota de empenho ou documento habilitador.</CardDescription>
@@ -371,6 +261,11 @@ export function CadastrarNotaEmpenho() {
               onChange={(e) => setAnexo(e.target.files?.[0] ?? null)}
             />
           </label>
+          {anexo && (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Nota: o upload de arquivo ainda não está disponível. O anexo não será enviado.
+            </p>
+          )}
         </CardContent>
       </Card>
 
@@ -380,7 +275,9 @@ export function CadastrarNotaEmpenho() {
         <Button type="button" variant="outline" asChild>
           <Link to="/instrumentos/cadastrar">Voltar</Link>
         </Button>
-        <Button type="submit">Cadastrar nota de empenho</Button>
+        <Button type="submit" disabled={isSalvando}>
+          {isSalvando ? 'Cadastrando...' : 'Cadastrar nota de empenho'}
+        </Button>
       </div>
     </form>
   );
