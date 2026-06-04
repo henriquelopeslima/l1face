@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
 import { Breadcrumb } from '@/shared/components/ui/breadcrumb';
+import { CriarOrdemFornecimento } from '../components/CriarOrdemFornecimento';
 import {
   Table,
   TableBody,
@@ -69,6 +70,7 @@ export function ContratoDetalhesPage() {
   const { instrumento, isLoading, error, refetch } = useBuscarInstrumento(id ?? '');
   const [detalhesExpandidos, setDetalhesExpandidos] = useState(true);
   const [paginaItens, setPaginaItens] = useState(1);
+  const [emitirOFOpen, setEmitirOFOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -503,20 +505,36 @@ export function ContratoDetalhesPage() {
 
       {/* Ordens de Fornecimento */}
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-base lg:text-lg">
             <DeliveryTruck className="h-5 w-5" />
             Ordens de Fornecimento
           </CardTitle>
+          <Button
+            size="sm"
+            onClick={() => setEmitirOFOpen(true)}
+            disabled={itens.length === 0}
+          >
+            Emitir OF
+          </Button>
         </CardHeader>
         <CardContent>
           <div className="text-center py-12 text-muted-foreground">
             <DeliveryTruck className="h-12 w-12 mx-auto mb-3 opacity-50" />
             <p className="font-medium mb-1">Nenhuma ordem cadastrada</p>
-            <p className="text-xs">Funcionalidade de Ordens de Fornecimento disponível em breve.</p>
+            <p className="text-xs">Funcionalidade disponível em breve.</p>
           </div>
         </CardContent>
       </Card>
+
+      {/* CriarOrdemFornecimento Dialog */}
+      <CriarOrdemFornecimento
+        open={emitirOFOpen}
+        onOpenChange={setEmitirOFOpen}
+        instrumentoId={instrumento.instrumentoId}
+        itensContrato={itens}
+        onSuccess={() => { /* refetch will be wired in T014 */ }}
+      />
     </div>
   );
 }
