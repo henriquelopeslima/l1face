@@ -5,6 +5,8 @@ import type {
   ListagemOrdensFornecimento,
   AvancarStatusOrdemFornecimentoInput,
   OrdemFornecimento,
+  RegistrarLiquidacaoInput,
+  RegistrarPagamentoInput,
 } from '../entities/instrumentoContratual';
 
 export interface IInstrumentosRepository {
@@ -15,4 +17,6 @@ export interface IInstrumentosRepository {
   buscarInstrumento(id: string): Promise<InstrumentoDetalhe>;
   listarOrdensFornecimento(instrumentoId: string): Promise<ListagemOrdensFornecimento>;
   avancarStatusOrdemFornecimento(input: AvancarStatusOrdemFornecimentoInput): Promise<OrdemFornecimento>;
+  registrarLiquidacaoOrdemFornecimento(input: RegistrarLiquidacaoInput): Promise<OrdemFornecimento>;
+  registrarPagamentoOrdemFornecimento(input: RegistrarPagamentoInput): Promise<OrdemFornecimento>;
 }
