@@ -1,5 +1,11 @@
 import type { CriarContratoInput, CriarEmpenhoInput, DadosContratoPncp } from '../entities/criarContrato';
-import type { InstrumentoDetalhe, InstrumentoListagem, ListagemOrdensFornecimento } from '../entities/instrumentoContratual';
+import type {
+  InstrumentoDetalhe,
+  InstrumentoListagem,
+  ListagemOrdensFornecimento,
+  AvancarStatusOrdemFornecimentoInput,
+  OrdemFornecimento,
+} from '../entities/instrumentoContratual';
 
 export interface IInstrumentosRepository {
   consultarContratoPncp(codigo: string): Promise<DadosContratoPncp>;
@@ -8,4 +14,5 @@ export interface IInstrumentosRepository {
   criarEmpenho(input: CriarEmpenhoInput): Promise<string>;
   buscarInstrumento(id: string): Promise<InstrumentoDetalhe>;
   listarOrdensFornecimento(instrumentoId: string): Promise<ListagemOrdensFornecimento>;
+  avancarStatusOrdemFornecimento(input: AvancarStatusOrdemFornecimentoInput): Promise<OrdemFornecimento>;
 }

@@ -111,3 +111,31 @@ export interface ListagemOrdensFornecimento {
   saldoRemanescente: number;
   ordensFornecimento: OrdemFornecimento[];
 }
+
+export interface ItemEmitirOFInput {
+  itemInstrumentoId: string;
+  quantidadeFornecida: number;
+  valorUnitario: number;
+}
+
+export interface EmitirOrdemFornecimentoInput {
+  instrumentoId: string;
+  itens: ItemEmitirOFInput[];
+}
+
+export interface AvancarStatusOrdemFornecimentoInput {
+  id: string;
+  status: 'em_separacao' | 'despachado' | 'entregue';
+}
+
+export interface RegistrarLiquidacaoInput {
+  id: string;
+  dataLiquidacao: string;
+  prazoPagamento: string;
+  numeroNfe: string;
+}
+
+export interface RegistrarPagamentoInput {
+  id: string;
+  dataPagamentoEfetivo: string;
+}
