@@ -3,58 +3,31 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
-import { InfoCircle } from 'iconoir-react';
-
-interface ItemContrato {
-  id: string;
-  descricao: string;
-  unidadeMedida: string;
-  qtdContratada: number;
-  qtdEntregue: number;
-  qtdReservada: number;
-  valorUnitario: number;
-}
+import type { ItemInstrumentoDetalhe } from '../../domain/entities/instrumentoContratual';
+import { useEmitirOrdemFornecimento } from '../hooks/useEmitirOrdemFornecimento';
 
 interface ItemOFFormulario {
   itemId: string;
   qtdSolicitada: number;
+  valorUnitario: number;
 }
-
-type TipoEmpenho = 'ordinario' | 'global' | 'estimativo';
 
 interface CriarOrdemFornecimentoProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  contratoId: string;
-  itensContrato: ItemContrato[];
-  prazoEntrega: number;
-  onSubmit: (data: {
-    dataRecebimento: string;
-    numeroEmpenho: string;
-    tipoEmpenho: TipoEmpenho;
-    itens: { itemId: string; quantidade: number }[];
-    vencimento?: string;
-    dataCriacao?: string;
-  }) => void;
+  instrumentoId: string;
+  itensContrato: ItemInstrumentoDetalhe[];
+  onSuccess?: () => void;
 }
-
-const orientacaoTipoEmpenho: Record<TipoEmpenho, string> = {
-  ordinario: 'Ordinário: indicado para despesa pontual e específica desta OF.',
-  global: 'Global: indicado para execução continuada, com consumo em múltiplas OFs até o limite do empenho.',
-  estimativo: 'Estimativo: indicado para consumo variável; ajuste as OFs conforme a necessidade real ao longo da vigência.',
-};
 
 export function CriarOrdemFornecimento({
   open,
   onOpenChange,
+  instrumentoId,
   itensContrato,
-  prazoEntrega,
-  onSubmit,
+  onSuccess,
 }: CriarOrdemFornecimentoProps) {
-  const [dataRecebimento, setDataRecebimento] = useState('');
-  const [numeroEmpenho, setNumeroEmpenho] = useState('');
-  const [tipoEmpenho, setTipoEmpenho] = useState<TipoEmpenho>('ordinario');
+  const { emitir, isLoading, error } = useEmitirOrdemFornecimento();
   const [itensSelecionados, setItensSelecionados] = useState<ItemOFFormulario[]>([]);
   const [selectStep, setSelectStep] = useState<1 | 2>(1);
   const [searchTerm, setSearchTerm] = useState('');
@@ -62,9 +35,6 @@ export function CriarOrdemFornecimento({
 
   useEffect(() => {
     if (!open) {
-      setDataRecebimento('');
-      setNumeroEmpenho('');
-      setTipoEmpenho('ordinario');
       setItensSelecionados([]);
       setSelectStep(1);
       setSearchTerm('');
@@ -85,7 +55,16 @@ export function CriarOrdemFornecimento({
 
   const avancarParaQuantidades = () => {
     if (selectedIds.length === 0) return;
-    setItensSelecionados(selectedIds.map((id) => ({ itemId: id, qtdSolicitada: 1 })));
+    setItensSelecionados(
+      selectedIds.map((id) => {
+        const item = itensContrato.find((i) => i.id === id);
+        return {
+          itemId: id,
+          qtdSolicitada: 1,
+          valorUnitario: item?.valorUnitario ?? 0,
+        };
+      })
+    );
     setSelectStep(2);
   };
 
@@ -93,24 +72,26 @@ export function CriarOrdemFornecimento({
     setItensSelecionados((prev) => prev.map((i) => (i.itemId === itemId ? { ...i, qtdSolicitada: qtd } : i)));
   };
 
-  const calcularVencimento = () => {
-    if (!dataRecebimento) return '';
-    const d = new Date(dataRecebimento);
-    d.setDate(d.getDate() + prazoEntrega);
-    return d.toISOString().split('T')[0] ?? '';
+  const atualizarValorUnitario = (itemId: string, valor: number) => {
+    setItensSelecionados((prev) => prev.map((i) => (i.itemId === itemId ? { ...i, valorUnitario: valor } : i)));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit({
-      dataRecebimento,
-      numeroEmpenho,
-      tipoEmpenho,
-      itens: itensSelecionados.map((i) => ({ itemId: i.itemId, quantidade: i.qtdSolicitada })),
-      vencimento: calcularVencimento(),
-      dataCriacao: new Date().toISOString().split('T')[0] ?? '',
-    });
-    onOpenChange(false);
+    try {
+      await emitir({
+        instrumentoId,
+        itens: itensSelecionados.map((i) => ({
+          itemInstrumentoId: i.itemId,
+          quantidadeFornecida: i.qtdSolicitada,
+          valorUnitario: i.valorUnitario,
+        })),
+      });
+      onOpenChange(false);
+      onSuccess?.();
+    } catch {
+      // error is captured by the hook state
+    }
   };
 
   return (
@@ -119,73 +100,37 @@ export function CriarOrdemFornecimento({
         <DialogHeader>
           <DialogTitle>Criar Ordem de Fornecimento</DialogTitle>
           <DialogDescription>
-            {selectStep === 1 ? 'Passo 1: Preencha os dados e selecione os itens' : 'Passo 2: Informe as quantidades'}
+            {selectStep === 1 ? 'Passo 1: Selecione os itens' : 'Passo 2: Informe as quantidades e valores unitários'}
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {selectStep === 1 && (
-            <>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="of-data">Data de recebimento</Label>
-                  <Input id="of-data" type="date" value={dataRecebimento} onChange={(e) => setDataRecebimento(e.target.value)} required />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="of-empenho">Número do empenho</Label>
-                  <Input id="of-empenho" value={numeroEmpenho} onChange={(e) => setNumeroEmpenho(e.target.value)} placeholder="NE 001/2025" required />
-                </div>
+            <div className="space-y-2">
+              <Label>Selecione os itens</Label>
+              <Input placeholder="Buscar itens..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+              <div className="max-h-48 overflow-y-auto rounded-lg border border-border">
+                {filteredItens.map((item) => {
+                  const selecionado = selectedIds.includes(item.id);
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => toggleItem(item.id)}
+                      className={`w-full flex items-center gap-3 px-4 py-3 text-left border-b last:border-0 transition-colors ${selecionado ? 'bg-[#EDF4FF] dark:bg-[#0050FF]/15' : 'hover:bg-accent'}`}
+                    >
+                      <div className={`h-4 w-4 rounded border flex items-center justify-center flex-shrink-0 ${selecionado ? 'bg-[#0050FF] border-[#0050FF]' : 'border-input'}`}>
+                        {selecionado && <span className="text-white text-xs">✓</span>}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{item.descricao}</p>
+                        <p className="text-xs text-muted-foreground">{item.unidadeMedida}</p>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <Label htmlFor="of-tipo">Tipo de empenho</Label>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <InfoCircle className="h-4 w-4 text-muted-foreground cursor-help" />
-                    </TooltipTrigger>
-                    <TooltipContent className="max-w-xs">{orientacaoTipoEmpenho[tipoEmpenho]}</TooltipContent>
-                  </Tooltip>
-                </div>
-                <select
-                  id="of-tipo"
-                  className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                  value={tipoEmpenho}
-                  onChange={(e) => setTipoEmpenho(e.target.value as TipoEmpenho)}
-                >
-                  <option value="ordinario">Ordinário</option>
-                  <option value="global">Global</option>
-                  <option value="estimativo">Estimativo</option>
-                </select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Selecione os itens</Label>
-                <Input placeholder="Buscar itens..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-                <div className="max-h-48 overflow-y-auto rounded-lg border border-border">
-                  {filteredItens.map((item) => {
-                    const selecionado = selectedIds.includes(item.id);
-                    const disponivel = item.qtdContratada - item.qtdEntregue - item.qtdReservada;
-                    return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        onClick={() => toggleItem(item.id)}
-                        className={`w-full flex items-center gap-3 px-4 py-3 text-left border-b last:border-0 transition-colors ${selecionado ? 'bg-[#EDF4FF] dark:bg-[#0050FF]/15' : 'hover:bg-accent'}`}
-                      >
-                        <div className={`h-4 w-4 rounded border flex items-center justify-center flex-shrink-0 ${selecionado ? 'bg-[#0050FF] border-[#0050FF]' : 'border-input'}`}>
-                          {selecionado && <span className="text-white text-xs">✓</span>}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{item.descricao}</p>
-                          <p className="text-xs text-muted-foreground">{item.unidadeMedida} · Disponível: {disponivel}</p>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </>
+            </div>
           )}
 
           {selectStep === 2 && (
@@ -200,12 +145,23 @@ export function CriarOrdemFornecimento({
                       <p className="text-xs text-muted-foreground">{item.unidadeMedida}</p>
                     </div>
                     <div className="w-24">
+                      <Label className="text-xs text-muted-foreground mb-1 block">Qtd.</Label>
                       <Input
                         type="number"
                         min="1"
-                        max={item.qtdContratada - item.qtdEntregue - item.qtdReservada}
                         value={sel.qtdSolicitada}
                         onChange={(e) => atualizarQtd(sel.itemId, Number(e.target.value))}
+                        className="text-right"
+                      />
+                    </div>
+                    <div className="w-32">
+                      <Label className="text-xs text-muted-foreground mb-1 block">Valor unit. (R$)</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={sel.valorUnitario}
+                        onChange={(e) => atualizarValorUnitario(sel.itemId, Number(e.target.value))}
                         className="text-right"
                       />
                     </div>
@@ -213,6 +169,10 @@ export function CriarOrdemFornecimento({
                 );
               })}
             </div>
+          )}
+
+          {error && (
+            <p className="text-sm text-destructive">{error}</p>
           )}
 
           <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-between">
@@ -228,7 +188,9 @@ export function CriarOrdemFornecimento({
                   Próximo
                 </Button>
               ) : (
-                <Button type="submit">Criar OF</Button>
+                <Button type="submit" disabled={isLoading}>
+                  {isLoading ? 'Criando...' : 'Criar OF'}
+                </Button>
               )}
             </div>
           </DialogFooter>
