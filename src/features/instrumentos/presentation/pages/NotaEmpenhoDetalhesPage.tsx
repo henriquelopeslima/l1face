@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
+import { Input } from '@/shared/components/ui/input';
+import { Label } from '@/shared/components/ui/label';
 import { Breadcrumb } from '@/shared/components/ui/breadcrumb';
 import { CriarOrdemFornecimento } from '../components/CriarOrdemFornecimento';
 import {
@@ -29,7 +31,9 @@ import {
 import { useBuscarInstrumento } from '../hooks/useBuscarInstrumento';
 import { useListarOrdensFornecimento } from '../hooks/useListarOrdensFornecimento';
 import { useAvancarStatusOrdemFornecimento } from '../hooks/useAvancarStatusOrdemFornecimento';
-import type { StatusInstrumento, StatusOrdemFornecimento } from '../../domain/entities/instrumentoContratual';
+import { useRegistrarLiquidacaoOrdemFornecimento } from '../hooks/useRegistrarLiquidacaoOrdemFornecimento';
+import { useRegistrarPagamentoOrdemFornecimento } from '../hooks/useRegistrarPagamentoOrdemFornecimento';
+import type { StatusInstrumento, StatusOrdemFornecimento, StatusPagamento } from '../../domain/entities/instrumentoContratual';
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -59,6 +63,16 @@ function getStatusOFBadge(status: StatusOrdemFornecimento) {
       {labels[status]}
     </Badge>
   );
+}
+
+function getStatusPagamentoBadge(status: NonNullable<StatusPagamento>) {
+  const config: Record<NonNullable<StatusPagamento>, { label: string; className: string }> = {
+    pendente: { label: 'Pag. Pendente', className: 'text-yellow-700 bg-yellow-50 border-yellow-200' },
+    em_atraso: { label: 'Pag. em Atraso', className: 'text-red-700 bg-red-50 border-red-200' },
+    pago: { label: 'Pago', className: 'text-purple-700 bg-purple-50 border-purple-200' },
+  };
+  const { label, className } = config[status];
+  return <Badge className={`text-xs border ${className}`}>{label}</Badge>;
 }
 
 function getStatusBadge(status: StatusInstrumento) {
@@ -96,10 +110,16 @@ export function NotaEmpenhoDetalhesPage() {
   const { instrumento, isLoading, error, refetch } = useBuscarInstrumento(id ?? '');
   const { dados: ordensData, isLoading: isLoadingOrdens, refetch: refetchOrdens } = useListarOrdensFornecimento(id ?? '');
   const { avancar, isLoading: isAvancarLoading, error: avancarError } = useAvancarStatusOrdemFornecimento();
+  const { registrar: registrarLiquidacao, isLoading: isRegistrarLiquidacaoLoading, error: registrarLiquidacaoError } = useRegistrarLiquidacaoOrdemFornecimento();
+  const { registrar: registrarPagamento, isLoading: isRegistrarPagamentoLoading, error: registrarPagamentoError } = useRegistrarPagamentoOrdemFornecimento();
   const [detalhesExpandidos, setDetalhesExpandidos] = useState(true);
   const [paginaItens, setPaginaItens] = useState(1);
   const [emitirOFOpen, setEmitirOFOpen] = useState(false);
   const [avancarLoadingId, setAvancarLoadingId] = useState<string | null>(null);
+  const [liquidacaoOpenId, setLiquidacaoOpenId] = useState<string | null>(null);
+  const [liquidacaoForm, setLiquidacaoForm] = useState({ dataLiquidacao: '', prazoPagamento: '', numeroNfe: '' });
+  const [pagamentoOpenId, setPagamentoOpenId] = useState<string | null>(null);
+  const [pagamentoForm, setPagamentoForm] = useState({ dataPagamentoEfetivo: '' });
 
   if (isLoading) {
     return (
@@ -445,41 +465,187 @@ export function NotaEmpenhoDetalhesPage() {
               <div className="space-y-2">
                 {ordensData.ordensFornecimento.map((of) => {
                   const proximoStatus = getProximoStatus(of.status);
+                  const showLiquidacao = of.status === 'entregue' && !of.dataLiquidacao;
+                  const showPagamento = of.status === 'entregue' && !!of.dataLiquidacao && !of.dataPagamentoEfetivo;
                   return (
-                    <div key={of.id} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <span className="text-sm font-mono font-semibold text-muted-foreground">
-                          OF #{of.codigo}
-                        </span>
-                        {getStatusOFBadge(of.status)}
+                    <div key={of.id} className="border rounded-lg">
+                      <div className="flex items-center justify-between p-3">
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <span className="text-sm font-mono font-semibold text-muted-foreground">
+                            OF #{of.codigo}
+                          </span>
+                          {getStatusOFBadge(of.status)}
+                          {of.statusPagamento && getStatusPagamentoBadge(of.statusPagamento)}
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap text-sm text-muted-foreground">
+                          <span>{formatDate(of.dataRecebimento)}</span>
+                          <span className="font-mono font-semibold text-foreground">
+                            {formatCurrency(of.valorTotal)}
+                          </span>
+                          {proximoStatus && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={avancarLoadingId === of.id}
+                              onClick={async () => {
+                                setAvancarLoadingId(of.id);
+                                try {
+                                  await avancar({ id: of.id, status: proximoStatus });
+                                  refetchOrdens();
+                                } catch {
+                                  // error displayed via avancarError
+                                } finally {
+                                  setAvancarLoadingId(null);
+                                }
+                              }}
+                              className="text-xs h-7"
+                            >
+                              {avancarLoadingId === of.id ? '...' : `→ ${getLabelProximoStatus(proximoStatus)}`}
+                            </Button>
+                          )}
+                          {showLiquidacao && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-xs h-7"
+                              onClick={() => {
+                                setLiquidacaoOpenId(liquidacaoOpenId === of.id ? null : of.id);
+                                setPagamentoOpenId(null);
+                                setLiquidacaoForm({ dataLiquidacao: '', prazoPagamento: '', numeroNfe: '' });
+                              }}
+                            >
+                              Registrar Liquidação
+                            </Button>
+                          )}
+                          {showPagamento && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-xs h-7"
+                              onClick={() => {
+                                setPagamentoOpenId(pagamentoOpenId === of.id ? null : of.id);
+                                setLiquidacaoOpenId(null);
+                                setPagamentoForm({ dataPagamentoEfetivo: '' });
+                              }}
+                            >
+                              Registrar Pagamento
+                            </Button>
+                          )}
+                        </div>
                       </div>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <span>{formatDate(of.dataRecebimento)}</span>
-                        <span className="font-mono font-semibold text-foreground">
-                          {formatCurrency(of.valorTotal)}
-                        </span>
-                        {proximoStatus && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={avancarLoadingId === of.id}
-                            onClick={async () => {
-                              setAvancarLoadingId(of.id);
-                              try {
-                                await avancar({ id: of.id, status: proximoStatus });
-                                refetchOrdens();
-                              } catch {
-                                // error displayed via avancarError
-                              } finally {
-                                setAvancarLoadingId(null);
+
+                      {/* Inline Liquidação form */}
+                      {liquidacaoOpenId === of.id && (
+                        <div className="mx-3 mb-3 p-3 border rounded-lg bg-accent/20 space-y-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div className="space-y-1">
+                              <Label className="text-xs">Data de Liquidação</Label>
+                              <Input
+                                type="date"
+                                value={liquidacaoForm.dataLiquidacao}
+                                onChange={(e) => setLiquidacaoForm((f) => ({ ...f, dataLiquidacao: e.target.value }))}
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Prazo de Pagamento</Label>
+                              <Input
+                                type="date"
+                                value={liquidacaoForm.prazoPagamento}
+                                onChange={(e) => setLiquidacaoForm((f) => ({ ...f, prazoPagamento: e.target.value }))}
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">NF-e (44 dígitos)</Label>
+                              <Input
+                                value={liquidacaoForm.numeroNfe}
+                                onChange={(e) => setLiquidacaoForm((f) => ({ ...f, numeroNfe: e.target.value }))}
+                                maxLength={44}
+                                placeholder="35260612345678..."
+                              />
+                            </div>
+                          </div>
+                          {liquidacaoForm.numeroNfe.length > 0 && liquidacaoForm.numeroNfe.length !== 44 && (
+                            <p className="text-xs text-destructive">
+                              A NF-e deve ter exatamente 44 dígitos ({liquidacaoForm.numeroNfe.length}/44).
+                            </p>
+                          )}
+                          {registrarLiquidacaoError && (
+                            <p className="text-xs text-destructive">{registrarLiquidacaoError}</p>
+                          )}
+                          <div className="flex gap-2 justify-end">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setLiquidacaoOpenId(null)}
+                            >
+                              Cancelar
+                            </Button>
+                            <Button
+                              size="sm"
+                              disabled={
+                                liquidacaoForm.numeroNfe.length !== 44 ||
+                                !liquidacaoForm.dataLiquidacao ||
+                                !liquidacaoForm.prazoPagamento ||
+                                isRegistrarLiquidacaoLoading
                               }
-                            }}
-                            className="text-xs h-7"
-                          >
-                            {avancarLoadingId === of.id ? '...' : `→ ${getLabelProximoStatus(proximoStatus)}`}
-                          </Button>
-                        )}
-                      </div>
+                              onClick={async () => {
+                                try {
+                                  await registrarLiquidacao({ id: of.id, ...liquidacaoForm });
+                                  refetchOrdens();
+                                  setLiquidacaoOpenId(null);
+                                } catch {
+                                  // error displayed via registrarLiquidacaoError
+                                }
+                              }}
+                            >
+                              {isRegistrarLiquidacaoLoading ? 'Salvando...' : 'Confirmar'}
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Inline Pagamento form */}
+                      {pagamentoOpenId === of.id && (
+                        <div className="mx-3 mb-3 p-3 border rounded-lg bg-accent/20 space-y-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div className="space-y-1">
+                              <Label className="text-xs">Data de Pagamento Efetivo</Label>
+                              <Input
+                                type="date"
+                                value={pagamentoForm.dataPagamentoEfetivo}
+                                onChange={(e) => setPagamentoForm({ dataPagamentoEfetivo: e.target.value })}
+                              />
+                            </div>
+                          </div>
+                          {registrarPagamentoError && (
+                            <p className="text-xs text-destructive">{registrarPagamentoError}</p>
+                          )}
+                          <div className="flex gap-2 justify-end">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setPagamentoOpenId(null)}
+                            >
+                              Cancelar
+                            </Button>
+                            <Button
+                              size="sm"
+                              disabled={!pagamentoForm.dataPagamentoEfetivo || isRegistrarPagamentoLoading}
+                              onClick={async () => {
+                                try {
+                                  await registrarPagamento({ id: of.id, ...pagamentoForm });
+                                  refetchOrdens();
+                                  setPagamentoOpenId(null);
+                                } catch {
+                                  // error displayed via registrarPagamentoError
+                                }
+                              }}
+                            >
+                              {isRegistrarPagamentoLoading ? 'Salvando...' : 'Confirmar'}
+                            </Button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
