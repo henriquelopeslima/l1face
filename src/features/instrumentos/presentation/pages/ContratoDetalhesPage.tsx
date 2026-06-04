@@ -32,6 +32,7 @@ import {
 } from 'iconoir-react';
 import { useBuscarInstrumento } from '../hooks/useBuscarInstrumento';
 import { useListarOrdensFornecimento } from '../hooks/useListarOrdensFornecimento';
+import { useAvancarStatusOrdemFornecimento } from '../hooks/useAvancarStatusOrdemFornecimento';
 import type { StatusInstrumento, StatusOrdemFornecimento } from '../../domain/entities/instrumentoContratual';
 
 const formatCurrency = (value: number) =>
@@ -82,6 +83,24 @@ function getStatusOFBadge(status: StatusOrdemFornecimento) {
   );
 }
 
+function getProximoStatus(status: StatusOrdemFornecimento): 'em_separacao' | 'despachado' | 'entregue' | null {
+  const transitions: Partial<Record<StatusOrdemFornecimento, 'em_separacao' | 'despachado' | 'entregue'>> = {
+    pedido_recebido: 'em_separacao',
+    em_separacao: 'despachado',
+    despachado: 'entregue',
+  };
+  return transitions[status] ?? null;
+}
+
+function getLabelProximoStatus(status: 'em_separacao' | 'despachado' | 'entregue'): string {
+  const labels = {
+    em_separacao: 'Em Separação',
+    despachado: 'Despachado',
+    entregue: 'Entregue',
+  };
+  return labels[status];
+}
+
 const formatTipoPrazo = (tipo: 'UTEIS' | 'CORRIDOS' | null) => {
   if (!tipo) return '';
   return tipo === 'UTEIS' ? 'dias úteis' : 'dias corridos';
@@ -92,9 +111,11 @@ export function ContratoDetalhesPage() {
   const navigate = useNavigate();
   const { instrumento, isLoading, error, refetch } = useBuscarInstrumento(id ?? '');
   const { dados: ordensData, isLoading: isLoadingOrdens, refetch: refetchOrdens } = useListarOrdensFornecimento(id ?? '');
+  const { avancar, isLoading: isAvancarLoading, error: avancarError } = useAvancarStatusOrdemFornecimento();
   const [detalhesExpandidos, setDetalhesExpandidos] = useState(true);
   const [paginaItens, setPaginaItens] = useState(1);
   const [emitirOFOpen, setEmitirOFOpen] = useState(false);
+  const [avancarLoadingId, setAvancarLoadingId] = useState<string | null>(null);
 
   if (isLoading) {
     return (
@@ -572,23 +593,50 @@ export function ContratoDetalhesPage() {
 
               {/* OF list */}
               <div className="space-y-2">
-                {ordensData.ordensFornecimento.map((of) => (
-                  <div key={of.id} className="flex items-center justify-between p-3 border rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <span className="text-sm font-mono font-semibold text-muted-foreground">
-                        OF #{of.codigo}
-                      </span>
-                      {getStatusOFBadge(of.status)}
+                {ordensData.ordensFornecimento.map((of) => {
+                  const proximoStatus = getProximoStatus(of.status);
+                  return (
+                    <div key={of.id} className="flex items-center justify-between p-3 border rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-mono font-semibold text-muted-foreground">
+                          OF #{of.codigo}
+                        </span>
+                        {getStatusOFBadge(of.status)}
+                      </div>
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        <span>{formatDate(of.dataRecebimento)}</span>
+                        <span className="font-mono font-semibold text-foreground">
+                          {formatCurrency(of.valorTotal)}
+                        </span>
+                        {proximoStatus && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={avancarLoadingId === of.id}
+                            onClick={async () => {
+                              setAvancarLoadingId(of.id);
+                              try {
+                                await avancar({ id: of.id, status: proximoStatus });
+                                refetchOrdens();
+                              } catch {
+                                // error displayed via avancarError
+                              } finally {
+                                setAvancarLoadingId(null);
+                              }
+                            }}
+                            className="text-xs h-7"
+                          >
+                            {avancarLoadingId === of.id ? '...' : `→ ${getLabelProximoStatus(proximoStatus)}`}
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <span>{formatDate(of.dataRecebimento)}</span>
-                      <span className="font-mono font-semibold text-foreground">
-                        {formatCurrency(of.valorTotal)}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
+              {avancarError && (
+                <p className="text-xs text-destructive mt-2">{avancarError}</p>
+              )}
             </div>
           )}
         </CardContent>
