@@ -31,7 +31,8 @@ import {
   NavArrowUp,
 } from 'iconoir-react';
 import { useBuscarInstrumento } from '../hooks/useBuscarInstrumento';
-import type { StatusInstrumento } from '../../domain/entities/instrumentoContratual';
+import { useListarOrdensFornecimento } from '../hooks/useListarOrdensFornecimento';
+import type { StatusInstrumento, StatusOrdemFornecimento } from '../../domain/entities/instrumentoContratual';
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -59,6 +60,28 @@ function getStatusBadge(status: StatusInstrumento) {
   }
 }
 
+function getStatusOFBadge(status: StatusOrdemFornecimento) {
+  const labels: Record<StatusOrdemFornecimento, string> = {
+    pedido_recebido: 'Pedido Recebido',
+    em_separacao: 'Em Separação',
+    despachado: 'Despachado',
+    entregue: 'Entregue',
+    pago: 'Pago',
+  };
+  const colors: Record<StatusOrdemFornecimento, string> = {
+    pedido_recebido: 'bg-gray-100 text-gray-700 border-gray-200',
+    em_separacao: 'bg-yellow-50 text-yellow-700 border-yellow-200',
+    despachado: 'bg-blue-50 text-blue-700 border-blue-200',
+    entregue: 'bg-green-50 text-green-700 border-green-200',
+    pago: 'bg-purple-50 text-purple-700 border-purple-200',
+  };
+  return (
+    <Badge className={`text-xs border ${colors[status]}`}>
+      {labels[status]}
+    </Badge>
+  );
+}
+
 const formatTipoPrazo = (tipo: 'UTEIS' | 'CORRIDOS' | null) => {
   if (!tipo) return '';
   return tipo === 'UTEIS' ? 'dias úteis' : 'dias corridos';
@@ -68,6 +91,7 @@ export function ContratoDetalhesPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { instrumento, isLoading, error, refetch } = useBuscarInstrumento(id ?? '');
+  const { dados: ordensData, isLoading: isLoadingOrdens, refetch: refetchOrdens } = useListarOrdensFornecimento(id ?? '');
   const [detalhesExpandidos, setDetalhesExpandidos] = useState(true);
   const [paginaItens, setPaginaItens] = useState(1);
   const [emitirOFOpen, setEmitirOFOpen] = useState(false);
@@ -519,11 +543,54 @@ export function ContratoDetalhesPage() {
           </Button>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-12 text-muted-foreground">
-            <DeliveryTruck className="h-12 w-12 mx-auto mb-3 opacity-50" />
-            <p className="font-medium mb-1">Nenhuma ordem cadastrada</p>
-            <p className="text-xs">Funcionalidade disponível em breve.</p>
-          </div>
+          {/* Loading state */}
+          {isLoadingOrdens && (
+            <div className="space-y-2">
+              <div className="h-12 bg-accent animate-pulse rounded" />
+              <div className="h-12 bg-accent animate-pulse rounded" />
+            </div>
+          )}
+
+          {/* Empty state */}
+          {!isLoadingOrdens && (!ordensData || ordensData.ordensFornecimento.length === 0) && (
+            <div className="text-center py-12 text-muted-foreground">
+              <DeliveryTruck className="h-12 w-12 mx-auto mb-3 opacity-50" />
+              <p className="font-medium mb-1">Nenhuma ordem de fornecimento</p>
+              <p className="text-xs">Emita a primeira OF usando o botão acima.</p>
+            </div>
+          )}
+
+          {/* Saldo remanescente */}
+          {!isLoadingOrdens && ordensData && ordensData.ordensFornecimento.length > 0 && (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 rounded-lg">
+                <p className="text-sm font-medium">Saldo remanescente</p>
+                <p className="text-sm font-mono font-semibold text-[#0050FF]">
+                  {formatCurrency(ordensData.saldoRemanescente)}
+                </p>
+              </div>
+
+              {/* OF list */}
+              <div className="space-y-2">
+                {ordensData.ordensFornecimento.map((of) => (
+                  <div key={of.id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-mono font-semibold text-muted-foreground">
+                        OF #{of.codigo}
+                      </span>
+                      {getStatusOFBadge(of.status)}
+                    </div>
+                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                      <span>{formatDate(of.dataRecebimento)}</span>
+                      <span className="font-mono font-semibold text-foreground">
+                        {formatCurrency(of.valorTotal)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -533,7 +600,7 @@ export function ContratoDetalhesPage() {
         onOpenChange={setEmitirOFOpen}
         instrumentoId={instrumento.instrumentoId}
         itensContrato={itens}
-        onSuccess={() => { /* refetch will be wired in T014 */ }}
+        onSuccess={refetchOrdens}
       />
     </div>
   );

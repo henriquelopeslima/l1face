@@ -49,6 +49,7 @@ function makeRepo(overrides?: Partial<IInstrumentosRepository>): IInstrumentosRe
     criarEmpenho: vi.fn().mockResolvedValue(''),
     consultarContratoPncp: vi.fn().mockResolvedValue({}),
     buscarInstrumento: vi.fn().mockResolvedValue(contratoFixture),
+    listarOrdensFornecimento: vi.fn().mockResolvedValue({ instrumentoId: '', saldoRemanescente: 0, ordensFornecimento: [] }),
     ...overrides,
   };
 }

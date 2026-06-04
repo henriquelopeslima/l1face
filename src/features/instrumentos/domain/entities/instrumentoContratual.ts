@@ -69,3 +69,45 @@ type InstrumentoDetalheBase = {
 export type InstrumentoDetalhe =
   | (InstrumentoDetalheBase & { tipo: 'CONTRATO'; contrato: ContratoDetalhe; empenho: null })
   | (InstrumentoDetalheBase & { tipo: 'EMPENHO'; empenho: EmpenhoDetalhe; contrato: null });
+
+export type StatusOrdemFornecimento =
+  | 'pedido_recebido'
+  | 'em_separacao'
+  | 'despachado'
+  | 'entregue'
+  | 'pago';
+
+export type StatusPagamento = 'pendente' | 'em_atraso' | 'pago' | null;
+
+export interface ItemOrdemFornecimento {
+  id: string;
+  itemInstrumentoId: string;
+  descricao: string;
+  unidadeMedida: string;
+  quantidadeFornecida: number;
+  valorUnitario: number;
+  valorTotal: number;
+}
+
+export interface OrdemFornecimento {
+  id: string;
+  codigo: number;
+  instrumentoId: string;
+  status: StatusOrdemFornecimento;
+  dataRecebimento: string;
+  dataEntrega: string | null;
+  dataLiquidacao: string | null;
+  prazoPagamento: string | null;
+  dataPagamentoEfetivo: string | null;
+  statusPagamento: StatusPagamento;
+  numeroNfe: string | null;
+  valorTotal: number;
+  itens: ItemOrdemFornecimento[];
+  criadoEm: string;
+}
+
+export interface ListagemOrdensFornecimento {
+  instrumentoId: string;
+  saldoRemanescente: number;
+  ordensFornecimento: OrdemFornecimento[];
+}

@@ -8,6 +8,8 @@ const makeRepository = (overrides?: Partial<IInstrumentosRepository>): IInstrume
   listarInstrumentos: vi.fn(),
   criarContrato: vi.fn(),
   criarEmpenho: vi.fn(),
+  buscarInstrumento: vi.fn(),
+  listarOrdensFornecimento: vi.fn(),
   ...overrides,
 });
 
