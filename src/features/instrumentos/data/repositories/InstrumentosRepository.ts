@@ -1,10 +1,13 @@
 import { apiFetch } from '@/shared/infrastructure/apiClient';
 import { mapApiDadosContratoPncpToDadosContratoPncp } from '../mappers/pncpContratosMappers';
-import { mapApiInstrumentoListagemToInstrumentoListagem } from '../mappers/instrumentosMappers';
+import {
+  mapApiInstrumentoDetalhesToInstrumentoDetalhe,
+  mapApiInstrumentoListagemToInstrumentoListagem,
+} from '../mappers/instrumentosMappers';
 import { mapCriarContratoInputToApiRequest } from '../mappers/criarContratoMappers';
 import { mapCriarEmpenhoInputToApiRequest } from '../mappers/criarEmpenhoMappers';
 import type { CriarContratoInput, CriarEmpenhoInput, DadosContratoPncp } from '../../domain/entities/criarContrato';
-import type { InstrumentoListagem } from '../../domain/entities/instrumentoContratual';
+import type { InstrumentoDetalhe, InstrumentoListagem } from '../../domain/entities/instrumentoContratual';
 import type { IInstrumentosRepository } from '../../domain/contracts/IInstrumentosRepository';
 
 class InstrumentosError extends Error {
@@ -100,6 +103,30 @@ export class InstrumentosRepository implements IInstrumentosRepository {
 
     const data = (await response.json()) as { instrumento_id: string };
     return data.instrumento_id;
+  }
+
+  async buscarInstrumento(id: string): Promise<InstrumentoDetalhe> {
+    let response: Response;
+    try {
+      response = await apiFetch(`/api/instrumentos/${id}`, { method: 'GET' });
+    } catch {
+      throw new InstrumentosError('Serviço indisponível. Verifique sua conexão e tente novamente.');
+    }
+
+    if (response.status === 401) {
+      throw new InstrumentosError('Sessão expirada. Faça login novamente.');
+    }
+    if (response.status === 404) {
+      throw new InstrumentosError('Instrumento não encontrado.');
+    }
+    if (!response.ok) {
+      throw new InstrumentosError('Erro ao carregar instrumento. Tente novamente.');
+    }
+
+    const data: unknown = await response.json();
+    return mapApiInstrumentoDetalhesToInstrumentoDetalhe(
+      data as Parameters<typeof mapApiInstrumentoDetalhesToInstrumentoDetalhe>[0],
+    );
   }
 
   async consultarContratoPncp(codigo: string): Promise<DadosContratoPncp> {
