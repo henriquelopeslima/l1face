@@ -20,6 +20,7 @@ interface AuthContextValue {
   login: (credentials: LoginCredentials) => Promise<Licitante | null>;
   logout: () => Promise<void>;
   selectLicitante: (licitante: Licitante) => void;
+  clearLicitanteSelection: () => void;
   register: (credentials: RegisterCredentials) => Promise<Licitante | null>;
 }
 
@@ -34,6 +35,7 @@ type AuthAction =
   | { type: 'LOADING' }
   | { type: 'SET_USER'; user: User; licitante: Licitante | null }
   | { type: 'SELECT_LICITANTE'; licitante: Licitante }
+  | { type: 'CLEAR_LICITANTE' }
   | { type: 'SET_ERROR'; error: string }
   | { type: 'LOGOUT' };
 
@@ -45,6 +47,8 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
       return { user: action.user, licitante: action.licitante, isLoading: false, error: null };
     case 'SELECT_LICITANTE':
       return { ...state, licitante: action.licitante };
+    case 'CLEAR_LICITANTE':
+      return { ...state, licitante: null };
     case 'SET_ERROR':
       return { user: null, licitante: null, isLoading: false, error: action.error };
     case 'LOGOUT':
@@ -138,6 +142,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'SELECT_LICITANTE', licitante });
   };
 
+  const clearLicitanteSelection = () => {
+    localStorage.removeItem(LICITANTE_ID_KEY);
+    setActiveLicitanteId(null);
+    dispatch({ type: 'CLEAR_LICITANTE' });
+  };
+
   const session: AuthSession | null =
     state.user && state.licitante ? { user: state.user, licitante: state.licitante } : null;
 
@@ -150,6 +160,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     login,
     logout,
     selectLicitante,
+    clearLicitanteSelection,
     register,
   };
 

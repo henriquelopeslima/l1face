@@ -1,6 +1,6 @@
 import { Bell, HalfMoon, SunLight, User, NavArrowDown } from 'iconoir-react';
 import { useTheme } from 'next-themes';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { Button } from '@/shared/components/ui/button';
 import {
   DropdownMenu,
@@ -21,10 +21,16 @@ interface AppHeaderProps {
 
 export function AppHeader({ breadcrumb = ['LicitaOne'] }: AppHeaderProps) {
   const { theme, setTheme } = useTheme();
-  const { session, logout } = useAuth();
+  const navigate = useNavigate();
+  const { session, logout, clearLicitanteSelection } = useAuth();
 
   const handleLogout = async () => {
     await logout();
+  };
+
+  const handleChangeLicitante = () => {
+    clearLicitanteSelection();
+    navigate('/selecionar-vinculo');
   };
 
   return (
@@ -125,6 +131,10 @@ export function AppHeader({ breadcrumb = ['LicitaOne'] }: AppHeaderProps) {
               </DropdownMenuItem>
               <DropdownMenuItem>
                 <span>Configurações</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleChangeLicitante}>
+                <span>Mudar licitante</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
