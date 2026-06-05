@@ -3,6 +3,16 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/shared/components/ui/table';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
+import { Trash, InfoCircle, Plus } from 'iconoir-react';
 import type { ItemInstrumentoDetalhe } from '../../domain/entities/instrumentoContratual';
 import { useEmitirOrdemFornecimento } from '../hooks/useEmitirOrdemFornecimento';
 
@@ -20,6 +30,15 @@ interface CriarOrdemFornecimentoProps {
   onSuccess?: () => void;
 }
 
+const formatCurrency = (value: number) =>
+  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+
+const gerarNumeroEmpenho = () => {
+  const d = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  const seq = String(Math.floor(Math.random() * 900) + 100);
+  return `EMP-ORD-${d}--${seq}`;
+};
+
 export function CriarOrdemFornecimento({
   open,
   onOpenChange,
@@ -28,29 +47,44 @@ export function CriarOrdemFornecimento({
   onSuccess,
 }: CriarOrdemFornecimentoProps) {
   const { emitir, isLoading, error } = useEmitirOrdemFornecimento();
+
   const [itensSelecionados, setItensSelecionados] = useState<ItemOFFormulario[]>([]);
   const [selectStep, setSelectStep] = useState<1 | 2>(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [showSelecionados, setShowSelecionados] = useState(false);
+  const [dataRecebimento, setDataRecebimento] = useState('');
+  const [numeroEmpenho, setNumeroEmpenho] = useState('');
 
   useEffect(() => {
-    if (!open) {
+    if (open) {
+      setDataRecebimento(new Date().toISOString().split('T')[0] ?? '');
+      setNumeroEmpenho(gerarNumeroEmpenho());
+    } else {
       setItensSelecionados([]);
       setSelectStep(1);
       setSearchTerm('');
       setSelectedIds([]);
+      setShowSelecionados(false);
     }
   }, [open]);
 
-  const filteredItens = itensContrato.filter(
-    (i) =>
-      !searchTerm ||
+  const itensVisiveis = itensContrato.filter((i) => {
+    if (showSelecionados) return selectedIds.includes(i.id);
+    if (!searchTerm) return true;
+    return (
       i.descricao.toLowerCase().includes(searchTerm.toLowerCase()) ||
       i.unidadeMedida.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+    );
+  });
 
   const toggleItem = (id: string) => {
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  };
+
+  const removerItemSelecionado = (itemId: string) => {
+    setItensSelecionados((prev) => prev.filter((i) => i.itemId !== itemId));
+    setSelectedIds((prev) => prev.filter((id) => id !== itemId));
   };
 
   const avancarParaQuantidades = () => {
@@ -58,26 +92,24 @@ export function CriarOrdemFornecimento({
     setItensSelecionados(
       selectedIds.map((id) => {
         const item = itensContrato.find((i) => i.id === id);
-        return {
-          itemId: id,
-          qtdSolicitada: 1,
-          valorUnitario: item?.valorUnitario ?? 0,
-        };
+        return { itemId: id, qtdSolicitada: 1, valorUnitario: item?.valorUnitario ?? 0 };
       })
     );
     setSelectStep(2);
   };
 
   const atualizarQtd = (itemId: string, qtd: number) => {
-    setItensSelecionados((prev) => prev.map((i) => (i.itemId === itemId ? { ...i, qtdSolicitada: qtd } : i)));
+    setItensSelecionados((prev) =>
+      prev.map((i) => (i.itemId === itemId ? { ...i, qtdSolicitada: Math.max(1, qtd) } : i))
+    );
   };
 
-  const atualizarValorUnitario = (itemId: string, valor: number) => {
-    setItensSelecionados((prev) => prev.map((i) => (i.itemId === itemId ? { ...i, valorUnitario: valor } : i)));
-  };
+  const totalOF = itensSelecionados.reduce(
+    (sum, sel) => sum + sel.qtdSolicitada * sel.valorUnitario,
+    0
+  );
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleCriarOF = async () => {
     try {
       await emitir({
         instrumentoId,
@@ -90,111 +122,277 @@ export function CriarOrdemFornecimento({
       onOpenChange(false);
       onSuccess?.();
     } catch {
-      // error is captured by the hook state
+      // error captured by hook state
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-4xl max-h-[90vh] overflow-y-auto">
+        {/* Header com step indicator e progress bar */}
         <DialogHeader>
-          <DialogTitle>Criar Ordem de Fornecimento</DialogTitle>
-          <DialogDescription>
-            {selectStep === 1 ? 'Passo 1: Selecione os itens' : 'Passo 2: Informe as quantidades e valores unitários'}
-          </DialogDescription>
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1">
+              <DialogTitle>
+                {selectStep === 1
+                  ? 'Passo 1: Preencha os dados e selecione os itens'
+                  : 'Passo 2: Informe as quantidades dos itens'}
+              </DialogTitle>
+              <DialogDescription>
+                {selectStep === 1
+                  ? 'Preencha os dados da OF e escolha os itens que serão incluídos'
+                  : 'Revise os itens selecionados e informe a quantidade de cada um'}
+              </DialogDescription>
+            </div>
+            <span className="text-sm font-semibold text-[#0050FF] shrink-0 mt-0.5">
+              Passo {selectStep}/2
+            </span>
+          </div>
+          <div className="w-full h-1 bg-muted rounded-full mt-3">
+            <div
+              className="h-1 bg-[#0050FF] rounded-full transition-all duration-300"
+              style={{ width: selectStep === 1 ? '50%' : '100%' }}
+            />
+          </div>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-5 pt-1">
+          {/* ── PASSO 1 ── */}
           {selectStep === 1 && (
-            <div className="space-y-2">
-              <Label>Selecione os itens</Label>
-              <Input placeholder="Buscar itens..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-              <div className="max-h-48 overflow-y-auto rounded-lg border border-border">
-                {filteredItens.map((item) => {
-                  const selecionado = selectedIds.includes(item.id);
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => toggleItem(item.id)}
-                      className={`w-full flex items-center gap-3 px-4 py-3 text-left border-b last:border-0 transition-colors ${selecionado ? 'bg-[#EDF4FF] dark:bg-[#0050FF]/15' : 'hover:bg-accent'}`}
-                    >
-                      <div className={`h-4 w-4 rounded border flex items-center justify-center flex-shrink-0 ${selecionado ? 'bg-[#0050FF] border-[#0050FF]' : 'border-input'}`}>
-                        {selecionado && <span className="text-white text-xs">✓</span>}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{item.descricao}</p>
-                        <p className="text-xs text-muted-foreground">{item.unidadeMedida}</p>
-                      </div>
-                    </button>
-                  );
-                })}
+            <>
+              {/* Seção Identificação */}
+              <div className="space-y-3">
+                <h3 className="text-sm font-semibold">Identificação</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="of-data">
+                      Data de Recebimento da OF <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="of-data"
+                      type="date"
+                      value={dataRecebimento}
+                      onChange={(e) => setDataRecebimento(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="of-empenho">
+                      Número do Empenho <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="of-empenho"
+                      value={numeroEmpenho}
+                      onChange={(e) => setNumeroEmpenho(e.target.value)}
+                    />
+                  </div>
+                </div>
               </div>
-            </div>
+
+              {/* Lista de itens */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-2">
+                  <Input
+                    placeholder="Pesquisar itens (ex: arroz)"
+                    value={searchTerm}
+                    onChange={(e) => {
+                      setSearchTerm(e.target.value);
+                      setShowSelecionados(false);
+                    }}
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={!showSelecionados ? 'default' : 'outline'}
+                    onClick={() => setShowSelecionados(false)}
+                  >
+                    Todos
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={showSelecionados ? 'default' : 'outline'}
+                    onClick={() => { setShowSelecionados(true); setSearchTerm(''); }}
+                  >
+                    Selecionados
+                  </Button>
+                </div>
+
+                <div className="rounded-lg border border-border overflow-hidden">
+                  <div className="max-h-52 overflow-y-auto">
+                    {itensVisiveis.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-6">
+                        Nenhum item encontrado.
+                      </p>
+                    ) : (
+                      itensVisiveis.map((item) => {
+                        const selecionado = selectedIds.includes(item.id);
+                        return (
+                          <button
+                            key={item.id}
+                            type="button"
+                            onClick={() => toggleItem(item.id)}
+                            className={`w-full flex items-center gap-3 px-4 py-3 text-left border-b last:border-0 transition-colors ${
+                              selecionado
+                                ? 'bg-[#EDF4FF] dark:bg-[#0050FF]/15'
+                                : 'hover:bg-accent'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              readOnly
+                              checked={selecionado}
+                              className="h-4 w-4 rounded border-input accent-[#0050FF] pointer-events-none shrink-0"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium truncate">{item.descricao}</p>
+                              <p className="text-xs text-muted-foreground">
+                                Saldo disponível: {item.quantidadeTotal} • {item.unidadeMedida}
+                              </p>
+                            </div>
+                            <span className="text-sm font-mono text-muted-foreground shrink-0">
+                              {formatCurrency(item.valorUnitario)}
+                            </span>
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                  <div className="flex items-center justify-between px-4 py-2 border-t bg-muted/30 text-xs text-muted-foreground">
+                    <span>{itensVisiveis.length} resultado{itensVisiveis.length !== 1 ? 's' : ''}</span>
+                    {selectedIds.length > 0 && (
+                      <span className="text-[#0050FF] font-medium">
+                        {selectedIds.length} selecionado{selectedIds.length !== 1 ? 's' : ''}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </>
           )}
 
+          {/* ── PASSO 2 ── */}
           {selectStep === 2 && (
             <div className="space-y-3">
-              {itensSelecionados.map((sel) => {
-                const item = itensContrato.find((i) => i.id === sel.itemId);
-                if (!item) return null;
-                return (
-                  <div key={sel.itemId} className="flex items-center gap-3 p-3 rounded-lg border border-border">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{item.descricao}</p>
-                      <p className="text-xs text-muted-foreground">{item.unidadeMedida}</p>
-                    </div>
-                    <div className="w-24">
-                      <Label className="text-xs text-muted-foreground mb-1 block">Qtd.</Label>
-                      <Input
-                        type="number"
-                        min="1"
-                        value={sel.qtdSolicitada}
-                        onChange={(e) => atualizarQtd(sel.itemId, Number(e.target.value))}
-                        className="text-right"
-                      />
-                    </div>
-                    <div className="w-32">
-                      <Label className="text-xs text-muted-foreground mb-1 block">Valor unit. (R$)</Label>
-                      <Input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={sel.valorUnitario}
-                        onChange={(e) => atualizarValorUnitario(sel.itemId, Number(e.target.value))}
-                        className="text-right"
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+              <div className="rounded-lg border overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Item</TableHead>
+                      <TableHead className="w-[120px]">
+                        <div className="flex items-center gap-1">
+                          Qtd. Disponível
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <InfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                            </TooltipTrigger>
+                            <TooltipContent>Quantidade total registrada no instrumento</TooltipContent>
+                          </Tooltip>
+                        </div>
+                      </TableHead>
+                      <TableHead className="w-[120px]">
+                        Qtd. Solicitada <span className="text-destructive">*</span>
+                      </TableHead>
+                      <TableHead className="w-[80px]">Unidade</TableHead>
+                      <TableHead className="w-[110px] text-right">Valor Unit.</TableHead>
+                      <TableHead className="w-[110px] text-right">Valor Total</TableHead>
+                      <TableHead className="w-[48px]" />
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {itensSelecionados.map((sel) => {
+                      const item = itensContrato.find((i) => i.id === sel.itemId);
+                      if (!item) return null;
+                      const valorTotal = sel.qtdSolicitada * sel.valorUnitario;
+                      return (
+                        <TableRow key={sel.itemId}>
+                          <TableCell className="font-medium">{item.descricao}</TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {item.quantidadeTotal}
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              type="number"
+                              min="1"
+                              value={sel.qtdSolicitada}
+                              onChange={(e) => atualizarQtd(sel.itemId, Number(e.target.value))}
+                              className="h-8 text-right w-20"
+                            />
+                          </TableCell>
+                          <TableCell className="text-muted-foreground font-mono text-sm">
+                            {item.unidadeMedida}
+                          </TableCell>
+                          <TableCell className="text-right font-mono text-sm">
+                            {formatCurrency(sel.valorUnitario)}
+                          </TableCell>
+                          <TableCell className="text-right font-mono font-semibold text-sm">
+                            {formatCurrency(valorTotal)}
+                          </TableCell>
+                          <TableCell>
+                            <button
+                              type="button"
+                              onClick={() => removerItemSelecionado(sel.itemId)}
+                              className="p-1 rounded hover:bg-destructive/10 text-destructive transition-colors"
+                            >
+                              <Trash className="h-4 w-4" />
+                            </button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
 
-          {error && (
-            <p className="text-sm text-destructive">{error}</p>
-          )}
+                {/* Linha de total */}
+                <div className="flex items-center justify-between px-4 py-3 border-t bg-muted/20">
+                  <span className="text-sm font-semibold">Total da OF:</span>
+                  <span className="text-base font-bold font-mono text-[#0050FF]">
+                    {formatCurrency(totalOF)}
+                  </span>
+                </div>
+              </div>
 
-          <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-between">
-            {selectStep === 2 && (
-              <Button type="button" variant="outline" onClick={() => setSelectStep(1)}>
-                Voltar
-              </Button>
-            )}
-            <div className="flex gap-2">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-              {selectStep === 1 ? (
-                <Button type="button" onClick={avancarParaQuantidades} disabled={selectedIds.length === 0}>
-                  Próximo
-                </Button>
-              ) : (
-                <Button type="submit" disabled={isLoading}>
-                  {isLoading ? 'Criando...' : 'Criar OF'}
-                </Button>
+              {itensSelecionados.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  Todos os itens foram removidos. Volte para selecionar itens.
+                </p>
               )}
             </div>
+          )}
+
+          {error && <p className="text-sm text-destructive">{error}</p>}
+
+          <DialogFooter className="flex-row justify-between pt-2">
+            {selectStep === 2 ? (
+              <>
+                <Button type="button" variant="ghost" onClick={() => setSelectStep(1)}>
+                  Voltar
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => { void handleCriarOF(); }}
+                  disabled={isLoading || itensSelecionados.length === 0}
+                >
+                  {isLoading ? 'Criando...' : 'Confirmar ordem de fornecimento'}
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
+                  Cancelar
+                </Button>
+                <Button
+                  type="button"
+                  onClick={avancarParaQuantidades}
+                  disabled={selectedIds.length === 0}
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Avançar para quantidades
+                </Button>
+              </>
+            )}
           </DialogFooter>
-        </form>
+        </div>
       </DialogContent>
     </Dialog>
   );

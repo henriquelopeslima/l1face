@@ -27,6 +27,7 @@ import {
   Link as LinkIcon,
   NavArrowDown,
   NavArrowUp,
+  Plus,
 } from 'iconoir-react';
 import { useBuscarInstrumento } from '../hooks/useBuscarInstrumento';
 import { useListarOrdensFornecimento } from '../hooks/useListarOrdensFornecimento';
@@ -115,6 +116,7 @@ export function NotaEmpenhoDetalhesPage() {
   const [detalhesExpandidos, setDetalhesExpandidos] = useState(true);
   const [paginaItens, setPaginaItens] = useState(1);
   const [emitirOFOpen, setEmitirOFOpen] = useState(false);
+  const [expandedOFId, setExpandedOFId] = useState<string | null>(null);
   const [avancarLoadingId, setAvancarLoadingId] = useState<string | null>(null);
   const [liquidacaoOpenId, setLiquidacaoOpenId] = useState<string | null>(null);
   const [liquidacaoForm, setLiquidacaoForm] = useState({ dataLiquidacao: '', prazoPagamento: '', numeroNfe: '' });
@@ -429,16 +431,18 @@ export function NotaEmpenhoDetalhesPage() {
             size="sm"
             onClick={() => setEmitirOFOpen(true)}
             disabled={itens.length === 0}
+            className="gap-1.5"
           >
-            Emitir OF
+            <Plus className="h-4 w-4" />
+            Nova OF
           </Button>
         </CardHeader>
         <CardContent>
           {/* Loading state */}
           {isLoadingOrdens && (
             <div className="space-y-2">
-              <div className="h-12 bg-accent animate-pulse rounded" />
-              <div className="h-12 bg-accent animate-pulse rounded" />
+              <div className="h-14 bg-accent animate-pulse rounded-lg" />
+              <div className="h-14 bg-accent animate-pulse rounded-lg" />
             </div>
           )}
 
@@ -451,205 +455,243 @@ export function NotaEmpenhoDetalhesPage() {
             </div>
           )}
 
-          {/* Saldo remanescente */}
+          {/* OF list */}
           {!isLoadingOrdens && ordensData && ordensData.ordensFornecimento.length > 0 && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900 rounded-lg">
-                <p className="text-sm font-medium">Saldo remanescente</p>
-                <p className="text-sm font-mono font-semibold text-[#0050FF]">
-                  {formatCurrency(ordensData.saldoRemanescente)}
-                </p>
-              </div>
-
-              {/* OF list */}
-              <div className="space-y-2">
-                {ordensData.ordensFornecimento.map((of) => {
-                  const proximoStatus = getProximoStatus(of.status);
-                  const showLiquidacao = of.status === 'entregue' && !of.dataLiquidacao;
-                  const showPagamento = of.status === 'entregue' && !!of.dataLiquidacao && !of.dataPagamentoEfetivo;
-                  return (
-                    <div key={of.id} className="border rounded-lg">
-                      <div className="flex items-center justify-between p-3">
-                        <div className="flex items-center gap-3 flex-wrap">
-                          <span className="text-sm font-mono font-semibold text-muted-foreground">
-                            OF #{of.codigo}
-                          </span>
-                          {getStatusOFBadge(of.status)}
-                          {of.statusPagamento && getStatusPagamentoBadge(of.statusPagamento)}
-                        </div>
-                        <div className="flex items-center gap-2 flex-wrap text-sm text-muted-foreground">
-                          <span>{formatDate(of.dataRecebimento)}</span>
-                          <span className="font-mono font-semibold text-foreground">
-                            {formatCurrency(of.valorTotal)}
-                          </span>
-                          {proximoStatus && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              disabled={avancarLoadingId === of.id}
-                              onClick={async () => {
-                                setAvancarLoadingId(of.id);
-                                try {
-                                  await avancar({ id: of.id, status: proximoStatus });
-                                  refetchOrdens();
-                                } catch {
-                                  // error displayed via avancarError
-                                } finally {
-                                  setAvancarLoadingId(null);
-                                }
-                              }}
-                              className="text-xs h-7"
-                            >
-                              {avancarLoadingId === of.id ? '...' : `→ ${getLabelProximoStatus(proximoStatus)}`}
-                            </Button>
-                          )}
-                          {showLiquidacao && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="text-xs h-7"
-                              onClick={() => {
-                                setLiquidacaoOpenId(liquidacaoOpenId === of.id ? null : of.id);
-                                setPagamentoOpenId(null);
-                                setLiquidacaoForm({ dataLiquidacao: '', prazoPagamento: '', numeroNfe: '' });
-                              }}
-                            >
-                              Registrar Liquidação
-                            </Button>
-                          )}
-                          {showPagamento && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="text-xs h-7"
-                              onClick={() => {
-                                setPagamentoOpenId(pagamentoOpenId === of.id ? null : of.id);
-                                setLiquidacaoOpenId(null);
-                                setPagamentoForm({ dataPagamentoEfetivo: '' });
-                              }}
-                            >
-                              Registrar Pagamento
-                            </Button>
-                          )}
-                        </div>
+            <div className="space-y-2">
+              {ordensData.ordensFornecimento.map((of) => {
+                const proximoStatus = getProximoStatus(of.status);
+                const showLiquidacao = of.status === 'entregue' && !of.dataLiquidacao;
+                const showPagamento = of.status === 'entregue' && !!of.dataLiquidacao && !of.dataPagamentoEfetivo;
+                const isExpanded = expandedOFId === of.id;
+                return (
+                  <div key={of.id} className="border rounded-lg overflow-hidden">
+                    {/* Header - clickable */}
+                    <button
+                      type="button"
+                      className="w-full flex items-center justify-between p-4 text-left hover:bg-accent/30 transition-colors"
+                      onClick={() => setExpandedOFId(isExpanded ? null : of.id)}
+                    >
+                      <div className="flex items-center gap-2.5 flex-wrap">
+                        <span className="text-sm font-semibold">OF #{of.codigo}</span>
+                        {getStatusOFBadge(of.status)}
+                        {of.statusPagamento && getStatusPagamentoBadge(of.statusPagamento)}
                       </div>
+                      <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                        <span>{formatDate(of.dataRecebimento)}</span>
+                        {isExpanded
+                          ? <NavArrowUp className="h-4 w-4 flex-shrink-0" />
+                          : <NavArrowDown className="h-4 w-4 flex-shrink-0" />}
+                      </div>
+                    </button>
 
-                      {/* Inline Liquidação form */}
-                      {liquidacaoOpenId === of.id && (
-                        <div className="mx-3 mb-3 p-3 border rounded-lg bg-accent/20 space-y-3">
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                            <div className="space-y-1">
-                              <Label className="text-xs">Data de Liquidação</Label>
-                              <Input
-                                type="date"
-                                value={liquidacaoForm.dataLiquidacao}
-                                onChange={(e) => setLiquidacaoForm((f) => ({ ...f, dataLiquidacao: e.target.value }))}
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <Label className="text-xs">Prazo de Pagamento</Label>
-                              <Input
-                                type="date"
-                                value={liquidacaoForm.prazoPagamento}
-                                onChange={(e) => setLiquidacaoForm((f) => ({ ...f, prazoPagamento: e.target.value }))}
-                              />
-                            </div>
-                            <div className="space-y-1">
-                              <Label className="text-xs">NF-e (44 dígitos)</Label>
-                              <Input
-                                value={liquidacaoForm.numeroNfe}
-                                onChange={(e) => setLiquidacaoForm((f) => ({ ...f, numeroNfe: e.target.value }))}
-                                maxLength={44}
-                                placeholder="35260612345678..."
-                              />
-                            </div>
+                    {/* Expanded content */}
+                    {isExpanded && (
+                      <div className="border-t px-4 pb-4 pt-3 space-y-4">
+                        {/* Details grid */}
+                        <div className="grid grid-cols-3 gap-4">
+                          <div>
+                            <p className="text-xs text-muted-foreground mb-1">Empenho</p>
+                            <p className="text-sm font-medium font-mono">{empenho.numeroPncp ?? '—'}</p>
                           </div>
-                          {liquidacaoForm.numeroNfe.length > 0 && liquidacaoForm.numeroNfe.length !== 44 && (
-                            <p className="text-xs text-destructive">
-                              A NF-e deve ter exatamente 44 dígitos ({liquidacaoForm.numeroNfe.length}/44).
-                            </p>
-                          )}
-                          {registrarLiquidacaoError && (
-                            <p className="text-xs text-destructive">{registrarLiquidacaoError}</p>
-                          )}
-                          <div className="flex gap-2 justify-end">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => setLiquidacaoOpenId(null)}
-                            >
-                              Cancelar
-                            </Button>
-                            <Button
-                              size="sm"
-                              disabled={
-                                liquidacaoForm.numeroNfe.length !== 44 ||
-                                !liquidacaoForm.dataLiquidacao ||
-                                !liquidacaoForm.prazoPagamento ||
-                                isRegistrarLiquidacaoLoading
-                              }
-                              onClick={async () => {
-                                try {
-                                  await registrarLiquidacao({ id: of.id, ...liquidacaoForm });
-                                  refetchOrdens();
-                                  setLiquidacaoOpenId(null);
-                                } catch {
-                                  // error displayed via registrarLiquidacaoError
-                                }
-                              }}
-                            >
-                              {isRegistrarLiquidacaoLoading ? 'Salvando...' : 'Confirmar'}
-                            </Button>
+                          <div>
+                            <p className="text-xs text-muted-foreground mb-1">Valor Total</p>
+                            <p className="text-sm font-semibold font-mono">{formatCurrency(of.valorTotal)}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-muted-foreground mb-1">Status</p>
+                            {getStatusOFBadge(of.status)}
                           </div>
                         </div>
-                      )}
 
-                      {/* Inline Pagamento form */}
-                      {pagamentoOpenId === of.id && (
-                        <div className="mx-3 mb-3 p-3 border rounded-lg bg-accent/20 space-y-3">
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                            <div className="space-y-1">
-                              <Label className="text-xs">Data de Pagamento Efetivo</Label>
-                              <Input
-                                type="date"
-                                value={pagamentoForm.dataPagamentoEfetivo}
-                                onChange={(e) => setPagamentoForm({ dataPagamentoEfetivo: e.target.value })}
-                              />
+                        {/* Itens chips */}
+                        {of.itens.length > 0 && (
+                          <div>
+                            <p className="text-xs text-muted-foreground mb-2">Itens</p>
+                            <div className="flex flex-wrap gap-1.5">
+                              {of.itens.map((item) => (
+                                <span
+                                  key={item.id}
+                                  className="inline-flex items-center px-2.5 py-1 rounded-full text-xs border bg-accent/50"
+                                >
+                                  {item.descricao} × {item.quantidadeFornecida}
+                                </span>
+                              ))}
                             </div>
                           </div>
-                          {registrarPagamentoError && (
-                            <p className="text-xs text-destructive">{registrarPagamentoError}</p>
-                          )}
-                          <div className="flex gap-2 justify-end">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => setPagamentoOpenId(null)}
-                            >
-                              Cancelar
-                            </Button>
-                            <Button
-                              size="sm"
-                              disabled={!pagamentoForm.dataPagamentoEfetivo || isRegistrarPagamentoLoading}
-                              onClick={async () => {
-                                try {
-                                  await registrarPagamento({ id: of.id, ...pagamentoForm });
-                                  refetchOrdens();
+                        )}
+
+                        {/* Action buttons */}
+                        {(proximoStatus || showLiquidacao || showPagamento) && (
+                          <div className="flex items-center gap-2 flex-wrap pt-3 border-t">
+                            {proximoStatus && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={avancarLoadingId === of.id}
+                                onClick={async () => {
+                                  setAvancarLoadingId(of.id);
+                                  try {
+                                    await avancar({ id: of.id, status: proximoStatus });
+                                    refetchOrdens();
+                                  } catch {
+                                    // error displayed via avancarError
+                                  } finally {
+                                    setAvancarLoadingId(null);
+                                  }
+                                }}
+                                className="text-xs h-8"
+                              >
+                                {avancarLoadingId === of.id ? '...' : `→ ${getLabelProximoStatus(proximoStatus)}`}
+                              </Button>
+                            )}
+                            {showLiquidacao && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-xs h-8"
+                                onClick={() => {
+                                  setLiquidacaoOpenId(liquidacaoOpenId === of.id ? null : of.id);
                                   setPagamentoOpenId(null);
-                                } catch {
-                                  // error displayed via registrarPagamentoError
-                                }
-                              }}
-                            >
-                              {isRegistrarPagamentoLoading ? 'Salvando...' : 'Confirmar'}
-                            </Button>
+                                  setLiquidacaoForm({ dataLiquidacao: '', prazoPagamento: '', numeroNfe: '' });
+                                }}
+                              >
+                                Registrar Liquidação
+                              </Button>
+                            )}
+                            {showPagamento && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-xs h-8"
+                                onClick={() => {
+                                  setPagamentoOpenId(pagamentoOpenId === of.id ? null : of.id);
+                                  setLiquidacaoOpenId(null);
+                                  setPagamentoForm({ dataPagamentoEfetivo: '' });
+                                }}
+                              >
+                                Registrar Pagamento
+                              </Button>
+                            )}
                           </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+                        )}
+
+                        {/* Inline Liquidação form */}
+                        {liquidacaoOpenId === of.id && (
+                          <div className="p-3 border rounded-lg bg-accent/20 space-y-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                              <div className="space-y-1">
+                                <Label className="text-xs">Data de Liquidação</Label>
+                                <Input
+                                  type="date"
+                                  value={liquidacaoForm.dataLiquidacao}
+                                  onChange={(e) => setLiquidacaoForm((f) => ({ ...f, dataLiquidacao: e.target.value }))}
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs">Prazo de Pagamento</Label>
+                                <Input
+                                  type="date"
+                                  value={liquidacaoForm.prazoPagamento}
+                                  onChange={(e) => setLiquidacaoForm((f) => ({ ...f, prazoPagamento: e.target.value }))}
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-xs">NF-e (44 dígitos)</Label>
+                                <Input
+                                  value={liquidacaoForm.numeroNfe}
+                                  onChange={(e) => setLiquidacaoForm((f) => ({ ...f, numeroNfe: e.target.value }))}
+                                  maxLength={44}
+                                  placeholder="35260612345678..."
+                                />
+                              </div>
+                            </div>
+                            {liquidacaoForm.numeroNfe.length > 0 && liquidacaoForm.numeroNfe.length !== 44 && (
+                              <p className="text-xs text-destructive">
+                                A NF-e deve ter exatamente 44 dígitos ({liquidacaoForm.numeroNfe.length}/44).
+                              </p>
+                            )}
+                            {registrarLiquidacaoError && (
+                              <p className="text-xs text-destructive">{registrarLiquidacaoError}</p>
+                            )}
+                            <div className="flex gap-2 justify-end">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setLiquidacaoOpenId(null)}
+                              >
+                                Cancelar
+                              </Button>
+                              <Button
+                                size="sm"
+                                disabled={
+                                  liquidacaoForm.numeroNfe.length !== 44 ||
+                                  !liquidacaoForm.dataLiquidacao ||
+                                  !liquidacaoForm.prazoPagamento ||
+                                  isRegistrarLiquidacaoLoading
+                                }
+                                onClick={async () => {
+                                  try {
+                                    await registrarLiquidacao({ id: of.id, ...liquidacaoForm });
+                                    refetchOrdens();
+                                    setLiquidacaoOpenId(null);
+                                  } catch {
+                                    // error displayed via registrarLiquidacaoError
+                                  }
+                                }}
+                              >
+                                {isRegistrarLiquidacaoLoading ? 'Salvando...' : 'Confirmar'}
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Inline Pagamento form */}
+                        {pagamentoOpenId === of.id && (
+                          <div className="p-3 border rounded-lg bg-accent/20 space-y-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                              <div className="space-y-1">
+                                <Label className="text-xs">Data de Pagamento Efetivo</Label>
+                                <Input
+                                  type="date"
+                                  value={pagamentoForm.dataPagamentoEfetivo}
+                                  onChange={(e) => setPagamentoForm({ dataPagamentoEfetivo: e.target.value })}
+                                />
+                              </div>
+                            </div>
+                            {registrarPagamentoError && (
+                              <p className="text-xs text-destructive">{registrarPagamentoError}</p>
+                            )}
+                            <div className="flex gap-2 justify-end">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setPagamentoOpenId(null)}
+                              >
+                                Cancelar
+                              </Button>
+                              <Button
+                                size="sm"
+                                disabled={!pagamentoForm.dataPagamentoEfetivo || isRegistrarPagamentoLoading}
+                                onClick={async () => {
+                                  try {
+                                    await registrarPagamento({ id: of.id, ...pagamentoForm });
+                                    refetchOrdens();
+                                    setPagamentoOpenId(null);
+                                  } catch {
+                                    // error displayed via registrarPagamentoError
+                                  }
+                                }}
+                              >
+                                {isRegistrarPagamentoLoading ? 'Salvando...' : 'Confirmar'}
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
               {avancarError && (
                 <p className="text-xs text-destructive mt-2">{avancarError}</p>
               )}
