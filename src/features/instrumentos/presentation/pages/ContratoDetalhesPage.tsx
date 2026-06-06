@@ -6,6 +6,21 @@ import { Badge } from '@/shared/components/ui/badge';
 import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
 import { Breadcrumb } from '@/shared/components/ui/breadcrumb';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/shared/components/ui/accordion';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/shared/components/ui/dialog';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { CriarOrdemFornecimento } from '../components/CriarOrdemFornecimento';
 import {
   Table,
@@ -32,13 +47,79 @@ import {
   NavArrowDown,
   NavArrowUp,
   Plus,
+  Truck,
+  Check,
+  Mail,
+  InfoCircle,
 } from 'iconoir-react';
 import { useBuscarInstrumento } from '../hooks/useBuscarInstrumento';
 import { useListarOrdensFornecimento } from '../hooks/useListarOrdensFornecimento';
 import { useAvancarStatusOrdemFornecimento } from '../hooks/useAvancarStatusOrdemFornecimento';
 import { useRegistrarLiquidacaoOrdemFornecimento } from '../hooks/useRegistrarLiquidacaoOrdemFornecimento';
 import { useRegistrarPagamentoOrdemFornecimento } from '../hooks/useRegistrarPagamentoOrdemFornecimento';
-import type { StatusInstrumento, StatusOrdemFornecimento, StatusPagamento } from '../../domain/entities/instrumentoContratual';
+import type { StatusInstrumento, StatusOrdemFornecimento, StatusPagamento, TipoPrazo } from '../../domain/entities/instrumentoContratual';
+
+const CICLO_ORDER: StatusOrdemFornecimento[] = [
+  'pedido_recebido',
+  'em_separacao',
+  'despachado',
+  'entregue',
+  'pago',
+];
+
+const CICLO_LABELS: Record<StatusOrdemFornecimento, string> = {
+  pedido_recebido: 'Pedido Recebido',
+  em_separacao: 'Em Separação',
+  despachado: 'Despachado',
+  entregue: 'Entregue',
+  pago: 'Pago',
+};
+
+const ACAO_LABELS: Partial<Record<StatusOrdemFornecimento, string>> = {
+  em_separacao: 'Iniciar Separação',
+  despachado: 'Registrar Despacho',
+  entregue: 'Confirmar Entrega',
+};
+
+function calcularPrazoFinalEntrega(
+  dataRecebimento: string,
+  prazo: number,
+  tipoPrazo: TipoPrazo | null,
+): Date {
+  const data = new Date(`${dataRecebimento}T00:00:00`);
+  if (tipoPrazo === 'UTEIS') {
+    let adicionados = 0;
+    while (adicionados < prazo) {
+      data.setDate(data.getDate() + 1);
+      const dia = data.getDay();
+      if (dia !== 0 && dia !== 6) adicionados++;
+    }
+  } else {
+    data.setDate(data.getDate() + prazo);
+  }
+  return data;
+}
+
+function calcularIndicadorPrazo(
+  dataRecebimento: string,
+  prazoEntrega: number,
+  tipoPrazo: TipoPrazo | null,
+): { cor: string; texto: string; diasRestantes: number } {
+  const prazoFinal = calcularPrazoFinalEntrega(dataRecebimento, prazoEntrega, tipoPrazo);
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  prazoFinal.setHours(0, 0, 0, 0);
+  const dias = Math.ceil((prazoFinal.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
+  if (dias > 5) return { cor: '#00A65A', texto: 'Dentro do prazo', diasRestantes: dias };
+  if (dias >= 0) return { cor: '#F39C12', texto: 'Prazo se encerrando', diasRestantes: dias };
+  return { cor: '#DD4B39', texto: 'Prazo vencido', diasRestantes: dias };
+}
+
+function formatDateObj(date: Date): string {
+  const d = date.getDate().toString().padStart(2, '0');
+  const m = (date.getMonth() + 1).toString().padStart(2, '0');
+  return `${d}/${m}/${date.getFullYear()}`;
+}
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
@@ -66,28 +147,6 @@ function getStatusBadge(status: StatusInstrumento) {
   }
 }
 
-function getStatusOFBadge(status: StatusOrdemFornecimento) {
-  const labels: Record<StatusOrdemFornecimento, string> = {
-    pedido_recebido: 'Pedido Recebido',
-    em_separacao: 'Em Separação',
-    despachado: 'Despachado',
-    entregue: 'Entregue',
-    pago: 'Pago',
-  };
-  const colors: Record<StatusOrdemFornecimento, string> = {
-    pedido_recebido: 'bg-gray-100 text-gray-700 border-gray-200',
-    em_separacao: 'bg-yellow-50 text-yellow-700 border-yellow-200',
-    despachado: 'bg-blue-50 text-blue-700 border-blue-200',
-    entregue: 'bg-green-50 text-green-700 border-green-200',
-    pago: 'bg-purple-50 text-purple-700 border-purple-200',
-  };
-  return (
-    <Badge className={`text-xs border ${colors[status]}`}>
-      {labels[status]}
-    </Badge>
-  );
-}
-
 function getProximoStatus(status: StatusOrdemFornecimento): 'em_separacao' | 'despachado' | 'entregue' | null {
   const transitions: Partial<Record<StatusOrdemFornecimento, 'em_separacao' | 'despachado' | 'entregue'>> = {
     pedido_recebido: 'em_separacao',
@@ -95,15 +154,6 @@ function getProximoStatus(status: StatusOrdemFornecimento): 'em_separacao' | 'de
     despachado: 'entregue',
   };
   return transitions[status] ?? null;
-}
-
-function getLabelProximoStatus(status: 'em_separacao' | 'despachado' | 'entregue'): string {
-  const labels = {
-    em_separacao: 'Em Separação',
-    despachado: 'Despachado',
-    entregue: 'Entregue',
-  };
-  return labels[status];
 }
 
 function getStatusPagamentoBadge(status: NonNullable<StatusPagamento>) {
@@ -132,8 +182,13 @@ export function ContratoDetalhesPage() {
   const [detalhesExpandidos, setDetalhesExpandidos] = useState(true);
   const [paginaItens, setPaginaItens] = useState(1);
   const [emitirOFOpen, setEmitirOFOpen] = useState(false);
-  const [expandedOFId, setExpandedOFId] = useState<string | null>(null);
-  const [avancarLoadingId, setAvancarLoadingId] = useState<string | null>(null);
+  const [confirmacaoAberta, setConfirmacaoAberta] = useState(false);
+  const [ofConfirmacao, setOfConfirmacao] = useState<{
+    id: string;
+    proximoStatus: 'em_separacao' | 'despachado' | 'entregue';
+    label: string;
+    statusAtualLabel: string;
+  } | null>(null);
   const [liquidacaoOpenId, setLiquidacaoOpenId] = useState<string | null>(null);
   const [liquidacaoForm, setLiquidacaoForm] = useState({ dataLiquidacao: '', prazoPagamento: '', numeroNfe: '' });
   const [pagamentoOpenId, setPagamentoOpenId] = useState<string | null>(null);
@@ -175,6 +230,14 @@ export function ContratoDetalhesPage() {
   const diasRestantes = calcularDiasRestantes(contrato.vigenciaFinal);
   const vigenciaProximaFim = contrato.status === 'PROXIMA_AO_VENCIMENTO';
   const valorTotal = itens.reduce((s, i) => s + i.valorTotal, 0);
+
+  const cicloEstagios = [
+    { key: 'pedido_recebido' as StatusOrdemFornecimento, label: 'Pedido Recebido', icon: <Mail className="h-4 w-4" /> },
+    { key: 'em_separacao' as StatusOrdemFornecimento, label: 'Em Separação', icon: <BoxIso className="h-4 w-4" /> },
+    { key: 'despachado' as StatusOrdemFornecimento, label: 'Despachado', icon: <Truck className="h-4 w-4" /> },
+    { key: 'entregue' as StatusOrdemFornecimento, label: 'Entregue', icon: <Check className="h-4 w-4" /> },
+    { key: 'pago' as StatusOrdemFornecimento, label: 'Pago', icon: <DollarCircle className="h-4 w-4" /> },
+  ];
 
   const itensPorPagina = 5;
   const totalPaginas = Math.max(1, Math.ceil(itens.length / itensPorPagina));
@@ -572,23 +635,29 @@ export function ContratoDetalhesPage() {
 
       {/* Ordens de Fornecimento */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="flex items-center gap-2 text-base lg:text-lg">
-            <DeliveryTruck className="h-5 w-5" />
-            Ordens de Fornecimento
-          </CardTitle>
-          <Button
-            size="sm"
-            onClick={() => setEmitirOFOpen(true)}
-            disabled={itens.length === 0}
-            className="gap-1.5"
-          >
-            <Plus className="h-4 w-4" />
-            Nova OF
-          </Button>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2 text-base lg:text-lg">
+                <DeliveryTruck className="h-5 w-5" />
+                Ordens de Fornecimento
+              </CardTitle>
+              <p className="text-xs text-muted-foreground mt-1">
+                Histórico e gestão das OFs vinculadas ao contrato
+              </p>
+            </div>
+            <Button
+              size="sm"
+              onClick={() => setEmitirOFOpen(true)}
+              disabled={itens.length === 0}
+              className="gap-1.5"
+            >
+              <Plus className="h-4 w-4" />
+              Nova OF
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
-          {/* Loading state */}
           {isLoadingOrdens && (
             <div className="space-y-2">
               <div className="h-14 bg-accent animate-pulse rounded-lg" />
@@ -596,7 +665,6 @@ export function ContratoDetalhesPage() {
             </div>
           )}
 
-          {/* Empty state */}
           {!isLoadingOrdens && (!ordensData || ordensData.ordensFornecimento.length === 0) && (
             <div className="text-center py-12 text-muted-foreground">
               <DeliveryTruck className="h-12 w-12 mx-auto mb-3 opacity-50" />
@@ -605,93 +673,297 @@ export function ContratoDetalhesPage() {
             </div>
           )}
 
-          {/* OF list */}
           {!isLoadingOrdens && ordensData && ordensData.ordensFornecimento.length > 0 && (
-            <div className="space-y-2">
-              {ordensData.ordensFornecimento.map((of) => {
-                const proximoStatus = getProximoStatus(of.status);
-                const showLiquidacao = of.status === 'entregue' && !of.dataLiquidacao;
-                const showPagamento = of.status === 'entregue' && !!of.dataLiquidacao && !of.dataPagamentoEfetivo;
-                const isExpanded = expandedOFId === of.id;
-                return (
-                  <div key={of.id} className="border rounded-lg overflow-hidden">
-                    {/* Header - clickable */}
-                    <button
-                      type="button"
-                      className="w-full flex items-center justify-between p-4 text-left hover:bg-accent/30 transition-colors"
-                      onClick={() => setExpandedOFId(isExpanded ? null : of.id)}
-                    >
-                      <div className="flex items-center gap-2.5 flex-wrap">
-                        <span className="text-sm font-semibold">OF #{of.codigo}</span>
-                        {getStatusOFBadge(of.status)}
-                        {of.statusPagamento && getStatusPagamentoBadge(of.statusPagamento)}
-                      </div>
-                      <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                        <span>{formatDate(of.dataRecebimento)}</span>
-                        {isExpanded
-                          ? <NavArrowUp className="h-4 w-4 flex-shrink-0" />
-                          : <NavArrowDown className="h-4 w-4 flex-shrink-0" />}
-                      </div>
-                    </button>
+            <>
+              <Accordion type="multiple" className="space-y-2">
+                {ordensData.ordensFornecimento.map((of) => {
+                  const proximoStatus = getProximoStatus(of.status);
+                  const showLiquidacao = of.status === 'entregue' && !of.dataLiquidacao;
+                  const showPagamento =
+                    of.status === 'entregue' && !!of.dataLiquidacao && !of.dataPagamentoEfetivo;
+                  const indicadorPrazo =
+                    of.status !== 'entregue' &&
+                    of.status !== 'pago' &&
+                    contrato.prazoEntrega !== null
+                      ? calcularIndicadorPrazo(
+                          of.dataRecebimento,
+                          contrato.prazoEntrega,
+                          contrato.tipoPrazoEntrega,
+                        )
+                      : null;
+                  const prazoFinalEntrega =
+                    indicadorPrazo !== null && contrato.prazoEntrega !== null
+                      ? calcularPrazoFinalEntrega(
+                          of.dataRecebimento,
+                          contrato.prazoEntrega,
+                          contrato.tipoPrazoEntrega,
+                        )
+                      : null;
 
-                    {/* Expanded content */}
-                    {isExpanded && (
-                      <div className="border-t px-4 pb-4 pt-3 space-y-4">
-                        {/* Details grid */}
+                  return (
+                    <AccordionItem
+                      key={of.id}
+                      value={of.id}
+                      className="border rounded-lg overflow-hidden"
+                    >
+                      <AccordionTrigger className="hover:no-underline px-4 py-4 hover:bg-accent/30 transition-colors">
+                        <div className="flex items-center justify-between w-full gap-3 pr-2">
+                          <div className="flex items-center gap-2.5 flex-wrap">
+                            <span className="text-sm font-bold">OF #{of.codigo}</span>
+                            <Badge className="border text-xs border-[#0050FF] text-[#0050FF] bg-transparent">
+                              {CICLO_LABELS[of.status]}
+                            </Badge>
+                            {of.statusPagamento === 'em_atraso' && (
+                              <Badge className="bg-[#DD4B39] text-white border-[#DD4B39] text-xs">
+                                Pagamento Atrasado
+                              </Badge>
+                            )}
+                            {indicadorPrazo && (
+                              <Badge
+                                className="text-white border-none text-xs"
+                                style={{ backgroundColor: indicadorPrazo.cor }}
+                              >
+                                {indicadorPrazo.texto}
+                              </Badge>
+                            )}
+                            <span className="text-xs text-muted-foreground font-normal">
+                              {formatDate(of.dataRecebimento)}
+                            </span>
+                          </div>
+                          {proximoStatus && (
+                            <Button
+                              variant="default"
+                              size="sm"
+                              className="flex-shrink-0 text-xs h-8"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOfConfirmacao({
+                                  id: of.id,
+                                  proximoStatus,
+                                  label: ACAO_LABELS[proximoStatus] ?? 'Avançar',
+                                  statusAtualLabel: CICLO_LABELS[of.status],
+                                });
+                                setConfirmacaoAberta(true);
+                              }}
+                            >
+                              {ACAO_LABELS[proximoStatus] ?? 'Avançar'}
+                            </Button>
+                          )}
+                        </div>
+                      </AccordionTrigger>
+
+                      <AccordionContent className="border-t px-4 pb-4 pt-3 space-y-4">
+                        {/* 1. Informações básicas */}
                         <div className="grid grid-cols-3 gap-4">
                           <div>
-                            <p className="text-xs text-muted-foreground mb-1">Contrato</p>
-                            <p className="text-sm font-medium font-mono">{contrato.numero}</p>
+                            <p className="text-xs text-muted-foreground mb-1">Data de Recebimento</p>
+                            <p className="text-sm font-mono">{formatDate(of.dataRecebimento)}</p>
                           </div>
                           <div>
                             <p className="text-xs text-muted-foreground mb-1">Valor Total</p>
-                            <p className="text-sm font-semibold font-mono">{formatCurrency(of.valorTotal)}</p>
+                            <p className="text-sm font-semibold font-mono">
+                              {formatCurrency(of.valorTotal)}
+                            </p>
                           </div>
                           <div>
                             <p className="text-xs text-muted-foreground mb-1">Status</p>
-                            {getStatusOFBadge(of.status)}
+                            <Badge className="border text-xs border-[#0050FF] text-[#0050FF] bg-transparent">
+                              {CICLO_LABELS[of.status]}
+                            </Badge>
                           </div>
                         </div>
 
-                        {/* Itens chips */}
+                        {/* 2. Itens Solicitados */}
                         {of.itens.length > 0 && (
-                          <div>
-                            <p className="text-xs text-muted-foreground mb-2">Itens</p>
-                            <div className="flex flex-wrap gap-1.5">
+                          <div className="bg-accent/30 rounded-lg p-3">
+                            <p className="text-xs font-medium text-muted-foreground mb-2">
+                              Itens Solicitados
+                            </p>
+                            <div className="flex flex-wrap gap-2">
                               {of.itens.map((item) => (
-                                <span
-                                  key={item.id}
-                                  className="inline-flex items-center px-2.5 py-1 rounded-full text-xs border bg-accent/50"
-                                >
-                                  {item.descricao} × {item.quantidadeFornecida}
-                                </span>
+                                <Badge key={item.id} variant="outline" className="text-xs">
+                                  {item.descricao} × {item.quantidadeFornecida} {item.unidadeMedida}
+                                </Badge>
                               ))}
                             </div>
                           </div>
                         )}
 
-                        {/* Action buttons */}
+                        {/* 3. Ciclo de Vida */}
+                        <div>
+                          <div className="flex items-center justify-between mb-3">
+                            <p className="text-sm font-semibold">Ciclo de Vida</p>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <InfoCircle className="h-4 w-4 text-muted-foreground cursor-help" />
+                              </TooltipTrigger>
+                              <TooltipContent className="max-w-xs">
+                                O saldo dos itens só é debitado definitivamente quando o status
+                                atinge "Entregue". Antes disso, as quantidades ficam como
+                                "Reservadas".
+                              </TooltipContent>
+                            </Tooltip>
+                          </div>
+                          <div className="flex items-center">
+                            {cicloEstagios.map((estagio, idx) => {
+                              const concluido =
+                                CICLO_ORDER.indexOf(of.status) >=
+                                CICLO_ORDER.indexOf(estagio.key);
+                              return (
+                                <div key={estagio.key} className="flex items-center flex-1">
+                                  <div className="flex flex-col items-center flex-1">
+                                    <div
+                                      className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                                        concluido
+                                          ? 'bg-[#0050FF] text-white'
+                                          : 'bg-accent text-muted-foreground'
+                                      }`}
+                                    >
+                                      {estagio.icon}
+                                    </div>
+                                    <p
+                                      className={`text-[10px] mt-1.5 text-center ${
+                                        concluido ? 'font-semibold' : 'text-muted-foreground'
+                                      }`}
+                                    >
+                                      {estagio.label}
+                                    </p>
+                                  </div>
+                                  {idx < cicloEstagios.length - 1 && (
+                                    <div
+                                      className={`h-0.5 flex-1 -mx-2 ${
+                                        concluido ? 'bg-[#0050FF]' : 'bg-accent'
+                                      }`}
+                                    />
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* Prazo final de entrega */}
+                        {prazoFinalEntrega && indicadorPrazo && (
+                          <div
+                            className="rounded-lg p-3 border-2"
+                            style={{
+                              borderColor: indicadorPrazo.cor,
+                              backgroundColor: `${indicadorPrazo.cor}26`,
+                            }}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-xs font-medium text-muted-foreground mb-1">
+                                  Prazo Final de Entrega
+                                </p>
+                                <p className="text-sm font-mono font-semibold">
+                                  {formatDateObj(prazoFinalEntrega)}
+                                </p>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  Data de Recebimento + {contrato.prazoEntrega}{' '}
+                                  {formatTipoPrazo(contrato.tipoPrazoEntrega)}
+                                </p>
+                              </div>
+                              <Badge
+                                className="text-white border-none"
+                                style={{ backgroundColor: indicadorPrazo.cor }}
+                              >
+                                {indicadorPrazo.texto}
+                                {indicadorPrazo.diasRestantes >= 0
+                                  ? ` (${indicadorPrazo.diasRestantes}d)`
+                                  : ''}
+                              </Badge>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 4. Dados Financeiros */}
+                        {(of.status === 'entregue' || of.status === 'pago') && (
+                          <div className="border-t pt-4 space-y-3">
+                            <h4 className="text-sm font-semibold flex items-center gap-2">
+                              <DollarCircle className="h-4 w-4" />
+                              Dados Financeiros
+                            </h4>
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                              <div>
+                                <p className="text-xs text-muted-foreground mb-1">
+                                  Data de Entrega Efetiva
+                                </p>
+                                <p className="text-sm font-mono">
+                                  {of.dataEntrega ? formatDate(of.dataEntrega) : '—'}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-muted-foreground mb-1">
+                                  Data de Liquidação
+                                </p>
+                                <p className="text-sm font-mono">
+                                  {of.dataLiquidacao ? formatDate(of.dataLiquidacao) : '—'}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-xs text-muted-foreground mb-1">NF-e</p>
+                                <p className="text-sm font-mono font-semibold">
+                                  {of.numeroNfe || '—'}
+                                </p>
+                              </div>
+                              {of.prazoPagamento && (
+                                <div>
+                                  <p className="text-xs text-muted-foreground mb-1">
+                                    Prazo Final de Pagamento
+                                  </p>
+                                  <p
+                                    className={`text-sm font-mono font-semibold ${
+                                      of.statusPagamento === 'em_atraso' ? 'text-[#DD4B39]' : ''
+                                    }`}
+                                  >
+                                    {formatDate(of.prazoPagamento)}
+                                  </p>
+                                </div>
+                              )}
+                              <div>
+                                <p className="text-xs text-muted-foreground mb-1">
+                                  Status de Pagamento
+                                </p>
+                                {of.statusPagamento ? (
+                                  getStatusPagamentoBadge(of.statusPagamento)
+                                ) : (
+                                  <span className="text-sm text-muted-foreground">—</span>
+                                )}
+                              </div>
+                              {of.dataPagamentoEfetivo && (
+                                <div>
+                                  <p className="text-xs text-muted-foreground mb-1">
+                                    Data de Pagamento Efetivo
+                                  </p>
+                                  <p className="text-sm font-mono font-semibold text-[#06D6A0]">
+                                    {formatDate(of.dataPagamentoEfetivo)}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* 5. Botões de ação */}
                         {(proximoStatus || showLiquidacao || showPagamento) && (
                           <div className="flex items-center gap-2 flex-wrap pt-3 border-t">
                             {proximoStatus && (
                               <Button
                                 size="sm"
                                 variant="outline"
-                                disabled={avancarLoadingId === of.id}
-                                onClick={async () => {
-                                  setAvancarLoadingId(of.id);
-                                  try {
-                                    await avancar({ id: of.id, status: proximoStatus });
-                                    refetchOrdens();
-                                  } catch {
-                                    // error displayed via avancarError
-                                  } finally {
-                                    setAvancarLoadingId(null);
-                                  }
-                                }}
                                 className="text-xs h-8"
+                                onClick={() => {
+                                  setOfConfirmacao({
+                                    id: of.id,
+                                    proximoStatus,
+                                    label: ACAO_LABELS[proximoStatus] ?? 'Avançar',
+                                    statusAtualLabel: CICLO_LABELS[of.status],
+                                  });
+                                  setConfirmacaoAberta(true);
+                                }}
                               >
-                                {avancarLoadingId === of.id ? '...' : `→ ${getLabelProximoStatus(proximoStatus)}`}
+                                {ACAO_LABELS[proximoStatus] ?? 'Avançar'}
                               </Button>
                             )}
                             {showLiquidacao && (
@@ -702,7 +974,11 @@ export function ContratoDetalhesPage() {
                                 onClick={() => {
                                   setLiquidacaoOpenId(liquidacaoOpenId === of.id ? null : of.id);
                                   setPagamentoOpenId(null);
-                                  setLiquidacaoForm({ dataLiquidacao: '', prazoPagamento: '', numeroNfe: '' });
+                                  setLiquidacaoForm({
+                                    dataLiquidacao: '',
+                                    prazoPagamento: '',
+                                    numeroNfe: '',
+                                  });
                                 }}
                               >
                                 Registrar Liquidação
@@ -725,7 +1001,7 @@ export function ContratoDetalhesPage() {
                           </div>
                         )}
 
-                        {/* Inline Liquidação form */}
+                        {/* 6. Formulário inline de liquidação */}
                         {liquidacaoOpenId === of.id && (
                           <div className="p-3 border rounded-lg bg-accent/20 space-y-3">
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -734,7 +1010,12 @@ export function ContratoDetalhesPage() {
                                 <Input
                                   type="date"
                                   value={liquidacaoForm.dataLiquidacao}
-                                  onChange={(e) => setLiquidacaoForm((f) => ({ ...f, dataLiquidacao: e.target.value }))}
+                                  onChange={(e) =>
+                                    setLiquidacaoForm((f) => ({
+                                      ...f,
+                                      dataLiquidacao: e.target.value,
+                                    }))
+                                  }
                                 />
                               </div>
                               <div className="space-y-1">
@@ -742,24 +1023,36 @@ export function ContratoDetalhesPage() {
                                 <Input
                                   type="date"
                                   value={liquidacaoForm.prazoPagamento}
-                                  onChange={(e) => setLiquidacaoForm((f) => ({ ...f, prazoPagamento: e.target.value }))}
+                                  onChange={(e) =>
+                                    setLiquidacaoForm((f) => ({
+                                      ...f,
+                                      prazoPagamento: e.target.value,
+                                    }))
+                                  }
                                 />
                               </div>
                               <div className="space-y-1">
                                 <Label className="text-xs">NF-e (44 dígitos)</Label>
                                 <Input
                                   value={liquidacaoForm.numeroNfe}
-                                  onChange={(e) => setLiquidacaoForm((f) => ({ ...f, numeroNfe: e.target.value }))}
+                                  onChange={(e) =>
+                                    setLiquidacaoForm((f) => ({
+                                      ...f,
+                                      numeroNfe: e.target.value,
+                                    }))
+                                  }
                                   maxLength={44}
                                   placeholder="35260612345678..."
                                 />
                               </div>
                             </div>
-                            {liquidacaoForm.numeroNfe.length > 0 && liquidacaoForm.numeroNfe.length !== 44 && (
-                              <p className="text-xs text-destructive">
-                                A NF-e deve ter exatamente 44 dígitos ({liquidacaoForm.numeroNfe.length}/44).
-                              </p>
-                            )}
+                            {liquidacaoForm.numeroNfe.length > 0 &&
+                              liquidacaoForm.numeroNfe.length !== 44 && (
+                                <p className="text-xs text-destructive">
+                                  A NF-e deve ter exatamente 44 dígitos (
+                                  {liquidacaoForm.numeroNfe.length}/44).
+                                </p>
+                              )}
                             {registrarLiquidacaoError && (
                               <p className="text-xs text-destructive">{registrarLiquidacaoError}</p>
                             )}
@@ -795,7 +1088,7 @@ export function ContratoDetalhesPage() {
                           </div>
                         )}
 
-                        {/* Inline Pagamento form */}
+                        {/* 7. Formulário inline de pagamento */}
                         {pagamentoOpenId === of.id && (
                           <div className="p-3 border rounded-lg bg-accent/20 space-y-3">
                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -804,7 +1097,9 @@ export function ContratoDetalhesPage() {
                                 <Input
                                   type="date"
                                   value={pagamentoForm.dataPagamentoEfetivo}
-                                  onChange={(e) => setPagamentoForm({ dataPagamentoEfetivo: e.target.value })}
+                                  onChange={(e) =>
+                                    setPagamentoForm({ dataPagamentoEfetivo: e.target.value })
+                                  }
                                 />
                               </div>
                             </div>
@@ -821,7 +1116,9 @@ export function ContratoDetalhesPage() {
                               </Button>
                               <Button
                                 size="sm"
-                                disabled={!pagamentoForm.dataPagamentoEfetivo || isRegistrarPagamentoLoading}
+                                disabled={
+                                  !pagamentoForm.dataPagamentoEfetivo || isRegistrarPagamentoLoading
+                                }
                                 onClick={async () => {
                                   try {
                                     await registrarPagamento({ id: of.id, ...pagamentoForm });
@@ -837,15 +1134,15 @@ export function ContratoDetalhesPage() {
                             </div>
                           </div>
                         )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+                      </AccordionContent>
+                    </AccordionItem>
+                  );
+                })}
+              </Accordion>
               {avancarError && (
                 <p className="text-xs text-destructive mt-2">{avancarError}</p>
               )}
-            </div>
+            </>
           )}
         </CardContent>
       </Card>
@@ -858,6 +1155,69 @@ export function ContratoDetalhesPage() {
         itensContrato={itens}
         onSuccess={refetchOrdens}
       />
+
+      {/* Dialog de confirmação de transição de status */}
+      <Dialog
+        open={confirmacaoAberta}
+        onOpenChange={(open) => {
+          if (!open) {
+            setConfirmacaoAberta(false);
+            setOfConfirmacao(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirmar Ação</DialogTitle>
+            <DialogDescription>
+              Tem certeza que deseja: <strong>{ofConfirmacao?.label}</strong>?
+            </DialogDescription>
+            {ofConfirmacao && (
+              <div className="flex items-center gap-3 mt-4 pt-4 border-t">
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-[#0050FF]" />
+                  <span className="text-sm">{ofConfirmacao.statusAtualLabel}</span>
+                </div>
+                <div className="flex-1 h-[2px] bg-[#0050FF]" />
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 rounded-full bg-[#0050FF]" />
+                  <span className="text-sm font-medium">
+                    {CICLO_LABELS[ofConfirmacao.proximoStatus]}
+                  </span>
+                </div>
+              </div>
+            )}
+          </DialogHeader>
+          <DialogFooter className="mt-4">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setConfirmacaoAberta(false);
+                setOfConfirmacao(null);
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              disabled={isAvancarLoading}
+              onClick={async () => {
+                if (!ofConfirmacao) return;
+                try {
+                  await avancar({ id: ofConfirmacao.id, status: ofConfirmacao.proximoStatus });
+                  refetchOrdens();
+                } catch {
+                  // error displayed via avancarError
+                } finally {
+                  setConfirmacaoAberta(false);
+                  setOfConfirmacao(null);
+                }
+              }}
+            >
+              {isAvancarLoading ? 'Confirmando...' : 'Confirmar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
