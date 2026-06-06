@@ -8,13 +8,15 @@
 }
 
 :{$PORT:3000} {
-	root * /srv
-
 	encode gzip
 
-	reverse_proxy /api/* {$API_UPSTREAM}
+	handle /api/* {
+		reverse_proxy {$API_UPSTREAM}
+	}
 
-	file_server
-
-	try_files {path} /index.html
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
 }
