@@ -15,6 +15,8 @@ import { CadastroSucesso } from '@/shared/components/feedback/CadastroSucesso';
 import { useConsultarContratoPncp } from '../hooks/useConsultarContratoPncp';
 import { useCriarContrato } from '../hooks/useCriarContrato';
 import { useListarAtas } from '@/features/atas/presentation/hooks/useListarAtas';
+import { AtasRepository } from '@/features/atas/data/repositories/AtasRepository';
+import { GetAtaUseCase } from '@/features/atas/domain/usecases/GetAtaUseCase';
 import type { CriarContratoInput, ItemInstrumentoInput } from '../../domain/entities/criarContrato';
 import {
   Page,
@@ -60,6 +62,9 @@ interface DadosContrato {
   anexoContrato?: File;
 }
 
+const atasRepository = new AtasRepository();
+const getAtaUseCase = new GetAtaUseCase(atasRepository);
+
 
 export function CadastrarContrato() {
   const navigate = useNavigate();
@@ -93,6 +98,8 @@ export function CadastrarContrato() {
 
   const [modoItens, setModoItens] = useState<'manual' | 'planilha'>('manual');
   const [itensContrato, setItensContrato] = useState<ItemContrato[]>([]);
+  const [isCarregandoItensArp, setIsCarregandoItensArp] = useState(false);
+  const [erroItensArp, setErroItensArp] = useState<string | null>(null);
   const [processandoCadastro, setProcessandoCadastro] = useState(false);
   const [cadastroConcluido, setCadastroConcluido] = useState(false);
   const [progressoCadastro, setProgressoCadastro] = useState(0);
@@ -147,6 +154,37 @@ export function CadastrarContrato() {
       setDadosContrato((prev) => ({ ...prev, modoEntrada: 'manual' }));
     }
   }, [pncpError]);
+
+  const carregarItensDaArp = useCallback(async (ataId: string) => {
+    setIsCarregandoItensArp(true);
+    setErroItensArp(null);
+    try {
+      const ata = await getAtaUseCase.execute(ataId);
+      setItensContrato(
+        ata.itens.map((item) => ({
+          id: `arp-item-${item.id}`,
+          descricao: item.descricao,
+          unidadeMedida: item.unidadeMedida,
+          quantidadeTotal: item.qtdRegistrada,
+          valorUnitario: item.valorEstimado,
+          valorTotal: item.qtdRegistrada * item.valorEstimado,
+        }))
+      );
+      setModoItens('manual');
+    } catch {
+      setErroItensArp('Não foi possível carregar os itens da ARP selecionada. Tente novamente.');
+    } finally {
+      setIsCarregandoItensArp(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!dadosContrato.arpOrigem) {
+      setErroItensArp(null);
+      return;
+    }
+    void carregarItensDaArp(dadosContrato.arpOrigem);
+  }, [dadosContrato.arpOrigem, carregarItensDaArp]);
 
   const buscarPNCP = useCallback(() => {
     if (!dadosContrato.numeroPNCP?.trim()) return;
@@ -276,6 +314,7 @@ export function CadastrarContrato() {
   };
 
   const arpSelecionada = atas.find((a) => a.id === dadosContrato.arpOrigem);
+  const isItensVinculadosArp = Boolean(dadosContrato.arpOrigem);
 
   if (processandoCadastro || cadastroConcluido) {
     return (
@@ -648,16 +687,43 @@ export function CadastrarContrato() {
           <CardContent className="space-y-4 lg:space-y-6">
             <div className="space-y-3">
               <Label>Modo de Entrada</Label>
-              <RadioGroup value={modoItens} onValueChange={(v) => setModoItens(v as 'manual' | 'planilha')} className="flex flex-col lg:flex-row lg:gap-6">
+              <RadioGroup
+                value={modoItens}
+                onValueChange={(v) => {
+                  if (isItensVinculadosArp && v === 'planilha') return;
+                  setModoItens(v as 'manual' | 'planilha');
+                }}
+                className="flex flex-col lg:flex-row lg:gap-6"
+              >
                 <div className="flex items-center space-x-2">
                   <RadioGroupItem value="manual" id="manual-itens" />
                   <Label htmlFor="manual-itens" className="cursor-pointer">Adicionar Manualmente</Label>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <RadioGroupItem value="planilha" id="planilha-itens" />
+                  <RadioGroupItem value="planilha" id="planilha-itens" disabled={isItensVinculadosArp} />
                   <Label htmlFor="planilha-itens" className="cursor-pointer">Importar via Planilha</Label>
                 </div>
               </RadioGroup>
+              {isItensVinculadosArp && (
+                <Alert>
+                  <InfoCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    Os itens do contrato foram vinculados automaticamente a partir da ARP selecionada.
+                  </AlertDescription>
+                </Alert>
+              )}
+              {isCarregandoItensArp && (
+                <Alert>
+                  <InfoCircle className="h-4 w-4" />
+                  <AlertDescription>Carregando itens da ARP selecionada...</AlertDescription>
+                </Alert>
+              )}
+              {erroItensArp && (
+                <Alert variant="destructive">
+                  <WarningTriangle className="h-4 w-4" />
+                  <AlertDescription>{erroItensArp}</AlertDescription>
+                </Alert>
+              )}
             </div>
 
             {modoItens === 'planilha' && (
@@ -696,10 +762,14 @@ export function CadastrarContrato() {
                           <TableRow key={item.id}>
                             <TableCell>
                               <Input placeholder="Ex: Arroz tipo 1" value={item.descricao}
+                                readOnly={isItensVinculadosArp}
+                                className={isItensVinculadosArp ? 'bg-muted text-muted-foreground cursor-not-allowed select-none' : ''}
                                 onChange={(e) => atualizarItem(item.id, 'descricao', e.target.value)} />
                             </TableCell>
                             <TableCell>
                               <Input placeholder="ex: kg, un, fardo" value={item.unidadeMedida}
+                                readOnly={isItensVinculadosArp}
+                                className={isItensVinculadosArp ? 'bg-muted text-muted-foreground cursor-not-allowed select-none' : ''}
                                 onChange={(e) => atualizarItem(item.id, 'unidadeMedida', e.target.value)} />
                             </TableCell>
                             <TableCell>
@@ -708,6 +778,8 @@ export function CadastrarContrato() {
                             </TableCell>
                             <TableCell>
                               <Input type="number" min="0" step="0.01" placeholder="0,00" value={item.valorUnitario || ''}
+                                readOnly={isItensVinculadosArp}
+                                className={isItensVinculadosArp ? 'bg-muted text-muted-foreground cursor-not-allowed select-none' : ''}
                                 onChange={(e) => atualizarItem(item.id, 'valorUnitario', Number(e.target.value))} />
                             </TableCell>
                             <TableCell>
@@ -716,7 +788,7 @@ export function CadastrarContrato() {
                               </span>
                             </TableCell>
                             <TableCell>
-                              <Button variant="ghost" size="sm" onClick={() => removerItem(item.id)}>
+                              <Button variant="ghost" size="sm" onClick={() => removerItem(item.id)} disabled={isItensVinculadosArp}>
                                 <Trash className="h-4 w-4 text-destructive" />
                               </Button>
                             </TableCell>
@@ -731,7 +803,7 @@ export function CadastrarContrato() {
                     <p className="text-muted-foreground text-sm lg:text-base">Nenhum item adicionado ainda</p>
                   </div>
                 )}
-                <Button onClick={adicionarItem} variant="outline" className="w-full lg:w-auto">
+                <Button onClick={adicionarItem} variant="outline" className="w-full lg:w-auto" disabled={isItensVinculadosArp}>
                   <Plus className="h-4 w-4 mr-2" />Adicionar Item
                 </Button>
                 {itensContrato.length > 0 && (
