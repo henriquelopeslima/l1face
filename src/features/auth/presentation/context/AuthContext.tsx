@@ -5,7 +5,6 @@ import type { AuthSession, LoginCredentials } from '../../domain/entities/authSe
 import type { Licitante } from '../../domain/entities/licitante';
 import type { RegisterCredentials } from '../../domain/entities/registerCredentials';
 import type { User } from '../../domain/entities/user';
-import { UnauthenticatedError } from '../../domain/errors/authErrors';
 import { GetMeUseCase } from '../../domain/usecases/GetMeUseCase';
 import { LoginUseCase } from '../../domain/usecases/LoginUseCase';
 import { LogoutUseCase } from '../../domain/usecases/LogoutUseCase';

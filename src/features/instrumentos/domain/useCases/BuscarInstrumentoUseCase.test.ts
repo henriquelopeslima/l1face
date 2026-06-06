@@ -51,7 +51,7 @@ function makeRepo(overrides?: Partial<IInstrumentosRepository>): IInstrumentosRe
     buscarInstrumento: vi.fn().mockResolvedValue(contratoFixture),
     listarOrdensFornecimento: vi.fn().mockResolvedValue({ instrumentoId: '', saldoRemanescente: 0, ordensFornecimento: [] }),
     ...overrides,
-  };
+  } as IInstrumentosRepository;
 }
 
 describe('BuscarInstrumentoUseCase', () => {

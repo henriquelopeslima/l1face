@@ -110,7 +110,7 @@ export function NotaEmpenhoDetalhesPage() {
   const navigate = useNavigate();
   const { instrumento, isLoading, error, refetch } = useBuscarInstrumento(id ?? '');
   const { dados: ordensData, isLoading: isLoadingOrdens, refetch: refetchOrdens } = useListarOrdensFornecimento(id ?? '');
-  const { avancar, isLoading: isAvancarLoading, error: avancarError } = useAvancarStatusOrdemFornecimento();
+  const { avancar, error: avancarError } = useAvancarStatusOrdemFornecimento();
   const { registrar: registrarLiquidacao, isLoading: isRegistrarLiquidacaoLoading, error: registrarLiquidacaoError } = useRegistrarLiquidacaoOrdemFornecimento();
   const { registrar: registrarPagamento, isLoading: isRegistrarPagamentoLoading, error: registrarPagamentoError } = useRegistrarPagamentoOrdemFornecimento();
   const [detalhesExpandidos, setDetalhesExpandidos] = useState(true);

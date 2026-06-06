@@ -1,12 +1,14 @@
+import type { CSSProperties } from 'react';
 import { cn } from './utils';
 
 interface BadgeProps {
   children: React.ReactNode;
   variant?: 'default' | 'success' | 'warning' | 'danger' | 'info' | 'outline';
   className?: string;
+  style?: CSSProperties;
 }
 
-export function Badge({ children, variant = 'default', className }: BadgeProps) {
+export function Badge({ children, variant = 'default', className, style }: BadgeProps) {
   const variants = {
     default: 'bg-primary/10 text-primary',
     success: 'bg-[#D5F5ED] text-[#059669] dark:bg-[#0D3A30] dark:text-[#06D6A0]',
@@ -23,6 +25,7 @@ export function Badge({ children, variant = 'default', className }: BadgeProps) 
         variants[variant],
         className
       )}
+      style={style}
     >
       {children}
     </span>

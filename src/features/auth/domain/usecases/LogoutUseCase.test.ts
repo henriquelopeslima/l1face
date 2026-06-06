@@ -8,7 +8,7 @@ function makeRepo(overrides?: Partial<IAuthRepository>): IAuthRepository {
     logout: vi.fn().mockResolvedValue(undefined),
     getMe: vi.fn().mockResolvedValue({ id: '1', email: 'a@b.com', nomeCompleto: 'A', licitantes: [] }),
     ...overrides,
-  };
+  } as IAuthRepository;
 }
 
 describe('LogoutUseCase', () => {

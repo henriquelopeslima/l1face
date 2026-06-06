@@ -14,7 +14,7 @@ const makeRepository = (overrides?: Partial<IInstrumentosRepository>): IInstrume
   registrarLiquidacaoOrdemFornecimento: vi.fn(),
   registrarPagamentoOrdemFornecimento: vi.fn(),
   ...overrides,
-});
+} as IInstrumentosRepository);
 
 const ordemFornecimentoMock: OrdemFornecimento = {
   id: 'of-uuid-001',

@@ -11,7 +11,7 @@ const makeRepository = (overrides?: Partial<IInstrumentosRepository>): IInstrume
   buscarInstrumento: vi.fn(),
   listarOrdensFornecimento: vi.fn(),
   ...overrides,
-});
+} as IInstrumentosRepository);
 
 const inputValido: CriarContratoInput = {
   numero: '001/2026',

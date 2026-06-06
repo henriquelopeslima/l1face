@@ -12,7 +12,7 @@ const makeRepository = (overrides?: Partial<IInstrumentosRepository>): IInstrume
   listarOrdensFornecimento: vi.fn(),
   avancarStatusOrdemFornecimento: vi.fn(),
   ...overrides,
-});
+} as IInstrumentosRepository);
 
 const ordemFornecimentoMock: OrdemFornecimento = {
   id: 'of-uuid-001',

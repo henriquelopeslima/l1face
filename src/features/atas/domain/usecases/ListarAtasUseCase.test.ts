@@ -24,7 +24,7 @@ function makeRepo(overrides?: Partial<IAtasRepository>): IAtasRepository {
     listarAtas: vi.fn().mockResolvedValue([ataFixture]),
     getAta: vi.fn().mockResolvedValue(null),
     ...overrides,
-  };
+  } as IAtasRepository;
 }
 
 describe('ListarAtasUseCase', () => {

@@ -17,7 +17,7 @@ function makeRepo(overrides?: Partial<IAuthRepository>): IAuthRepository {
     logout: vi.fn().mockResolvedValue(undefined),
     getMe: vi.fn().mockResolvedValue(fakeUser),
     ...overrides,
-  };
+  } as IAuthRepository;
 }
 
 describe('GetMeUseCase', () => {

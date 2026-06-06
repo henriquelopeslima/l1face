@@ -15,13 +15,13 @@ const makeRepository = (overrides?: Partial<IInstrumentosRepository>): IInstrume
   registrarLiquidacaoOrdemFornecimento: vi.fn(),
   registrarPagamentoOrdemFornecimento: vi.fn(),
   ...overrides,
-});
+} as IInstrumentosRepository);
 
 const ordemFornecimentoMock: OrdemFornecimento = {
   id: 'of-uuid-001',
   codigo: 1,
   instrumentoId: 'instrumento-uuid-001',
-  status: 'emitida',
+  status: 'pedido_recebido',
   dataRecebimento: '2026-06-04',
   dataEntrega: null,
   dataLiquidacao: null,

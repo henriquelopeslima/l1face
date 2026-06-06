@@ -11,7 +11,7 @@ const makeRepository = (overrides?: Partial<IInstrumentosRepository>): IInstrume
   buscarInstrumento: vi.fn(),
   listarOrdensFornecimento: vi.fn(),
   ...overrides,
-});
+} as IInstrumentosRepository);
 
 describe('ListarInstrumentosUseCase', () => {
   it('retorna lista de instrumentos do repositório', async () => {
