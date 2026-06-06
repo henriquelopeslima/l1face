@@ -12,7 +12,6 @@ import {
 } from '@/shared/components/ui/dropdown-menu';
 import { Badge } from '@/shared/components/ui/badge';
 import { LogoLicitaOne } from '@/shared/components/icons/LogoLicitaOne';
-import fotoPerfil from '@/shared/assets/foto-perfil-placeholder.jpg';
 import { useAuth } from '@/features/auth/presentation/context/AuthContext';
 
 interface AppHeaderProps {
@@ -110,11 +109,17 @@ export function AppHeader({ breadcrumb = ['LicitaOne'] }: AppHeaderProps) {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="gap-3 h-11 px-3">
-                <img
-                  src={fotoPerfil}
-                  alt={`Foto de perfil de ${session?.user.nomeCompleto ?? '—'}`}
-                  className="w-9 h-9 rounded-full object-cover"
-                />
+                {session?.user.fotoPerfil ? (
+                  <img
+                    src={session.user.fotoPerfil}
+                    alt={`Foto de perfil de ${session?.user.nomeCompleto ?? '—'}`}
+                    className="w-9 h-9 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-9 h-9 rounded-full border border-border bg-accent/40 flex items-center justify-center">
+                    <User className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                )}
                 <div className="hidden md:flex flex-col items-start">
                   <span className="text-sm font-medium">{session?.user.nomeCompleto ?? '—'}</span>
                   <span className="text-xs text-muted-foreground">{session?.licitante.nomeEmpresa ?? '—'}</span>

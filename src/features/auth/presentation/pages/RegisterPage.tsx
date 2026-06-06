@@ -124,7 +124,7 @@ export function RegisterPage() {
                     <FormItem>
                       <FormLabel>Nome completo</FormLabel>
                       <FormControl>
-                        <Input placeholder="João Silva" className="h-11 bg-[#f9fafb]" data-testid="register-nome" {...field} />
+                        <Input placeholder="João Silva" className="h-11" data-testid="register-nome" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -138,7 +138,7 @@ export function RegisterPage() {
                     <FormItem>
                       <FormLabel>E-mail</FormLabel>
                       <FormControl>
-                        <Input type="email" placeholder="seu@email.com" className="h-11 bg-[#f9fafb]" data-testid="register-email" {...field} />
+                        <Input type="email" placeholder="seu@email.com" className="h-11" data-testid="register-email" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -156,7 +156,7 @@ export function RegisterPage() {
                           <Input
                             type={showPassword ? 'text' : 'password'}
                             placeholder="•••••••••"
-                            className="h-11 pr-10 bg-[#f9fafb]"
+                            className="h-11 pr-10"
                             data-testid="register-password"
                             {...field}
                           />
@@ -183,7 +183,7 @@ export function RegisterPage() {
                       <FormControl>
                         <Input
                           placeholder="00.000.000/0000-00"
-                          className="h-11 bg-[#f9fafb]"
+                          className="h-11"
                           data-testid="register-cnpj"
                           {...field}
                           onChange={(e) => field.onChange(formatCnpj(e.target.value))}
@@ -201,7 +201,7 @@ export function RegisterPage() {
                     <FormItem>
                       <FormLabel>Razão social</FormLabel>
                       <FormControl>
-                        <Input placeholder="Empresa Exemplo Ltda" className="h-11 bg-[#f9fafb]" data-testid="register-razao-social" {...field} />
+                        <Input placeholder="Empresa Exemplo Ltda" className="h-11" data-testid="register-razao-social" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

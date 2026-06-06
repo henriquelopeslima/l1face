@@ -54,7 +54,11 @@ export function InstrumentosGestaoPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const raw = searchParams.get('tipo');
-  const segmento: FiltroSegmento = raw === 'CONTRATO' || raw === 'EMPENHO' ? (raw as FiltroSegmento) : 'todos';
+  const rawNormalized = raw?.toUpperCase();
+  const segmento: FiltroSegmento =
+    rawNormalized === 'CONTRATO' || rawNormalized === 'EMPENHO'
+      ? (rawNormalized as FiltroSegmento)
+      : 'todos';
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
 

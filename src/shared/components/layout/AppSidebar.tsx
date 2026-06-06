@@ -43,8 +43,8 @@ const MENU_ITEMS: MenuItem[] = [
     groupPathPrefix: '/instrumentos',
     submenu: [
       { title: 'Cadastrar', icon: PlusCircle, path: '/instrumentos/cadastrar' },
-      { title: 'Contratos', icon: Page, path: '/instrumentos/gestao?tipo=contrato' },
-      { title: 'Notas de Empenho', icon: Wallet, path: '/instrumentos/gestao?tipo=empenho' },
+      { title: 'Contratos', icon: Page, path: '/instrumentos/gestao?tipo=CONTRATO' },
+      { title: 'Notas de Empenho', icon: Wallet, path: '/instrumentos/gestao?tipo=EMPENHO' },
     ],
   },
   {

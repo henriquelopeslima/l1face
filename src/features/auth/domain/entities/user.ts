@@ -4,5 +4,6 @@ export interface User {
   id: string;
   email: string;
   nomeCompleto: string;
+  fotoPerfil?: string | null;
   licitantes: Licitante[];
 }

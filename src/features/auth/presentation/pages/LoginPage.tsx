@@ -102,7 +102,7 @@ export function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="h-11 bg-[#f9fafb]"
+                  className="h-11"
                   data-testid="login-email"
                 />
               </div>
@@ -126,7 +126,7 @@ export function LoginPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    className="h-11 pr-10 bg-[#f9fafb]"
+                    className="h-11 pr-10"
                     data-testid="login-password"
                   />
                   <button
