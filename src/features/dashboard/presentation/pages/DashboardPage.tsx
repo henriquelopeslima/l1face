@@ -11,6 +11,7 @@ import {
 } from 'iconoir-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { Button } from '@/shared/components/ui/button';
+import { useAuth } from '@/features/auth/presentation/context/AuthContext';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -46,12 +47,13 @@ const alertas = [
 ];
 
 export function DashboardPage() {
+  const { session } = useAuth();
   const currencyValueClass = 'font-bold whitespace-nowrap leading-tight text-[clamp(0.875rem,1.6vw,1.875rem)]';
 
   return (
     <div className="space-y-4 lg:space-y-6">
       <div>
-        <h1 className="text-xl lg:text-3xl">Bem-vindo ao LicitaOne, Lisvalder Paz!</h1>
+        <h1 className="text-xl lg:text-3xl">Bem-vindo ao LicitaOne, {session?.user.nomeCompleto}!</h1>
         <p className="text-muted-foreground mt-1 text-sm lg:text-base">
           Aqui está um resumo das suas licitações e instrumentos contratuais
         </p>
