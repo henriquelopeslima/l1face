@@ -106,6 +106,7 @@ export function CadastrarArp() {
       ...prev,
       nomeOrgaoGerenciador: dadosPncp.orgaoNome,
       cnpjOrgaoGerenciador: dadosPncp.orgaoCnpj,
+      numero: dadosPncp.titulo,
       descricao: dadosPncp.descricao,
       dataInicioVigencia: dadosPncp.dataInicioVigencia,
       dataFimVigencia: dadosPncp.dataFimVigencia,
