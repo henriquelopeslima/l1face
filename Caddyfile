@@ -12,6 +12,8 @@
 
 	encode gzip
 
+	reverse_proxy /api/* {$API_UPSTREAM}
+
 	file_server
 
 	try_files {path} /index.html
