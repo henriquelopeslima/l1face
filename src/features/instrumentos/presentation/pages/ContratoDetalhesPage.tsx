@@ -425,30 +425,50 @@ export function ContratoDetalhesPage() {
                     <Page className="h-4 w-4" />
                     Documentos
                   </h3>
-                  {contrato.anexoUrl ? (
-                    <a
-                      href={contrato.anexoUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-between p-2.5 border rounded-lg hover:bg-accent/50 transition-colors"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <div className="h-8 w-8 rounded-lg bg-[#DD4B39]/10 flex items-center justify-center flex-shrink-0">
-                          <Page className="h-4 w-4 text-[#DD4B39]" />
+                  <div className="space-y-2">
+                    {contrato.anexoUrl ? (
+                      <a
+                        href={contrato.anexoUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-between p-2.5 border rounded-lg hover:bg-accent/50 transition-colors"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className="h-8 w-8 rounded-lg bg-[#DD4B39]/10 flex items-center justify-center flex-shrink-0">
+                            <Page className="h-4 w-4 text-[#DD4B39]" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium">Contrato Assinado</p>
+                            <p className="text-xs text-muted-foreground">{contrato.numero}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-sm font-medium">Contrato Assinado</p>
-                          <p className="text-xs text-muted-foreground">{contrato.numero}</p>
+                        <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs" tabIndex={-1}>
+                          <Download className="h-3.5 w-3.5" />
+                          PDF
+                        </Button>
+                      </a>
+                    ) : null}
+
+                    {ataId !== null && (
+                      <button
+                        onClick={() => navigate(`/atas/detalhes/${ataId}`)}
+                        className="w-full flex items-center justify-between py-2 px-0 hover:opacity-80 transition-opacity text-left"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Package className="h-4 w-4 text-[#06D6A0] flex-shrink-0" />
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium">Ata de Registro de Preços</p>
+                            <p className="text-xs text-muted-foreground font-mono truncate">{ataId}</p>
+                          </div>
                         </div>
-                      </div>
-                      <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs" tabIndex={-1}>
-                        <Download className="h-3.5 w-3.5" />
-                        PDF
-                      </Button>
-                    </a>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">Nenhum anexo disponível</p>
-                  )}
+                        <LinkIcon className="h-4 w-4 text-muted-foreground flex-shrink-0 ml-2" />
+                      </button>
+                    )}
+
+                    {!contrato.anexoUrl && ataId === null && (
+                      <p className="text-sm text-muted-foreground">Nenhum anexo disponível</p>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -494,43 +514,6 @@ export function ContratoDetalhesPage() {
           </CardContent>
         )}
       </Card>
-
-      {/* ARP de Origem */}
-      {ataId !== null && (
-        <Card className="border-[#06D6A0]/20 bg-[#06D6A0]/5">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-base lg:text-lg">
-              <LinkIcon className="h-5 w-5 text-[#06D6A0]" />
-              ARP de Origem
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between p-3 border border-[#06D6A0]/20 rounded-lg bg-white dark:bg-card">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-lg bg-[#06D6A0]/10 flex items-center justify-center">
-                  <Package className="h-5 w-5 text-[#06D6A0]" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium">Ata de Registro de Preços</p>
-                  <p className="text-xs text-muted-foreground font-mono">{ataId}</p>
-                </div>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2"
-                onClick={() => navigate(`/atas/detalhes/${ataId}`)}
-              >
-                Ver ARP
-                <NavArrowLeft className="h-4 w-4 rotate-180" />
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground mt-3">
-              Este contrato foi originado a partir desta Ata de Registro de Preços
-            </p>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Resumo Financeiro */}
       {itens.length > 0 && (
