@@ -289,7 +289,8 @@ export function ArpGestaoPage() {
                                 >
                                   Abrir Detalhes Completos
                                 </Button>
-                                <Button
+                                {/* TODO: Esse botão é resposável por criar um contrato apartir da ata */}
+                                {/* <Button
                                   variant="outline"
                                   size="sm"
                                   onClick={(e) => {
@@ -299,8 +300,9 @@ export function ArpGestaoPage() {
                                   disabled={ata.saldo === 0}
                                 >
                                   Gerar Contrato
-                                </Button>
-                                {ata.aceitaAdesao && (
+                                </Button> */}
+                                {/* TODO: Esse botão é responsável por registrar adesão em uma ata que permite essa modalidade */}
+                                {/* {ata.aceitaAdesao && (
                                   <Button
                                     variant="outline"
                                     size="sm"
@@ -311,7 +313,7 @@ export function ArpGestaoPage() {
                                   >
                                     Registrar Adesão
                                   </Button>
-                                )}
+                                )} */}
                               </div>
 
                               {ata.saldo === 0 && (
