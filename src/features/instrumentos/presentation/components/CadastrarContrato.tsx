@@ -616,7 +616,7 @@ export function CadastrarContrato() {
                 <div className="flex items-center justify-between rounded-lg border border-border bg-muted/30 p-4">
                   <div className="space-y-0.5">
                     <Label htmlFor="renovavel" className="cursor-pointer">Contrato Renovável?</Label>
-                    <p className="text-muted-foreground text-xs lg:text-sm">Indica se o contrato pode ser renovado após o vencimento</p>
+                    <p className="text-muted-foreground text-xs lg:text-sm">Indica se o contrato pode ser renovado até o vencimento</p>
                   </div>
                   <Switch id="renovavel" checked={dadosContrato.renovavel}
                     onCheckedChange={(checked) => setDadosContrato({ ...dadosContrato, renovavel: checked })} />
