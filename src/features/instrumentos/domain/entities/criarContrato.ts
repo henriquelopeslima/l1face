@@ -18,6 +18,7 @@ export interface ItemInstrumentoInput {
 
 export interface CriarContratoInput {
   ataId?: string | null;
+  isAdesao?: boolean | null;
   numeroPncp?: string | null;
   numero: string;
   orgaoContratante: string;
@@ -38,6 +39,7 @@ export interface CriarContratoInput {
 
 export interface CriarEmpenhoInput {
   ataId?: string | null;
+  isAdesao?: boolean | null;
   numeroPncp?: string | null;
   orgaoContratante: string;
   unidade: string;

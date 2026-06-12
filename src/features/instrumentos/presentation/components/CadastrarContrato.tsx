@@ -95,6 +95,7 @@ export function CadastrarContrato() {
   const [erroNumeroInstrumento] = useState('');
   const [buscandoCNPJContratante, setBuscandoCNPJContratante] = useState(false);
   const [cabecalhoPncpCarregado, setCabecalhoPncpCarregado] = useState(false);
+  const [isAdesao, setIsAdesao] = useState<boolean | undefined>();
 
   const [modoItens, setModoItens] = useState<'manual' | 'planilha'>('manual');
   const [itensContrato, setItensContrato] = useState<ItemContrato[]>([]);
@@ -181,6 +182,7 @@ export function CadastrarContrato() {
   useEffect(() => {
     if (!dadosContrato.arpOrigem) {
       setErroItensArp(null);
+      setIsAdesao(undefined);
       return;
     }
     void carregarItensDaArp(dadosContrato.arpOrigem);
@@ -276,6 +278,7 @@ export function CadastrarContrato() {
       renovavel: dadosContrato.renovavel,
       ...(dadosContrato.numeroPNCP ? { numeroPncp: dadosContrato.numeroPNCP } : {}),
       ...(dadosContrato.arpOrigem ? { ataId: dadosContrato.arpOrigem } : {}),
+      ...(isAdesao !== undefined && dadosContrato.arpOrigem ? { isAdesao } : {}),
       ...(dadosContrato.enderecoEntrega ? { enderecoEntrega: dadosContrato.enderecoEntrega } : {}),
       ...(dadosContrato.prazoEntrega > 0 ? { prazoEntrega: dadosContrato.prazoEntrega } : {}),
       ...(dadosContrato.prazoEntrega > 0 ? { tipoPrazoEntrega: dadosContrato.tipoPrazoEntrega === 'util' ? 'UTEIS' : 'CORRIDOS' } : {}),
@@ -635,13 +638,44 @@ export function CadastrarContrato() {
                     </SelectContent>
                   </Select>
                   {arpSelecionada && (
-                    <Alert>
-                      <InfoCircle className="h-4 w-4" />
-                      <AlertDescription>
-                        <strong>{arpSelecionada.numero}</strong> — {arpSelecionada.orgaoGerenciador.nome} — Saldo:{' '}
-                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(arpSelecionada.saldo)}
-                      </AlertDescription>
-                    </Alert>
+                    <div className="flex gap-4 border rounded-lg p-4">
+                      {/* Coluna esquerda - Informações da ARP */}
+                      <div className="flex-1 space-y-2">
+                        <p className="text-sm font-medium text-muted-foreground">Informações da ARP</p>
+                        <div className="space-y-1">
+                          <p className="text-sm">
+                            <strong>{arpSelecionada.numero}</strong>
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {arpSelecionada.orgaoGerenciador.nome}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            Saldo: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(arpSelecionada.saldo)}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {/* Separador vertical */}
+                      <div className="border-l border-border"></div>
+                      
+                      {/* Coluna direita - Pergunta de adesão */}
+                      <div className="flex-1 space-y-3">
+                        <div className="flex items-center gap-2">
+                          <InfoCircle className="h-4 w-4 text-blue-600" />
+                          <p className="text-sm font-medium text-muted-foreground">É uma adesão?</p>
+                        </div>
+                        <RadioGroup value={isAdesao === undefined ? '' : isAdesao ? 'sim' : 'nao'} onValueChange={(v) => setIsAdesao(v === 'sim')}>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="sim" id="adesao-sim" />
+                            <Label htmlFor="adesao-sim" className="cursor-pointer font-normal text-sm">Sim</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="nao" id="adesao-nao" />
+                            <Label htmlFor="adesao-nao" className="cursor-pointer font-normal text-sm">Não</Label>
+                          </div>
+                        </RadioGroup>
+                      </div>
+                    </div>
                   )}
                 </div>
 

@@ -6,6 +6,7 @@ import { Label } from '@/shared/components/ui/label';
 import { Textarea } from '@/shared/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
+import { RadioGroup, RadioGroupItem } from '@/shared/components/ui/radio-group';
 import { Separator } from '@/shared/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from '@/shared/components/ui/alert';
 import {
@@ -47,7 +48,9 @@ export function CadastrarNotaEmpenho() {
   const { atas } = useListarAtas();
 
   const [numeroPncp, setNumeroPncp] = useState('');
+  const [codigoEmpenho, setCodigoEmpenho] = useState('');
   const [ataId, setAtaId] = useState('');
+  const [isAdesao, setIsAdesao] = useState<boolean | undefined>();
   const [orgao, setOrgao] = useState('');
   const [secretaria, setSecretaria] = useState('');
   const [objeto, setObjeto] = useState('');
@@ -97,6 +100,7 @@ export function CadastrarNotaEmpenho() {
       objeto: objeto.trim(),
       ...(numeroPncp.trim() ? { numeroPncp: numeroPncp.trim() } : {}),
       ...(ataId ? { ataId } : {}),
+      ...(isAdesao !== undefined && ataId ? { isAdesao } : {}),
       ...(itensInput.length > 0 ? { itens: itensInput } : {}),
     };
 
@@ -145,25 +149,12 @@ export function CadastrarNotaEmpenho() {
             />
           </div>
           <div className="space-y-2 sm:col-span-1">
-            <Label htmlFor="ne-ata">ARP de Origem (opcional)</Label>
-            <Select value={ataId || 'none'} onValueChange={(v) => setAtaId(v === 'none' ? '' : v)}>
-              <SelectTrigger id="ne-ata"><SelectValue placeholder="Selecione uma ARP (opcional)" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Nenhuma ARP</SelectItem>
-                {atas.map((a) => (
-                  <SelectItem key={a.id} value={a.id}>{a.numero} — {a.orgaoGerenciador.nome}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2 sm:col-span-1">
-            <Label htmlFor="ne-orgao">Órgão / entidade <span className="text-destructive">*</span></Label>
+            <Label htmlFor="ne-codigo-empenho">Código do Empenho (opcional)</Label>
             <Input
-              id="ne-orgao"
-              placeholder="Órgão contratante"
-              value={orgao}
-              onChange={(e) => setOrgao(e.target.value)}
-              required
+              id="ne-codigo-empenho"
+              placeholder="Ex.: 2024.000001"
+              value={codigoEmpenho}
+              onChange={(e) => setCodigoEmpenho(e.target.value)}
             />
           </div>
           <div className="space-y-2 sm:col-span-1">
@@ -176,6 +167,16 @@ export function CadastrarNotaEmpenho() {
               required
             />
           </div>
+          <div className="space-y-2 sm:col-span-1">
+            <Label htmlFor="ne-orgao">Órgão / entidade <span className="text-destructive">*</span></Label>
+            <Input
+              id="ne-orgao"
+              placeholder="Órgão contratante"
+              value={orgao}
+              onChange={(e) => setOrgao(e.target.value)}
+              required
+            />
+          </div> 
           <div className="space-y-2 sm:col-span-2">
             <Label htmlFor="ne-objeto">Objeto do empenho <span className="text-destructive">*</span></Label>
             <Textarea
@@ -186,6 +187,64 @@ export function CadastrarNotaEmpenho() {
               onChange={(e) => setObjeto(e.target.value)}
               required
             />
+          </div>
+          <div className="space-y-2 sm:col-span-2">
+            <Label htmlFor="ne-ata">ARP de Origem (opcional)</Label>
+            <Select value={ataId || 'none'} onValueChange={(v) => {
+              const newAtaId = v === 'none' ? '' : v;
+              setAtaId(newAtaId);
+              if (!newAtaId) {
+                setIsAdesao(undefined);
+              }
+            }}>
+              <SelectTrigger id="ne-ata"><SelectValue placeholder="Selecione uma ARP (opcional)" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Nenhuma ARP</SelectItem>
+                {atas.map((a) => (
+                  <SelectItem key={a.id} value={a.id}>{a.numero} — {a.orgaoGerenciador.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {ataId && atas.find(a => a.id === ataId) && (
+              <div className="flex gap-4 border rounded-lg p-4">
+                {/* Coluna esquerda - Informações da ARP */}
+                <div className="flex-1 space-y-2">
+                  <p className="text-sm font-medium text-muted-foreground">Informações da ARP</p>
+                  <div className="space-y-1">
+                    <p className="text-sm">
+                      <strong>{atas.find(a => a.id === ataId)?.numero}</strong>
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {atas.find(a => a.id === ataId)?.orgaoGerenciador.nome}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      Saldo: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(atas.find(a => a.id === ataId)?.saldo ?? 0)}
+                    </p>
+                  </div>
+                </div>
+                
+                {/* Separador vertical */}
+                <div className="border-l border-border"></div>
+                
+                {/* Coluna direita - Pergunta de adesão */}
+                <div className="flex-1 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <InfoCircle className="h-4 w-4 text-blue-600" />
+                    <p className="text-sm font-medium text-muted-foreground">É uma adesão?</p>
+                  </div>
+                  <RadioGroup value={isAdesao === undefined ? '' : isAdesao ? 'sim' : 'nao'} onValueChange={(v) => setIsAdesao(v === 'sim')}>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="sim" id="adesao-ne-sim" />
+                      <Label htmlFor="adesao-ne-sim" className="cursor-pointer font-normal text-sm">Sim</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="nao" id="adesao-ne-nao" />
+                      <Label htmlFor="adesao-ne-nao" className="cursor-pointer font-normal text-sm">Não</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>

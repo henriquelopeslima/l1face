@@ -8,6 +8,7 @@ export function mapCriarEmpenhoInputToApiRequest(input: CriarEmpenhoInput): Reco
   };
 
   if (input.ataId != null) body.ata_id = input.ataId;
+  if (input.isAdesao != null) body.adesao = input.isAdesao;
   if (input.numeroPncp != null) body.numero_pncp = input.numeroPncp;
   if (input.anexoUrl != null) body.anexo_url = input.anexoUrl;
 

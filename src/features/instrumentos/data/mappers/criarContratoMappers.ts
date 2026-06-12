@@ -12,6 +12,7 @@ export function mapCriarContratoInputToApiRequest(input: CriarContratoInput): Re
   };
 
   if (input.ataId != null) body.ata_id = input.ataId;
+  if (input.isAdesao != null) body.adesao = input.isAdesao;
   if (input.numeroPncp != null) body.numero_pncp = input.numeroPncp;
   if (input.endereco != null) body.endereco = input.endereco;
   if (input.prazoEntrega != null) body.prazo_entrega = input.prazoEntrega;
