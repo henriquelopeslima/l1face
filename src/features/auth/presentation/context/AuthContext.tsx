@@ -20,7 +20,7 @@ interface AuthContextValue {
   logout: () => Promise<void>;
   selectLicitante: (licitante: Licitante) => void;
   clearLicitanteSelection: () => void;
-  register: (credentials: RegisterCredentials) => Promise<Licitante | null>;
+  register: (credentials: RegisterCredentials) => Promise<void>;
 }
 
 interface AuthState {
@@ -118,17 +118,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'LOGOUT' });
   };
 
-  const register = async (credentials: RegisterCredentials): Promise<Licitante | null> => {
+  const register = async (credentials: RegisterCredentials): Promise<void> => {
     dispatch({ type: 'LOADING' });
     try {
       await registerUseCase.execute(credentials);
-      const user = await getMeUseCase.execute();
-      const licitante = resolveAutoLicitante(user);
-      setActiveLicitanteId(licitante?.id ?? null);
-      dispatch({ type: 'SET_USER', user, licitante });
-      return licitante;
+      dispatch({ type: 'LOGOUT' });
     } catch (err: unknown) {
-      setActiveLicitanteId(null);
       const message = err instanceof Error ? err.message : 'Erro ao realizar cadastro.';
       dispatch({ type: 'SET_ERROR', error: message });
       throw err;

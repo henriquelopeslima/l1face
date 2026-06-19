@@ -13,8 +13,8 @@ export function useRegister(): UseRegisterReturn {
   const navigate = useNavigate();
 
   const handleRegister = async (credentials: RegisterCredentials) => {
-    const licitante = await register(credentials);
-    navigate(licitante ? '/' : '/selecionar-vinculo');
+    await register(credentials);
+    navigate('/login');
   };
 
   return { register: handleRegister, isLoading, error };
