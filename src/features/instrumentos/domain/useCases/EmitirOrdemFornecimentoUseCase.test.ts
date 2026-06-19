@@ -11,7 +11,9 @@ const makeRepository = (overrides?: Partial<IInstrumentosRepository>): IInstrume
   buscarInstrumento: vi.fn(),
   listarOrdensFornecimento: vi.fn(),
   emitirOrdemFornecimento: vi.fn(),
-  avancarStatusOrdemFornecimento: vi.fn(),
+  iniciarSeparacaoOrdemFornecimento: vi.fn(),
+  registrarDespachoOrdemFornecimento: vi.fn(),
+  confirmarEntregaOrdemFornecimento: vi.fn(),
   registrarLiquidacaoOrdemFornecimento: vi.fn(),
   registrarPagamentoOrdemFornecimento: vi.fn(),
   ...overrides,
@@ -23,9 +25,14 @@ const ordemFornecimentoMock: OrdemFornecimento = {
   instrumentoId: 'instrumento-uuid-001',
   status: 'pedido_recebido',
   dataRecebimento: '2026-06-04',
+  prazoEntrega: '2026-07-04',
+  dataSeparacao: null,
+  dataDespacho: null,
+  codigoRastreio: null,
+  numeroNfDespacho: null,
   dataEntrega: null,
-  dataLiquidacao: null,
   prazoPagamento: null,
+  dataLiquidacao: null,
   dataPagamentoEfetivo: null,
   statusPagamento: null,
   numeroNfe: null,
@@ -46,11 +53,12 @@ const ordemFornecimentoMock: OrdemFornecimento = {
 
 const inputEmitir: EmitirOrdemFornecimentoInput = {
   instrumentoId: 'instrumento-uuid-001',
+  dataRecebimento: '2026-06-04',
+  prazoEntrega: '2026-07-04',
   itens: [
     {
       itemInstrumentoId: 'item-instrumento-uuid-001',
       quantidadeFornecida: 100,
-      valorUnitario: 50.0,
     },
   ],
 };

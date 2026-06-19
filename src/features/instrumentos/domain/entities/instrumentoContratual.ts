@@ -95,9 +95,14 @@ export interface OrdemFornecimento {
   instrumentoId: string;
   status: StatusOrdemFornecimento;
   dataRecebimento: string;
+  prazoEntrega: string;
+  dataSeparacao: string | null;
+  dataDespacho: string | null;
+  codigoRastreio: string | null;
+  numeroNfDespacho: string | null;
   dataEntrega: string | null;
-  dataLiquidacao: string | null;
   prazoPagamento: string | null;
+  dataLiquidacao: string | null;
   dataPagamentoEfetivo: string | null;
   statusPagamento: StatusPagamento;
   numeroNfe: string | null;
@@ -115,17 +120,31 @@ export interface ListagemOrdensFornecimento {
 export interface ItemEmitirOFInput {
   itemInstrumentoId: string;
   quantidadeFornecida: number;
-  valorUnitario: number;
 }
 
 export interface EmitirOrdemFornecimentoInput {
   instrumentoId: string;
+  dataRecebimento: string;
+  prazoEntrega: string;
   itens: ItemEmitirOFInput[];
 }
 
-export interface AvancarStatusOrdemFornecimentoInput {
+export interface IniciarSeparacaoInput {
   id: string;
-  status: 'em_separacao' | 'despachado' | 'entregue';
+  dataSeparacao: string;
+}
+
+export interface RegistrarDespachoInput {
+  id: string;
+  dataDespacho: string;
+  codigoRastreio?: string | null;
+  numeroNf?: string | null;
+}
+
+export interface ConfirmarEntregaInput {
+  id: string;
+  dataEntrega: string;
+  prazoPagamento: string;
 }
 
 export interface RegistrarLiquidacaoInput {

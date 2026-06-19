@@ -4,7 +4,9 @@ import type {
   InstrumentoListagem,
   ListagemOrdensFornecimento,
   EmitirOrdemFornecimentoInput,
-  AvancarStatusOrdemFornecimentoInput,
+  IniciarSeparacaoInput,
+  RegistrarDespachoInput,
+  ConfirmarEntregaInput,
   OrdemFornecimento,
   RegistrarLiquidacaoInput,
   RegistrarPagamentoInput,
@@ -18,7 +20,9 @@ export interface IInstrumentosRepository {
   buscarInstrumento(id: string): Promise<InstrumentoDetalhe>;
   listarOrdensFornecimento(instrumentoId: string): Promise<ListagemOrdensFornecimento>;
   emitirOrdemFornecimento(input: EmitirOrdemFornecimentoInput): Promise<OrdemFornecimento>;
-  avancarStatusOrdemFornecimento(input: AvancarStatusOrdemFornecimentoInput): Promise<OrdemFornecimento>;
+  iniciarSeparacaoOrdemFornecimento(input: IniciarSeparacaoInput): Promise<OrdemFornecimento>;
+  registrarDespachoOrdemFornecimento(input: RegistrarDespachoInput): Promise<OrdemFornecimento>;
+  confirmarEntregaOrdemFornecimento(input: ConfirmarEntregaInput): Promise<OrdemFornecimento>;
   registrarLiquidacaoOrdemFornecimento(input: RegistrarLiquidacaoInput): Promise<OrdemFornecimento>;
   registrarPagamentoOrdemFornecimento(input: RegistrarPagamentoInput): Promise<OrdemFornecimento>;
 }

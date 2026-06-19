@@ -11,15 +11,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/shared/components/ui/table';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
-import { Trash, InfoCircle, Plus } from 'iconoir-react';
+import { Trash, Plus } from 'iconoir-react';
 import type { ItemInstrumentoDetalhe } from '../../domain/entities/instrumentoContratual';
 import { useEmitirOrdemFornecimento } from '../hooks/useEmitirOrdemFornecimento';
 
 interface ItemOFFormulario {
   itemId: string;
   qtdSolicitada: number;
-  valorUnitario: number;
 }
 
 interface CriarOrdemFornecimentoProps {
@@ -29,15 +27,6 @@ interface CriarOrdemFornecimentoProps {
   itensContrato: ItemInstrumentoDetalhe[];
   onSuccess?: () => void;
 }
-
-const formatCurrency = (value: number) =>
-  new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-
-const gerarNumeroEmpenho = () => {
-  const d = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-  const seq = String(Math.floor(Math.random() * 900) + 100);
-  return `EMP-ORD-${d}--${seq}`;
-};
 
 export function CriarOrdemFornecimento({
   open,
@@ -54,18 +43,20 @@ export function CriarOrdemFornecimento({
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [showSelecionados, setShowSelecionados] = useState(false);
   const [dataRecebimento, setDataRecebimento] = useState('');
-  const [numeroEmpenho, setNumeroEmpenho] = useState('');
+  const [prazoEntrega, setPrazoEntrega] = useState('');
+  const [dateError, setDateError] = useState<string | null>(null);
 
   useEffect(() => {
     if (open) {
       setDataRecebimento(new Date().toISOString().split('T')[0] ?? '');
-      setNumeroEmpenho(gerarNumeroEmpenho());
+      setPrazoEntrega('');
     } else {
       setItensSelecionados([]);
       setSelectStep(1);
       setSearchTerm('');
       setSelectedIds([]);
       setShowSelecionados(false);
+      setDateError(null);
     }
   }, [open]);
 
@@ -89,11 +80,13 @@ export function CriarOrdemFornecimento({
 
   const avancarParaQuantidades = () => {
     if (selectedIds.length === 0) return;
+    if (prazoEntrega && dataRecebimento && prazoEntrega < dataRecebimento) {
+      setDateError('O prazo de entrega deve ser igual ou posterior à data de recebimento.');
+      return;
+    }
+    setDateError(null);
     setItensSelecionados(
-      selectedIds.map((id) => {
-        const item = itensContrato.find((i) => i.id === id);
-        return { itemId: id, qtdSolicitada: 1, valorUnitario: item?.valorUnitario ?? 0 };
-      })
+      selectedIds.map((id) => ({ itemId: id, qtdSolicitada: 1 }))
     );
     setSelectStep(2);
   };
@@ -104,19 +97,24 @@ export function CriarOrdemFornecimento({
     );
   };
 
-  const totalOF = itensSelecionados.reduce(
-    (sum, sel) => sum + sel.qtdSolicitada * sel.valorUnitario,
-    0
-  );
-
   const handleCriarOF = async () => {
+    if (!dataRecebimento || !prazoEntrega) {
+      setDateError('Preencha a data de recebimento e o prazo de entrega.');
+      return;
+    }
+    if (prazoEntrega < dataRecebimento) {
+      setDateError('O prazo de entrega deve ser igual ou posterior à data de recebimento.');
+      return;
+    }
+    setDateError(null);
     try {
       await emitir({
         instrumentoId,
+        dataRecebimento,
+        prazoEntrega,
         itens: itensSelecionados.map((i) => ({
           itemInstrumentoId: i.itemId,
           quantidadeFornecida: i.qtdSolicitada,
-          valorUnitario: i.valorUnitario,
         })),
       });
       onOpenChange(false);
@@ -172,20 +170,23 @@ export function CriarOrdemFornecimento({
                       id="of-data"
                       type="date"
                       value={dataRecebimento}
-                      onChange={(e) => setDataRecebimento(e.target.value)}
+                      onChange={(e) => { setDataRecebimento(e.target.value); setDateError(null); }}
                     />
                   </div>
                   <div className="space-y-1.5">
-                    <Label htmlFor="of-empenho">
-                      Número do Empenho <span className="text-destructive">*</span>
+                    <Label htmlFor="of-prazo">
+                      Prazo de Entrega <span className="text-destructive">*</span>
                     </Label>
                     <Input
-                      id="of-empenho"
-                      value={numeroEmpenho}
-                      onChange={(e) => setNumeroEmpenho(e.target.value)}
+                      id="of-prazo"
+                      type="date"
+                      value={prazoEntrega}
+                      min={dataRecebimento}
+                      onChange={(e) => { setPrazoEntrega(e.target.value); setDateError(null); }}
                     />
                   </div>
                 </div>
+                {dateError && <p className="text-sm text-destructive">{dateError}</p>}
               </div>
 
               {/* Lista de itens */}
@@ -247,12 +248,9 @@ export function CriarOrdemFornecimento({
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium truncate">{item.descricao}</p>
                               <p className="text-xs text-muted-foreground">
-                                Saldo disponível: {item.quantidadeTotal} • {item.unidadeMedida}
+                                Qtd. disponível: {item.quantidadeTotal} {item.unidadeMedida}
                               </p>
                             </div>
-                            <span className="text-sm font-mono text-muted-foreground shrink-0">
-                              {formatCurrency(item.valorUnitario)}
-                            </span>
                           </button>
                         );
                       })
@@ -279,23 +277,11 @@ export function CriarOrdemFornecimento({
                   <TableHeader>
                     <TableRow>
                       <TableHead>Item</TableHead>
-                      <TableHead className="w-[120px]">
-                        <div className="flex items-center gap-1">
-                          Qtd. Disponível
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <InfoCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                            </TooltipTrigger>
-                            <TooltipContent>Quantidade total registrada no instrumento</TooltipContent>
-                          </Tooltip>
-                        </div>
-                      </TableHead>
-                      <TableHead className="w-[120px]">
+                      <TableHead className="w-[120px]">Qtd. Disponível</TableHead>
+                      <TableHead className="w-[140px]">
                         Qtd. Solicitada <span className="text-destructive">*</span>
                       </TableHead>
                       <TableHead className="w-[80px]">Unidade</TableHead>
-                      <TableHead className="w-[110px] text-right">Valor Unit.</TableHead>
-                      <TableHead className="w-[110px] text-right">Valor Total</TableHead>
                       <TableHead className="w-[48px]" />
                     </TableRow>
                   </TableHeader>
@@ -303,7 +289,6 @@ export function CriarOrdemFornecimento({
                     {itensSelecionados.map((sel) => {
                       const item = itensContrato.find((i) => i.id === sel.itemId);
                       if (!item) return null;
-                      const valorTotal = sel.qtdSolicitada * sel.valorUnitario;
                       return (
                         <TableRow key={sel.itemId}>
                           <TableCell className="font-medium">{item.descricao}</TableCell>
@@ -316,17 +301,11 @@ export function CriarOrdemFornecimento({
                               min="1"
                               value={sel.qtdSolicitada}
                               onChange={(e) => atualizarQtd(sel.itemId, Number(e.target.value))}
-                              className="h-8 text-right w-20"
+                              className="h-8 text-right w-24"
                             />
                           </TableCell>
                           <TableCell className="text-muted-foreground font-mono text-sm">
                             {item.unidadeMedida}
-                          </TableCell>
-                          <TableCell className="text-right font-mono text-sm">
-                            {formatCurrency(sel.valorUnitario)}
-                          </TableCell>
-                          <TableCell className="text-right font-mono font-semibold text-sm">
-                            {formatCurrency(valorTotal)}
                           </TableCell>
                           <TableCell>
                             <button
@@ -342,14 +321,6 @@ export function CriarOrdemFornecimento({
                     })}
                   </TableBody>
                 </Table>
-
-                {/* Linha de total */}
-                <div className="flex items-center justify-between px-4 py-3 border-t bg-muted/20">
-                  <span className="text-sm font-semibold">Total da OF:</span>
-                  <span className="text-base font-bold font-mono text-[#0050FF]">
-                    {formatCurrency(totalOF)}
-                  </span>
-                </div>
               </div>
 
               {itensSelecionados.length === 0 && (
@@ -384,7 +355,7 @@ export function CriarOrdemFornecimento({
                 <Button
                   type="button"
                   onClick={avancarParaQuantidades}
-                  disabled={selectedIds.length === 0}
+                  disabled={selectedIds.length === 0 || !dataRecebimento || !prazoEntrega}
                 >
                   <Plus className="h-4 w-4 mr-1" />
                   Avançar para quantidades

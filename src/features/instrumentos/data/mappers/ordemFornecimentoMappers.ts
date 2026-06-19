@@ -22,9 +22,14 @@ interface ApiOrdemFornecimento {
   instrumento_id: string;
   status: StatusOrdemFornecimento;
   data_recebimento: string;
+  prazo_entrega: string;
+  data_separacao: string | null;
+  data_despacho: string | null;
+  codigo_rastreio: string | null;
+  numero_nf_despacho: string | null;
   data_entrega: string | null;
-  data_liquidacao: string | null;
   prazo_pagamento: string | null;
+  data_liquidacao: string | null;
   data_pagamento_efetivo: string | null;
   status_pagamento: StatusPagamento;
   numero_nfe: string | null;
@@ -62,9 +67,14 @@ export function mapApiOrdemFornecimentoToOrdemFornecimento(
     instrumentoId: api.instrumento_id,
     status: api.status,
     dataRecebimento: api.data_recebimento,
+    prazoEntrega: api.prazo_entrega,
+    dataSeparacao: api.data_separacao,
+    dataDespacho: api.data_despacho,
+    codigoRastreio: api.codigo_rastreio,
+    numeroNfDespacho: api.numero_nf_despacho,
     dataEntrega: api.data_entrega,
-    dataLiquidacao: api.data_liquidacao,
     prazoPagamento: api.prazo_pagamento,
+    dataLiquidacao: api.data_liquidacao,
     dataPagamentoEfetivo: api.data_pagamento_efetivo,
     statusPagamento: api.status_pagamento,
     numeroNfe: api.numero_nfe,

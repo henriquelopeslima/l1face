@@ -17,7 +17,9 @@ import type {
   ListagemOrdensFornecimento,
   OrdemFornecimento,
   EmitirOrdemFornecimentoInput,
-  AvancarStatusOrdemFornecimentoInput,
+  IniciarSeparacaoInput,
+  RegistrarDespachoInput,
+  ConfirmarEntregaInput,
   RegistrarLiquidacaoInput,
   RegistrarPagamentoInput,
 } from '../../domain/entities/instrumentoContratual';
@@ -206,10 +208,11 @@ export class InstrumentosRepository implements IInstrumentosRepository {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          data_recebimento: input.dataRecebimento,
+          prazo_entrega: input.prazoEntrega,
           itens: input.itens.map((item) => ({
             item_instrumento_id: item.itemInstrumentoId,
             quantidade_fornecida: item.quantidadeFornecida,
-            valor_unitario: item.valorUnitario,
           })),
         }),
       });
@@ -235,6 +238,9 @@ export class InstrumentosRepository implements IInstrumentosRepository {
       if (data.error === 'ITEM_NAO_PERTENCE_AO_CONTRATO') {
         throw new InstrumentosError(data.message ?? 'Dados inválidos. Verifique as informações e tente novamente.');
       }
+      if (data.error === 'QUANTIDADE_INSUFICIENTE') {
+        throw new InstrumentosError(data.message ?? 'Quantidade solicitada excede o saldo disponível do item.');
+      }
       throw new InstrumentosError('Dados inválidos. Verifique as informações e tente novamente.');
     }
     if (!response.ok) {
@@ -247,13 +253,13 @@ export class InstrumentosRepository implements IInstrumentosRepository {
     );
   }
 
-  async avancarStatusOrdemFornecimento(input: AvancarStatusOrdemFornecimentoInput): Promise<OrdemFornecimento> {
+  async iniciarSeparacaoOrdemFornecimento(input: IniciarSeparacaoInput): Promise<OrdemFornecimento> {
     let response: Response;
     try {
-      response = await apiFetch(`/api/ordens-fornecimento/${input.id}/status`, {
+      response = await apiFetch(`/api/ordens-fornecimento/${input.id}/separacao`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: input.status }),
+        body: JSON.stringify({ data_separacao: input.dataSeparacao }),
       });
     } catch {
       throw new InstrumentosError('Serviço indisponível. Verifique sua conexão e tente novamente.');
@@ -268,12 +274,89 @@ export class InstrumentosRepository implements IInstrumentosRepository {
     if (response.status === 422) {
       const data = (await response.json()) as { error?: string; message?: string };
       if (data.error === 'TRANSICAO_STATUS_INVALIDA') {
-        throw new InstrumentosError(data.message ?? 'Erro ao avançar status. Tente novamente.');
+        throw new InstrumentosError(data.message ?? 'Operação não permitida para o status atual desta ordem.');
       }
-      throw new InstrumentosError('Erro ao avançar status. Tente novamente.');
+      throw new InstrumentosError('Erro ao iniciar separação. Tente novamente.');
     }
     if (!response.ok) {
-      throw new InstrumentosError('Erro ao avançar status. Tente novamente.');
+      throw new InstrumentosError('Erro ao iniciar separação. Tente novamente.');
+    }
+
+    const data: unknown = await response.json();
+    return mapApiOrdemFornecimentoToOrdemFornecimento(
+      data as Parameters<typeof mapApiOrdemFornecimentoToOrdemFornecimento>[0],
+    );
+  }
+
+  async registrarDespachoOrdemFornecimento(input: RegistrarDespachoInput): Promise<OrdemFornecimento> {
+    let response: Response;
+    try {
+      response = await apiFetch(`/api/ordens-fornecimento/${input.id}/despacho`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          data_despacho: input.dataDespacho,
+          ...(input.codigoRastreio !== undefined && { codigo_rastreio: input.codigoRastreio }),
+          ...(input.numeroNf !== undefined && { numero_nf: input.numeroNf }),
+        }),
+      });
+    } catch {
+      throw new InstrumentosError('Serviço indisponível. Verifique sua conexão e tente novamente.');
+    }
+
+    if (response.status === 401) {
+      throw new InstrumentosError('Sessão expirada. Faça login novamente.');
+    }
+    if (response.status === 404) {
+      throw new InstrumentosError('Ordem de fornecimento não encontrada.');
+    }
+    if (response.status === 422) {
+      const data = (await response.json()) as { error?: string; message?: string };
+      if (data.error === 'TRANSICAO_STATUS_INVALIDA') {
+        throw new InstrumentosError(data.message ?? 'Operação não permitida para o status atual desta ordem.');
+      }
+      throw new InstrumentosError('Erro ao registrar despacho. Tente novamente.');
+    }
+    if (!response.ok) {
+      throw new InstrumentosError('Erro ao registrar despacho. Tente novamente.');
+    }
+
+    const data: unknown = await response.json();
+    return mapApiOrdemFornecimentoToOrdemFornecimento(
+      data as Parameters<typeof mapApiOrdemFornecimentoToOrdemFornecimento>[0],
+    );
+  }
+
+  async confirmarEntregaOrdemFornecimento(input: ConfirmarEntregaInput): Promise<OrdemFornecimento> {
+    let response: Response;
+    try {
+      response = await apiFetch(`/api/ordens-fornecimento/${input.id}/entrega`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          data_entrega: input.dataEntrega,
+          prazo_pagamento: input.prazoPagamento,
+        }),
+      });
+    } catch {
+      throw new InstrumentosError('Serviço indisponível. Verifique sua conexão e tente novamente.');
+    }
+
+    if (response.status === 401) {
+      throw new InstrumentosError('Sessão expirada. Faça login novamente.');
+    }
+    if (response.status === 404) {
+      throw new InstrumentosError('Ordem de fornecimento não encontrada.');
+    }
+    if (response.status === 422) {
+      const data = (await response.json()) as { error?: string; message?: string };
+      if (data.error === 'TRANSICAO_STATUS_INVALIDA') {
+        throw new InstrumentosError(data.message ?? 'Operação não permitida para o status atual desta ordem.');
+      }
+      throw new InstrumentosError('Erro ao confirmar entrega. Tente novamente.');
+    }
+    if (!response.ok) {
+      throw new InstrumentosError('Erro ao confirmar entrega. Tente novamente.');
     }
 
     const data: unknown = await response.json();
@@ -341,8 +424,8 @@ export class InstrumentosRepository implements IInstrumentosRepository {
     }
     if (response.status === 422) {
       const data = (await response.json()) as { error?: string; message?: string };
-      if (data.error === 'PAGAMENTO_REQUER_LIQUIDACAO') {
-        throw new InstrumentosError('É necessário registrar a liquidação antes do pagamento.');
+      if (data.error === 'TRANSICAO_STATUS_INVALIDA') {
+        throw new InstrumentosError(data.message ?? 'Operação não permitida para o status atual desta ordem.');
       }
       throw new InstrumentosError('Erro ao registrar pagamento. Tente novamente.');
     }

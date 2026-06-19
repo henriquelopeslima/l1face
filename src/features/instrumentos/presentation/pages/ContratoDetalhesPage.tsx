@@ -12,14 +12,6 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/shared/components/ui/accordion';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/shared/components/ui/dialog';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { CriarOrdemFornecimento } from '../components/CriarOrdemFornecimento';
 import {
@@ -54,8 +46,9 @@ import {
 } from 'iconoir-react';
 import { useBuscarInstrumento } from '../hooks/useBuscarInstrumento';
 import { useListarOrdensFornecimento } from '../hooks/useListarOrdensFornecimento';
-import { useAvancarStatusOrdemFornecimento } from '../hooks/useAvancarStatusOrdemFornecimento';
-import { useRegistrarLiquidacaoOrdemFornecimento } from '../hooks/useRegistrarLiquidacaoOrdemFornecimento';
+import { useIniciarSeparacaoOrdemFornecimento } from '../hooks/useIniciarSeparacaoOrdemFornecimento';
+import { useRegistrarDespachoOrdemFornecimento } from '../hooks/useRegistrarDespachoOrdemFornecimento';
+import { useConfirmarEntregaOrdemFornecimento } from '../hooks/useConfirmarEntregaOrdemFornecimento';
 import { useRegistrarPagamentoOrdemFornecimento } from '../hooks/useRegistrarPagamentoOrdemFornecimento';
 import type { StatusInstrumento, StatusOrdemFornecimento, StatusPagamento, TipoPrazo } from '../../domain/entities/instrumentoContratual';
 
@@ -75,11 +68,14 @@ const CICLO_LABELS: Record<StatusOrdemFornecimento, string> = {
   pago: 'Pago',
 };
 
-const ACAO_LABELS: Partial<Record<StatusOrdemFornecimento, string>> = {
-  em_separacao: 'Iniciar Separação',
-  despachado: 'Registrar Despacho',
-  entregue: 'Confirmar Entrega',
-};
+function getAcaoTransicaoLabel(status: StatusOrdemFornecimento): string | null {
+  const labels: Partial<Record<StatusOrdemFornecimento, string>> = {
+    pedido_recebido: 'Iniciar Separação',
+    em_separacao: 'Registrar Despacho',
+    despachado: 'Confirmar Entrega',
+  };
+  return labels[status] ?? null;
+}
 
 function calcularPrazoFinalEntrega(
   dataRecebimento: string,
@@ -147,15 +143,6 @@ function getStatusBadge(status: StatusInstrumento) {
   }
 }
 
-function getProximoStatus(status: StatusOrdemFornecimento): 'em_separacao' | 'despachado' | 'entregue' | null {
-  const transitions: Partial<Record<StatusOrdemFornecimento, 'em_separacao' | 'despachado' | 'entregue'>> = {
-    pedido_recebido: 'em_separacao',
-    em_separacao: 'despachado',
-    despachado: 'entregue',
-  };
-  return transitions[status] ?? null;
-}
-
 function getStatusPagamentoBadge(status: NonNullable<StatusPagamento>) {
   const config: Record<NonNullable<StatusPagamento>, { label: string; className: string }> = {
     pendente: { label: 'Pag. Pendente', className: 'text-yellow-700 bg-yellow-50 border-yellow-200' },
@@ -176,23 +163,39 @@ export function ContratoDetalhesPage() {
   const navigate = useNavigate();
   const { instrumento, isLoading, error, refetch } = useBuscarInstrumento(id ?? '');
   const { dados: ordensData, isLoading: isLoadingOrdens, refetch: refetchOrdens } = useListarOrdensFornecimento(id ?? '');
-  const { avancar, isLoading: isAvancarLoading, error: avancarError } = useAvancarStatusOrdemFornecimento();
-  const { registrar: registrarLiquidacao, isLoading: isRegistrarLiquidacaoLoading, error: registrarLiquidacaoError } = useRegistrarLiquidacaoOrdemFornecimento();
+  const { iniciar, isLoading: isSeparacaoLoading, error: separacaoError } = useIniciarSeparacaoOrdemFornecimento();
+  const { registrar: registrarDespacho, isLoading: isDespachoLoading, error: despachoError } = useRegistrarDespachoOrdemFornecimento();
+  const { confirmar, isLoading: isEntregaLoading, error: entregaError } = useConfirmarEntregaOrdemFornecimento();
   const { registrar: registrarPagamento, isLoading: isRegistrarPagamentoLoading, error: registrarPagamentoError } = useRegistrarPagamentoOrdemFornecimento();
+
   const [detalhesExpandidos, setDetalhesExpandidos] = useState(true);
   const [paginaItens, setPaginaItens] = useState(1);
   const [emitirOFOpen, setEmitirOFOpen] = useState(false);
-  const [confirmacaoAberta, setConfirmacaoAberta] = useState(false);
-  const [ofConfirmacao, setOfConfirmacao] = useState<{
-    id: string;
-    proximoStatus: 'em_separacao' | 'despachado' | 'entregue';
-    label: string;
-    statusAtualLabel: string;
-  } | null>(null);
-  const [liquidacaoOpenId, setLiquidacaoOpenId] = useState<string | null>(null);
-  const [liquidacaoForm, setLiquidacaoForm] = useState({ dataLiquidacao: '', prazoPagamento: '', numeroNfe: '' });
+  const [openOfs, setOpenOfs] = useState<string[]>([]);
+
+  const [separacaoOpenId, setSeparacaoOpenId] = useState<string | null>(null);
+  const [separacaoForm, setSeparacaoForm] = useState({ dataSeparacao: '' });
+
+  const [despachoOpenId, setDespachoOpenId] = useState<string | null>(null);
+  const [despachoForm, setDespachoForm] = useState({ dataDespacho: '', codigoRastreio: '', numeroNf: '' });
+
+  const [entregaOpenId, setEntregaOpenId] = useState<string | null>(null);
+  const [entregaForm, setEntregaForm] = useState({ dataEntrega: '', prazoPagamento: '' });
+
   const [pagamentoOpenId, setPagamentoOpenId] = useState<string | null>(null);
   const [pagamentoForm, setPagamentoForm] = useState({ dataPagamentoEfetivo: '' });
+
+  function expandirEAbrirFormulario(ofId: string, abrirFormulario: () => void) {
+    setOpenOfs((prev) => (prev.includes(ofId) ? prev : [...prev, ofId]));
+    abrirFormulario();
+  }
+
+  function fecharTodosFormularios() {
+    setSeparacaoOpenId(null);
+    setDespachoOpenId(null);
+    setEntregaOpenId(null);
+    setPagamentoOpenId(null);
+  }
 
   if (isLoading) {
     return (
@@ -657,475 +660,540 @@ export function ContratoDetalhesPage() {
           )}
 
           {!isLoadingOrdens && ordensData && ordensData.ordensFornecimento.length > 0 && (
-            <>
-              <Accordion type="multiple" className="space-y-2">
-                {ordensData.ordensFornecimento.map((of) => {
-                  const proximoStatus = getProximoStatus(of.status);
-                  const showLiquidacao = of.status === 'entregue' && !of.dataLiquidacao;
-                  const showPagamento =
-                    of.status === 'entregue' && !!of.dataLiquidacao && !of.dataPagamentoEfetivo;
-                  const indicadorPrazo =
-                    of.status !== 'entregue' &&
-                    of.status !== 'pago' &&
-                    contrato.prazoEntrega !== null
-                      ? calcularIndicadorPrazo(
-                          of.dataRecebimento,
-                          contrato.prazoEntrega,
-                          contrato.tipoPrazoEntrega,
-                        )
-                      : null;
-                  const prazoFinalEntrega =
-                    indicadorPrazo !== null && contrato.prazoEntrega !== null
-                      ? calcularPrazoFinalEntrega(
-                          of.dataRecebimento,
-                          contrato.prazoEntrega,
-                          contrato.tipoPrazoEntrega,
-                        )
-                      : null;
+            <Accordion type="multiple" value={openOfs} onValueChange={setOpenOfs} className="space-y-2">
+              {ordensData.ordensFornecimento.map((of) => {
+                const acaoLabel = getAcaoTransicaoLabel(of.status);
+                const showPagamento = of.status === 'entregue' && !of.dataPagamentoEfetivo;
+                const indicadorPrazo =
+                  of.status !== 'entregue' &&
+                  of.status !== 'pago' &&
+                  contrato.prazoEntrega !== null
+                    ? calcularIndicadorPrazo(
+                        of.dataRecebimento,
+                        contrato.prazoEntrega,
+                        contrato.tipoPrazoEntrega,
+                      )
+                    : null;
+                const prazoFinalEntrega =
+                  indicadorPrazo !== null && contrato.prazoEntrega !== null
+                    ? calcularPrazoFinalEntrega(
+                        of.dataRecebimento,
+                        contrato.prazoEntrega,
+                        contrato.tipoPrazoEntrega,
+                      )
+                    : null;
 
-                  return (
-                    <AccordionItem
-                      key={of.id}
-                      value={of.id}
-                      className="border rounded-lg overflow-hidden"
-                    >
-                      <AccordionTrigger className="hover:no-underline px-4 py-4 hover:bg-accent/30 transition-colors">
-                        <div className="flex items-center justify-between w-full gap-3 pr-2">
-                          <div className="flex items-center gap-2.5 flex-wrap">
-                            <span className="text-sm font-bold">OF #{of.codigo}</span>
-                            <Badge className="border text-xs border-[#0050FF] text-[#0050FF] bg-transparent">
-                              {CICLO_LABELS[of.status]}
+                return (
+                  <AccordionItem
+                    key={of.id}
+                    value={of.id}
+                    className="border rounded-lg overflow-hidden"
+                  >
+                    <AccordionTrigger className="hover:no-underline px-4 py-4 hover:bg-accent/30 transition-colors">
+                      <div className="flex items-center justify-between w-full gap-3 pr-2">
+                        <div className="flex items-center gap-2.5 flex-wrap">
+                          <span className="text-sm font-bold">OF #{of.codigo}</span>
+                          <Badge className="border text-xs border-[#0050FF] text-[#0050FF] bg-transparent">
+                            {CICLO_LABELS[of.status]}
+                          </Badge>
+                          {of.statusPagamento === 'em_atraso' && (
+                            <Badge className="bg-[#DD4B39] text-white border-[#DD4B39] text-xs">
+                              Pagamento Atrasado
                             </Badge>
-                            {of.statusPagamento === 'em_atraso' && (
-                              <Badge className="bg-[#DD4B39] text-white border-[#DD4B39] text-xs">
-                                Pagamento Atrasado
-                              </Badge>
-                            )}
-                            {indicadorPrazo && (
-                              <Badge
-                                className="text-white border-none text-xs"
-                                style={{ backgroundColor: indicadorPrazo.cor }}
-                              >
-                                {indicadorPrazo.texto}
-                              </Badge>
-                            )}
-                            <span className="text-xs text-muted-foreground font-normal">
-                              {formatDate(of.dataRecebimento)}
-                            </span>
-                          </div>
-                          {proximoStatus && (
-                            <Button
-                              variant="default"
-                              size="sm"
-                              className="flex-shrink-0 text-xs h-8"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setOfConfirmacao({
-                                  id: of.id,
-                                  proximoStatus,
-                                  label: ACAO_LABELS[proximoStatus] ?? 'Avançar',
-                                  statusAtualLabel: CICLO_LABELS[of.status],
+                          )}
+                          {indicadorPrazo && (
+                            <Badge
+                              className="text-white border-none text-xs"
+                              style={{ backgroundColor: indicadorPrazo.cor }}
+                            >
+                              {indicadorPrazo.texto}
+                            </Badge>
+                          )}
+                          <span className="text-xs text-muted-foreground font-normal">
+                            {formatDate(of.dataRecebimento)}
+                          </span>
+                        </div>
+                        {acaoLabel && (
+                          <Button
+                            variant="default"
+                            size="sm"
+                            className="flex-shrink-0 text-xs h-8"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              fecharTodosFormularios();
+                              if (of.status === 'pedido_recebido') {
+                                expandirEAbrirFormulario(of.id, () => {
+                                  setSeparacaoForm({ dataSeparacao: '' });
+                                  setSeparacaoOpenId(of.id);
                                 });
-                                setConfirmacaoAberta(true);
+                              } else if (of.status === 'em_separacao') {
+                                expandirEAbrirFormulario(of.id, () => {
+                                  setDespachoForm({ dataDespacho: '', codigoRastreio: '', numeroNf: '' });
+                                  setDespachoOpenId(of.id);
+                                });
+                              } else if (of.status === 'despachado') {
+                                expandirEAbrirFormulario(of.id, () => {
+                                  setEntregaForm({ dataEntrega: '', prazoPagamento: '' });
+                                  setEntregaOpenId(of.id);
+                                });
+                              }
+                            }}
+                          >
+                            {acaoLabel}
+                          </Button>
+                        )}
+                      </div>
+                    </AccordionTrigger>
+
+                    <AccordionContent className="border-t px-4 pb-4 pt-3 space-y-4">
+                      {/* 1. Informações básicas */}
+                      <div className="grid grid-cols-3 gap-4">
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1">Data de Recebimento</p>
+                          <p className="text-sm font-mono">{formatDate(of.dataRecebimento)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1">Prazo de Entrega</p>
+                          <p className="text-sm font-mono">{formatDate(of.prazoEntrega)}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1">Valor Total</p>
+                          <p className="text-sm font-semibold font-mono">
+                            {formatCurrency(of.valorTotal)}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* 2. Itens Solicitados */}
+                      {of.itens.length > 0 && (
+                        <div className="bg-accent/30 rounded-lg p-3">
+                          <p className="text-xs font-medium text-muted-foreground mb-2">
+                            Itens Solicitados
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {of.itens.map((item) => (
+                              <Badge key={item.id} variant="outline" className="text-xs">
+                                {item.descricao} × {item.quantidadeFornecida} {item.unidadeMedida}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 3. Ciclo de Vida */}
+                      <div>
+                        <div className="flex items-center justify-between mb-3">
+                          <p className="text-sm font-semibold">Ciclo de Vida</p>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <InfoCircle className="h-4 w-4 text-muted-foreground cursor-help" />
+                            </TooltipTrigger>
+                            <TooltipContent className="max-w-xs">
+                              O saldo dos itens só é debitado definitivamente quando o status
+                              atinge "Entregue". Antes disso, as quantidades ficam como
+                              "Reservadas".
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
+                        <div className="flex items-center">
+                          {cicloEstagios.map((estagio, idx) => {
+                            const concluido =
+                              CICLO_ORDER.indexOf(of.status) >=
+                              CICLO_ORDER.indexOf(estagio.key);
+                            return (
+                              <div key={estagio.key} className="flex items-center flex-1">
+                                <div className="flex flex-col items-center flex-1">
+                                  <div
+                                    className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                                      concluido
+                                        ? 'bg-[#0050FF] text-white'
+                                        : 'bg-accent text-muted-foreground'
+                                    }`}
+                                  >
+                                    {estagio.icon}
+                                  </div>
+                                  <p
+                                    className={`text-[10px] mt-1.5 text-center ${
+                                      concluido ? 'font-semibold' : 'text-muted-foreground'
+                                    }`}
+                                  >
+                                    {estagio.label}
+                                  </p>
+                                </div>
+                                {idx < cicloEstagios.length - 1 && (
+                                  <div
+                                    className={`h-0.5 flex-1 -mx-2 ${
+                                      concluido ? 'bg-[#0050FF]' : 'bg-accent'
+                                    }`}
+                                  />
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Prazo final de entrega */}
+                      {prazoFinalEntrega && indicadorPrazo && (
+                        <div
+                          className="rounded-lg p-3 border-2"
+                          style={{
+                            borderColor: indicadorPrazo.cor,
+                            backgroundColor: `${indicadorPrazo.cor}26`,
+                          }}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-xs font-medium text-muted-foreground mb-1">
+                                Prazo Final de Entrega
+                              </p>
+                              <p className="text-sm font-mono font-semibold">
+                                {formatDateObj(prazoFinalEntrega)}
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Data de Recebimento + {contrato.prazoEntrega}{' '}
+                                {formatTipoPrazo(contrato.tipoPrazoEntrega)}
+                              </p>
+                            </div>
+                            <Badge
+                              className="text-white border-none"
+                              style={{ backgroundColor: indicadorPrazo.cor }}
+                            >
+                              {indicadorPrazo.texto}
+                              {indicadorPrazo.diasRestantes >= 0
+                                ? ` (${indicadorPrazo.diasRestantes}d)`
+                                : ''}
+                            </Badge>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 4. Dados Financeiros */}
+                      {(of.status === 'entregue' || of.status === 'pago') && (
+                        <div className="border-t pt-4 space-y-3">
+                          <h4 className="text-sm font-semibold flex items-center gap-2">
+                            <DollarCircle className="h-4 w-4" />
+                            Dados Financeiros
+                          </h4>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1">
+                                Data de Entrega Efetiva
+                              </p>
+                              <p className="text-sm font-mono">
+                                {of.dataEntrega ? formatDate(of.dataEntrega) : '—'}
+                              </p>
+                            </div>
+                            {of.prazoPagamento && (
+                              <div>
+                                <p className="text-xs text-muted-foreground mb-1">
+                                  Prazo Final de Pagamento
+                                </p>
+                                <p
+                                  className={`text-sm font-mono font-semibold ${
+                                    of.statusPagamento === 'em_atraso' ? 'text-[#DD4B39]' : ''
+                                  }`}
+                                >
+                                  {formatDate(of.prazoPagamento)}
+                                </p>
+                              </div>
+                            )}
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1">
+                                Status de Pagamento
+                              </p>
+                              {of.statusPagamento ? (
+                                getStatusPagamentoBadge(of.statusPagamento)
+                              ) : (
+                                <span className="text-sm text-muted-foreground">—</span>
+                              )}
+                            </div>
+                            {of.dataPagamentoEfetivo && (
+                              <div>
+                                <p className="text-xs text-muted-foreground mb-1">
+                                  Data de Pagamento Efetivo
+                                </p>
+                                <p className="text-sm font-mono font-semibold text-[#06D6A0]">
+                                  {formatDate(of.dataPagamentoEfetivo)}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 5. Botões de ação */}
+                      {(acaoLabel || showPagamento) && (
+                        <div className="flex items-center gap-2 flex-wrap pt-3 border-t">
+                          {acaoLabel && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-xs h-8"
+                              onClick={() => {
+                                fecharTodosFormularios();
+                                if (of.status === 'pedido_recebido') {
+                                  setSeparacaoForm({ dataSeparacao: '' });
+                                  setSeparacaoOpenId(of.id);
+                                } else if (of.status === 'em_separacao') {
+                                  setDespachoForm({ dataDespacho: '', codigoRastreio: '', numeroNf: '' });
+                                  setDespachoOpenId(of.id);
+                                } else if (of.status === 'despachado') {
+                                  setEntregaForm({ dataEntrega: '', prazoPagamento: '' });
+                                  setEntregaOpenId(of.id);
+                                }
                               }}
                             >
-                              {ACAO_LABELS[proximoStatus] ?? 'Avançar'}
+                              {acaoLabel}
+                            </Button>
+                          )}
+                          {showPagamento && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-xs h-8"
+                              onClick={() => {
+                                fecharTodosFormularios();
+                                setPagamentoForm({ dataPagamentoEfetivo: '' });
+                                setPagamentoOpenId(of.id);
+                              }}
+                            >
+                              Registrar Pagamento
                             </Button>
                           )}
                         </div>
-                      </AccordionTrigger>
+                      )}
 
-                      <AccordionContent className="border-t px-4 pb-4 pt-3 space-y-4">
-                        {/* 1. Informações básicas */}
-                        <div className="grid grid-cols-3 gap-4">
-                          <div>
-                            <p className="text-xs text-muted-foreground mb-1">Data de Recebimento</p>
-                            <p className="text-sm font-mono">{formatDate(of.dataRecebimento)}</p>
+                      {/* 6. Formulário inline de separação */}
+                      {separacaoOpenId === of.id && (
+                        <div className="p-3 border rounded-lg bg-accent/20 space-y-3">
+                          <p className="text-xs font-semibold text-muted-foreground">Iniciar Separação</p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                              <Label className="text-xs">Data de Separação</Label>
+                              <Input
+                                type="date"
+                                value={separacaoForm.dataSeparacao}
+                                onChange={(e) =>
+                                  setSeparacaoForm({ dataSeparacao: e.target.value })
+                                }
+                              />
+                            </div>
                           </div>
-                          <div>
-                            <p className="text-xs text-muted-foreground mb-1">Valor Total</p>
-                            <p className="text-sm font-semibold font-mono">
-                              {formatCurrency(of.valorTotal)}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-muted-foreground mb-1">Status</p>
-                            <Badge className="border text-xs border-[#0050FF] text-[#0050FF] bg-transparent">
-                              {CICLO_LABELS[of.status]}
-                            </Badge>
+                          {separacaoError && (
+                            <p className="text-xs text-destructive">{separacaoError}</p>
+                          )}
+                          <div className="flex gap-2 justify-end">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setSeparacaoOpenId(null)}
+                            >
+                              Cancelar
+                            </Button>
+                            <Button
+                              size="sm"
+                              disabled={!separacaoForm.dataSeparacao || isSeparacaoLoading}
+                              onClick={async () => {
+                                try {
+                                  await iniciar({ id: of.id, dataSeparacao: separacaoForm.dataSeparacao });
+                                  refetchOrdens();
+                                  setSeparacaoOpenId(null);
+                                } catch {
+                                  // error displayed via separacaoError
+                                }
+                              }}
+                            >
+                              {isSeparacaoLoading ? 'Salvando...' : 'Confirmar'}
+                            </Button>
                           </div>
                         </div>
+                      )}
 
-                        {/* 2. Itens Solicitados */}
-                        {of.itens.length > 0 && (
-                          <div className="bg-accent/30 rounded-lg p-3">
-                            <p className="text-xs font-medium text-muted-foreground mb-2">
-                              Itens Solicitados
-                            </p>
-                            <div className="flex flex-wrap gap-2">
-                              {of.itens.map((item) => (
-                                <Badge key={item.id} variant="outline" className="text-xs">
-                                  {item.descricao} × {item.quantidadeFornecida} {item.unidadeMedida}
-                                </Badge>
-                              ))}
+                      {/* 7. Formulário inline de despacho */}
+                      {despachoOpenId === of.id && (
+                        <div className="p-3 border rounded-lg bg-accent/20 space-y-3">
+                          <p className="text-xs font-semibold text-muted-foreground">Registrar Despacho</p>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div className="space-y-1">
+                              <Label className="text-xs">Data de Despacho</Label>
+                              <Input
+                                type="date"
+                                value={despachoForm.dataDespacho}
+                                onChange={(e) =>
+                                  setDespachoForm((f) => ({ ...f, dataDespacho: e.target.value }))
+                                }
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Código de Rastreio (opcional)</Label>
+                              <Input
+                                value={despachoForm.codigoRastreio}
+                                onChange={(e) =>
+                                  setDespachoForm((f) => ({ ...f, codigoRastreio: e.target.value }))
+                                }
+                                placeholder="BR123456789BR"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Nº NF (opcional)</Label>
+                              <Input
+                                value={despachoForm.numeroNf}
+                                onChange={(e) =>
+                                  setDespachoForm((f) => ({ ...f, numeroNf: e.target.value }))
+                                }
+                                placeholder="000000"
+                              />
                             </div>
                           </div>
-                        )}
-
-                        {/* 3. Ciclo de Vida */}
-                        <div>
-                          <div className="flex items-center justify-between mb-3">
-                            <p className="text-sm font-semibold">Ciclo de Vida</p>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <InfoCircle className="h-4 w-4 text-muted-foreground cursor-help" />
-                              </TooltipTrigger>
-                              <TooltipContent className="max-w-xs">
-                                O saldo dos itens só é debitado definitivamente quando o status
-                                atinge "Entregue". Antes disso, as quantidades ficam como
-                                "Reservadas".
-                              </TooltipContent>
-                            </Tooltip>
-                          </div>
-                          <div className="flex items-center">
-                            {cicloEstagios.map((estagio, idx) => {
-                              const concluido =
-                                CICLO_ORDER.indexOf(of.status) >=
-                                CICLO_ORDER.indexOf(estagio.key);
-                              return (
-                                <div key={estagio.key} className="flex items-center flex-1">
-                                  <div className="flex flex-col items-center flex-1">
-                                    <div
-                                      className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                                        concluido
-                                          ? 'bg-[#0050FF] text-white'
-                                          : 'bg-accent text-muted-foreground'
-                                      }`}
-                                    >
-                                      {estagio.icon}
-                                    </div>
-                                    <p
-                                      className={`text-[10px] mt-1.5 text-center ${
-                                        concluido ? 'font-semibold' : 'text-muted-foreground'
-                                      }`}
-                                    >
-                                      {estagio.label}
-                                    </p>
-                                  </div>
-                                  {idx < cicloEstagios.length - 1 && (
-                                    <div
-                                      className={`h-0.5 flex-1 -mx-2 ${
-                                        concluido ? 'bg-[#0050FF]' : 'bg-accent'
-                                      }`}
-                                    />
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-
-                        {/* Prazo final de entrega */}
-                        {prazoFinalEntrega && indicadorPrazo && (
-                          <div
-                            className="rounded-lg p-3 border-2"
-                            style={{
-                              borderColor: indicadorPrazo.cor,
-                              backgroundColor: `${indicadorPrazo.cor}26`,
-                            }}
-                          >
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="text-xs font-medium text-muted-foreground mb-1">
-                                  Prazo Final de Entrega
-                                </p>
-                                <p className="text-sm font-mono font-semibold">
-                                  {formatDateObj(prazoFinalEntrega)}
-                                </p>
-                                <p className="text-xs text-muted-foreground mt-1">
-                                  Data de Recebimento + {contrato.prazoEntrega}{' '}
-                                  {formatTipoPrazo(contrato.tipoPrazoEntrega)}
-                                </p>
-                              </div>
-                              <Badge
-                                className="text-white border-none"
-                                style={{ backgroundColor: indicadorPrazo.cor }}
-                              >
-                                {indicadorPrazo.texto}
-                                {indicadorPrazo.diasRestantes >= 0
-                                  ? ` (${indicadorPrazo.diasRestantes}d)`
-                                  : ''}
-                              </Badge>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* 4. Dados Financeiros */}
-                        {(of.status === 'entregue' || of.status === 'pago') && (
-                          <div className="border-t pt-4 space-y-3">
-                            <h4 className="text-sm font-semibold flex items-center gap-2">
-                              <DollarCircle className="h-4 w-4" />
-                              Dados Financeiros
-                            </h4>
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                              <div>
-                                <p className="text-xs text-muted-foreground mb-1">
-                                  Data de Entrega Efetiva
-                                </p>
-                                <p className="text-sm font-mono">
-                                  {of.dataEntrega ? formatDate(of.dataEntrega) : '—'}
-                                </p>
-                              </div>
-                              <div>
-                                <p className="text-xs text-muted-foreground mb-1">
-                                  Data de Liquidação
-                                </p>
-                                <p className="text-sm font-mono">
-                                  {of.dataLiquidacao ? formatDate(of.dataLiquidacao) : '—'}
-                                </p>
-                              </div>
-                              <div>
-                                <p className="text-xs text-muted-foreground mb-1">NF-e</p>
-                                <p className="text-sm font-mono font-semibold">
-                                  {of.numeroNfe || '—'}
-                                </p>
-                              </div>
-                              {of.prazoPagamento && (
-                                <div>
-                                  <p className="text-xs text-muted-foreground mb-1">
-                                    Prazo Final de Pagamento
-                                  </p>
-                                  <p
-                                    className={`text-sm font-mono font-semibold ${
-                                      of.statusPagamento === 'em_atraso' ? 'text-[#DD4B39]' : ''
-                                    }`}
-                                  >
-                                    {formatDate(of.prazoPagamento)}
-                                  </p>
-                                </div>
-                              )}
-                              <div>
-                                <p className="text-xs text-muted-foreground mb-1">
-                                  Status de Pagamento
-                                </p>
-                                {of.statusPagamento ? (
-                                  getStatusPagamentoBadge(of.statusPagamento)
-                                ) : (
-                                  <span className="text-sm text-muted-foreground">—</span>
-                                )}
-                              </div>
-                              {of.dataPagamentoEfetivo && (
-                                <div>
-                                  <p className="text-xs text-muted-foreground mb-1">
-                                    Data de Pagamento Efetivo
-                                  </p>
-                                  <p className="text-sm font-mono font-semibold text-[#06D6A0]">
-                                    {formatDate(of.dataPagamentoEfetivo)}
-                                  </p>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* 5. Botões de ação */}
-                        {(proximoStatus || showLiquidacao || showPagamento) && (
-                          <div className="flex items-center gap-2 flex-wrap pt-3 border-t">
-                            {proximoStatus && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="text-xs h-8"
-                                onClick={() => {
-                                  setOfConfirmacao({
+                          {despachoError && (
+                            <p className="text-xs text-destructive">{despachoError}</p>
+                          )}
+                          <div className="flex gap-2 justify-end">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setDespachoOpenId(null)}
+                            >
+                              Cancelar
+                            </Button>
+                            <Button
+                              size="sm"
+                              disabled={!despachoForm.dataDespacho || isDespachoLoading}
+                              onClick={async () => {
+                                try {
+                                  await registrarDespacho({
                                     id: of.id,
-                                    proximoStatus,
-                                    label: ACAO_LABELS[proximoStatus] ?? 'Avançar',
-                                    statusAtualLabel: CICLO_LABELS[of.status],
+                                    dataDespacho: despachoForm.dataDespacho,
+                                    ...(despachoForm.codigoRastreio && { codigoRastreio: despachoForm.codigoRastreio }),
+                                    ...(despachoForm.numeroNf && { numeroNf: despachoForm.numeroNf }),
                                   });
-                                  setConfirmacaoAberta(true);
-                                }}
-                              >
-                                {ACAO_LABELS[proximoStatus] ?? 'Avançar'}
-                              </Button>
-                            )}
-                            {showLiquidacao && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="text-xs h-8"
-                                onClick={() => {
-                                  setLiquidacaoOpenId(liquidacaoOpenId === of.id ? null : of.id);
+                                  refetchOrdens();
+                                  setDespachoOpenId(null);
+                                } catch {
+                                  // error displayed via despachoError
+                                }
+                              }}
+                            >
+                              {isDespachoLoading ? 'Salvando...' : 'Confirmar'}
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 8. Formulário inline de entrega */}
+                      {entregaOpenId === of.id && (
+                        <div className="p-3 border rounded-lg bg-accent/20 space-y-3">
+                          <p className="text-xs font-semibold text-muted-foreground">Confirmar Entrega</p>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                              <Label className="text-xs">Data de Entrega</Label>
+                              <Input
+                                type="date"
+                                value={entregaForm.dataEntrega}
+                                onChange={(e) =>
+                                  setEntregaForm((f) => ({ ...f, dataEntrega: e.target.value }))
+                                }
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Prazo de Pagamento</Label>
+                              <Input
+                                type="date"
+                                value={entregaForm.prazoPagamento}
+                                min={entregaForm.dataEntrega || undefined}
+                                onChange={(e) =>
+                                  setEntregaForm((f) => ({ ...f, prazoPagamento: e.target.value }))
+                                }
+                              />
+                            </div>
+                          </div>
+                          {entregaError && (
+                            <p className="text-xs text-destructive">{entregaError}</p>
+                          )}
+                          <div className="flex gap-2 justify-end">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setEntregaOpenId(null)}
+                            >
+                              Cancelar
+                            </Button>
+                            <Button
+                              size="sm"
+                              disabled={!entregaForm.dataEntrega || !entregaForm.prazoPagamento || isEntregaLoading}
+                              onClick={async () => {
+                                try {
+                                  await confirmar({
+                                    id: of.id,
+                                    dataEntrega: entregaForm.dataEntrega,
+                                    prazoPagamento: entregaForm.prazoPagamento,
+                                  });
+                                  refetchOrdens();
+                                  setEntregaOpenId(null);
+                                } catch {
+                                  // error displayed via entregaError
+                                }
+                              }}
+                            >
+                              {isEntregaLoading ? 'Salvando...' : 'Confirmar'}
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* 9. Formulário inline de pagamento */}
+                      {pagamentoOpenId === of.id && (
+                        <div className="p-3 border rounded-lg bg-accent/20 space-y-3">
+                          <p className="text-xs font-semibold text-muted-foreground">Registrar Pagamento</p>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div className="space-y-1">
+                              <Label className="text-xs">Data de Pagamento Efetivo</Label>
+                              <Input
+                                type="date"
+                                value={pagamentoForm.dataPagamentoEfetivo}
+                                onChange={(e) =>
+                                  setPagamentoForm({ dataPagamentoEfetivo: e.target.value })
+                                }
+                              />
+                            </div>
+                          </div>
+                          {registrarPagamentoError && (
+                            <p className="text-xs text-destructive">{registrarPagamentoError}</p>
+                          )}
+                          <div className="flex gap-2 justify-end">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setPagamentoOpenId(null)}
+                            >
+                              Cancelar
+                            </Button>
+                            <Button
+                              size="sm"
+                              disabled={
+                                !pagamentoForm.dataPagamentoEfetivo || isRegistrarPagamentoLoading
+                              }
+                              onClick={async () => {
+                                try {
+                                  await registrarPagamento({ id: of.id, ...pagamentoForm });
+                                  refetchOrdens();
                                   setPagamentoOpenId(null);
-                                  setLiquidacaoForm({
-                                    dataLiquidacao: '',
-                                    prazoPagamento: '',
-                                    numeroNfe: '',
-                                  });
-                                }}
-                              >
-                                Registrar Liquidação
-                              </Button>
-                            )}
-                            {showPagamento && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="text-xs h-8"
-                                onClick={() => {
-                                  setPagamentoOpenId(pagamentoOpenId === of.id ? null : of.id);
-                                  setLiquidacaoOpenId(null);
-                                  setPagamentoForm({ dataPagamentoEfetivo: '' });
-                                }}
-                              >
-                                Registrar Pagamento
-                              </Button>
-                            )}
-                          </div>
-                        )}
-
-                        {/* 6. Formulário inline de liquidação */}
-                        {liquidacaoOpenId === of.id && (
-                          <div className="p-3 border rounded-lg bg-accent/20 space-y-3">
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                              <div className="space-y-1">
-                                <Label className="text-xs">Data de Liquidação</Label>
-                                <Input
-                                  type="date"
-                                  value={liquidacaoForm.dataLiquidacao}
-                                  onChange={(e) =>
-                                    setLiquidacaoForm((f) => ({
-                                      ...f,
-                                      dataLiquidacao: e.target.value,
-                                    }))
-                                  }
-                                />
-                              </div>
-                              <div className="space-y-1">
-                                <Label className="text-xs">Prazo de Pagamento</Label>
-                                <Input
-                                  type="date"
-                                  value={liquidacaoForm.prazoPagamento}
-                                  onChange={(e) =>
-                                    setLiquidacaoForm((f) => ({
-                                      ...f,
-                                      prazoPagamento: e.target.value,
-                                    }))
-                                  }
-                                />
-                              </div>
-                              <div className="space-y-1">
-                                <Label className="text-xs">NF-e (44 dígitos)</Label>
-                                <Input
-                                  value={liquidacaoForm.numeroNfe}
-                                  onChange={(e) =>
-                                    setLiquidacaoForm((f) => ({
-                                      ...f,
-                                      numeroNfe: e.target.value,
-                                    }))
-                                  }
-                                  maxLength={44}
-                                  placeholder="35260612345678..."
-                                />
-                              </div>
-                            </div>
-                            {liquidacaoForm.numeroNfe.length > 0 &&
-                              liquidacaoForm.numeroNfe.length !== 44 && (
-                                <p className="text-xs text-destructive">
-                                  A NF-e deve ter exatamente 44 dígitos (
-                                  {liquidacaoForm.numeroNfe.length}/44).
-                                </p>
-                              )}
-                            {registrarLiquidacaoError && (
-                              <p className="text-xs text-destructive">{registrarLiquidacaoError}</p>
-                            )}
-                            <div className="flex gap-2 justify-end">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => setLiquidacaoOpenId(null)}
-                              >
-                                Cancelar
-                              </Button>
-                              <Button
-                                size="sm"
-                                disabled={
-                                  liquidacaoForm.numeroNfe.length !== 44 ||
-                                  !liquidacaoForm.dataLiquidacao ||
-                                  !liquidacaoForm.prazoPagamento ||
-                                  isRegistrarLiquidacaoLoading
+                                } catch {
+                                  // error displayed via registrarPagamentoError
                                 }
-                                onClick={async () => {
-                                  try {
-                                    await registrarLiquidacao({ id: of.id, ...liquidacaoForm });
-                                    refetchOrdens();
-                                    setLiquidacaoOpenId(null);
-                                  } catch {
-                                    // error displayed via registrarLiquidacaoError
-                                  }
-                                }}
-                              >
-                                {isRegistrarLiquidacaoLoading ? 'Salvando...' : 'Confirmar'}
-                              </Button>
-                            </div>
+                              }}
+                            >
+                              {isRegistrarPagamentoLoading ? 'Salvando...' : 'Confirmar'}
+                            </Button>
                           </div>
-                        )}
-
-                        {/* 7. Formulário inline de pagamento */}
-                        {pagamentoOpenId === of.id && (
-                          <div className="p-3 border rounded-lg bg-accent/20 space-y-3">
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                              <div className="space-y-1">
-                                <Label className="text-xs">Data de Pagamento Efetivo</Label>
-                                <Input
-                                  type="date"
-                                  value={pagamentoForm.dataPagamentoEfetivo}
-                                  onChange={(e) =>
-                                    setPagamentoForm({ dataPagamentoEfetivo: e.target.value })
-                                  }
-                                />
-                              </div>
-                            </div>
-                            {registrarPagamentoError && (
-                              <p className="text-xs text-destructive">{registrarPagamentoError}</p>
-                            )}
-                            <div className="flex gap-2 justify-end">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => setPagamentoOpenId(null)}
-                              >
-                                Cancelar
-                              </Button>
-                              <Button
-                                size="sm"
-                                disabled={
-                                  !pagamentoForm.dataPagamentoEfetivo || isRegistrarPagamentoLoading
-                                }
-                                onClick={async () => {
-                                  try {
-                                    await registrarPagamento({ id: of.id, ...pagamentoForm });
-                                    refetchOrdens();
-                                    setPagamentoOpenId(null);
-                                  } catch {
-                                    // error displayed via registrarPagamentoError
-                                  }
-                                }}
-                              >
-                                {isRegistrarPagamentoLoading ? 'Salvando...' : 'Confirmar'}
-                              </Button>
-                            </div>
-                          </div>
-                        )}
-                      </AccordionContent>
-                    </AccordionItem>
-                  );
-                })}
-              </Accordion>
-              {avancarError && (
-                <p className="text-xs text-destructive mt-2">{avancarError}</p>
-              )}
-            </>
+                        </div>
+                      )}
+                    </AccordionContent>
+                  </AccordionItem>
+                );
+              })}
+            </Accordion>
           )}
         </CardContent>
       </Card>
@@ -1138,69 +1206,6 @@ export function ContratoDetalhesPage() {
         itensContrato={itens}
         onSuccess={refetchOrdens}
       />
-
-      {/* Dialog de confirmação de transição de status */}
-      <Dialog
-        open={confirmacaoAberta}
-        onOpenChange={(open) => {
-          if (!open) {
-            setConfirmacaoAberta(false);
-            setOfConfirmacao(null);
-          }
-        }}
-      >
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Confirmar Ação</DialogTitle>
-            <DialogDescription>
-              Tem certeza que deseja: <strong>{ofConfirmacao?.label}</strong>?
-            </DialogDescription>
-            {ofConfirmacao && (
-              <div className="flex items-center gap-3 mt-4 pt-4 border-t">
-                <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 rounded-full bg-[#0050FF]" />
-                  <span className="text-sm">{ofConfirmacao.statusAtualLabel}</span>
-                </div>
-                <div className="flex-1 h-[2px] bg-[#0050FF]" />
-                <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 rounded-full bg-[#0050FF]" />
-                  <span className="text-sm font-medium">
-                    {CICLO_LABELS[ofConfirmacao.proximoStatus]}
-                  </span>
-                </div>
-              </div>
-            )}
-          </DialogHeader>
-          <DialogFooter className="mt-4">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setConfirmacaoAberta(false);
-                setOfConfirmacao(null);
-              }}
-            >
-              Cancelar
-            </Button>
-            <Button
-              disabled={isAvancarLoading}
-              onClick={async () => {
-                if (!ofConfirmacao) return;
-                try {
-                  await avancar({ id: ofConfirmacao.id, status: ofConfirmacao.proximoStatus });
-                  refetchOrdens();
-                } catch {
-                  // error displayed via avancarError
-                } finally {
-                  setConfirmacaoAberta(false);
-                  setOfConfirmacao(null);
-                }
-              }}
-            >
-              {isAvancarLoading ? 'Confirmando...' : 'Confirmar'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
