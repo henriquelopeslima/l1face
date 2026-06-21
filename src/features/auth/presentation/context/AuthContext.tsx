@@ -23,6 +23,7 @@ interface AuthContextValue {
   clearLicitanteSelection: () => void;
   register: (credentials: RegisterCredentials) => Promise<{ message: string }>;
   confirmarEmail: (token: string) => Promise<void>;
+  updateFotoPerfil: (url: string | null) => void;
 }
 
 interface AuthState {
@@ -38,7 +39,8 @@ type AuthAction =
   | { type: 'SELECT_LICITANTE'; licitante: Licitante }
   | { type: 'CLEAR_LICITANTE' }
   | { type: 'SET_ERROR'; error: string }
-  | { type: 'LOGOUT' };
+  | { type: 'LOGOUT' }
+  | { type: 'UPDATE_FOTO_PERFIL'; fotoUrl: string | null };
 
 function authReducer(state: AuthState, action: AuthAction): AuthState {
   switch (action.type) {
@@ -54,6 +56,9 @@ function authReducer(state: AuthState, action: AuthAction): AuthState {
       return { user: null, licitante: null, isLoading: false, error: action.error };
     case 'LOGOUT':
       return { user: null, licitante: null, isLoading: false, error: null };
+    case 'UPDATE_FOTO_PERFIL':
+      if (!state.user) return state;
+      return { ...state, user: { ...state.user, fotoPerfil: action.fotoUrl } };
   }
 }
 
@@ -162,6 +167,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'CLEAR_LICITANTE' });
   };
 
+  const updateFotoPerfil = (url: string | null) => {
+    dispatch({ type: 'UPDATE_FOTO_PERFIL', fotoUrl: url });
+  };
+
   const session: AuthSession | null =
     state.user && state.licitante ? { user: state.user, licitante: state.licitante } : null;
 
@@ -177,6 +186,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearLicitanteSelection,
     register,
     confirmarEmail,
+    updateFotoPerfil,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

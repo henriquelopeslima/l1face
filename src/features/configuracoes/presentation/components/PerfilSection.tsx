@@ -1,11 +1,39 @@
+import { useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { Button } from '@/shared/components/ui/button';
-import { User, Mail, Phone, Building, NavArrowRight } from 'iconoir-react';
+import { User, Mail, Phone, Building, NavArrowRight, Trash } from 'iconoir-react';
 import { useAuth } from '@/features/auth/presentation/context/AuthContext';
 import { getInitials } from '@/shared/utils/getInitials';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/shared/components/ui/alert-dialog';
+import { useUploadFotoPerfil } from '../hooks/useUploadFotoPerfil';
 
 export function PerfilSection() {
   const { user, session } = useAuth();
+  const { isUploading, isRemoving, error, clearError, handleUpload, handleRemover } = useUploadFotoPerfil();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const arquivo = e.target.files?.[0];
+    if (!arquivo) return;
+    clearError();
+    void handleUpload(arquivo);
+    e.target.value = '';
+  }
+
+  function handleAlterarFotoClick() {
+    clearError();
+    fileInputRef.current?.click();
+  }
 
   return (
     <Card id="meu-perfil" className="scroll-mt-4">
@@ -34,12 +62,66 @@ export function PerfilSection() {
               </span>
             </div>
           )}
+
           <div className="flex-1 min-w-0">
             <h3 className="text-lg lg:text-xl font-semibold">{user?.nomeCompleto ?? '—'}</h3>
             <p className="text-muted-foreground text-sm lg:text-base">{session?.licitante?.nomeEmpresa ?? '—'}</p>
-            <Button variant="outline" size="sm" className="mt-2 lg:mt-3 h-8 text-xs lg:h-9 lg:text-sm">
-              Alterar foto
-            </Button>
+
+            <div className="flex items-center gap-2 mt-2 lg:mt-3">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png"
+                className="hidden"
+                onChange={handleFileChange}
+                aria-label="Selecionar foto de perfil"
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs lg:h-9 lg:text-sm"
+                onClick={handleAlterarFotoClick}
+                disabled={isUploading || isRemoving}
+              >
+                {isUploading ? 'Enviando...' : 'Alterar foto'}
+              </Button>
+
+              {user?.fotoPerfil && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 text-xs lg:h-9 lg:text-sm text-destructive hover:text-destructive"
+                      disabled={isUploading || isRemoving}
+                    >
+                      <Trash className="h-3.5 w-3.5 mr-1" />
+                      {isRemoving ? 'Removendo...' : 'Remover foto'}
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Remover foto de perfil?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Sua foto de perfil será removida e o avatar com suas iniciais será exibido no lugar.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => void handleRemover()}>
+                        Remover
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+            </div>
+
+            {error && (
+              <p className="mt-1.5 text-xs text-destructive" role="alert">
+                {error}
+              </p>
+            )}
           </div>
         </div>
 
