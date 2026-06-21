@@ -17,6 +17,7 @@ interface ApiMeResponse {
   id: string;
   email: string;
   nome_completo: string;
+  foto_perfil_url?: string | null;
   licitantes: ApiLicitante[];
 }
 
@@ -33,6 +34,7 @@ export function mapApiMeToUser(raw: ApiMeResponse): User {
     id: raw.id,
     email: raw.email,
     nomeCompleto: raw.nome_completo,
+    fotoPerfil: raw.foto_perfil_url ?? null,
     licitantes: raw.licitantes.map(mapLicitante),
   };
 }
