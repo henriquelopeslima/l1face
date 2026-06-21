@@ -23,6 +23,7 @@ import {
 } from 'iconoir-react';
 import { cn } from '@/shared/components/ui/utils';
 import { GestaoAcessosSection } from '@/features/configuracoes/presentation/components/GestaoAcessosSection';
+import { useAuth } from '@/features/auth/presentation/context/AuthContext';
 import fotoPerfil from '@/shared/assets/foto-perfil-placeholder.jpg';
 
 const notificacoes = [
@@ -43,6 +44,7 @@ const pagamentos = [
 ];
 
 export function ConfiguracoesPage() {
+  const { user, session } = useAuth();
   const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
   const { hash } = useLocation();
@@ -78,18 +80,18 @@ export function ConfiguracoesPage() {
         </CardHeader>
         <CardContent className="space-y-4 lg:space-y-6">
           <div className="flex items-center gap-4 lg:gap-6">
-            <img src={fotoPerfil} alt="Foto de perfil de Lisvalder Paz" className="w-16 h-16 lg:w-20 lg:h-20 rounded-full object-cover flex-shrink-0" />
+            <img src={fotoPerfil} alt={`Foto de perfil de ${user?.nomeCompleto ?? ''}`} className="w-16 h-16 lg:w-20 lg:h-20 rounded-full object-cover flex-shrink-0" />
             <div className="flex-1 min-w-0">
-              <h3 className="text-lg lg:text-xl font-semibold">Lisvalder Paz</h3>
-              <p className="text-muted-foreground text-sm lg:text-base">LP Soluções em Licitações</p>
+              <h3 className="text-lg lg:text-xl font-semibold">{user?.nomeCompleto ?? '—'}</h3>
+              <p className="text-muted-foreground text-sm lg:text-base">{session?.licitante?.nomeEmpresa ?? '—'}</p>
               <Button variant="outline" size="sm" className="mt-2 lg:mt-3 h-8 text-xs lg:h-9 lg:text-sm">Alterar foto</Button>
             </div>
           </div>
           <div className="space-y-2 lg:space-y-4 pt-3 lg:pt-4 border-t">
             {[
-              { icon: Mail, label: 'E-mail', value: 'lisvalder.paz@lpsolucoes.com.br' },
-              { icon: Phone, label: 'Telefone', value: '(11) 98765-4321' },
-              { icon: Building, label: 'Organização', value: 'LP Soluções em Licitações' },
+              { icon: Mail, label: 'E-mail', value: user?.email ?? '—' },
+              { icon: Phone, label: 'Telefone', value: '—' },
+              { icon: Building, label: 'Organização', value: session?.licitante?.nomeEmpresa ?? '—' },
             ].map(({ icon: Icon, label, value }) => (
               <div key={label} className="flex items-center gap-3 lg:gap-4 p-2 lg:p-3 rounded-lg hover:bg-accent transition-colors">
                 <Icon className="h-4 w-4 lg:h-5 lg:w-5 text-muted-foreground flex-shrink-0" />
