@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { LoginUseCase } from './LoginUseCase';
-import { AuthError } from '../errors/authErrors';
+import { AuthError, EmailNaoConfirmadoError } from '../errors/authErrors';
 import type { IAuthRepository } from '../repositories/IAuthRepository';
 
 function makeRepo(overrides?: Partial<IAuthRepository>): IAuthRepository {
@@ -8,8 +8,11 @@ function makeRepo(overrides?: Partial<IAuthRepository>): IAuthRepository {
     login: vi.fn().mockResolvedValue(undefined),
     logout: vi.fn().mockResolvedValue(undefined),
     getMe: vi.fn().mockResolvedValue({ id: '1', email: 'a@b.com', nomeCompleto: 'A', licitantes: [] }),
+    register: vi.fn().mockResolvedValue({ message: '' }),
+    confirmarEmail: vi.fn().mockResolvedValue(undefined),
+    reenviarConfirmacao: vi.fn().mockResolvedValue(undefined),
     ...overrides,
-  } as IAuthRepository;
+  };
 }
 
 describe('LoginUseCase', () => {
@@ -44,5 +47,11 @@ describe('LoginUseCase', () => {
     const repo = makeRepo({ login: vi.fn().mockRejectedValue(new AuthError('Serviço indisponível.')) });
     const useCase = new LoginUseCase(repo);
     await expect(useCase.execute({ email: 'a@b.com', password: 'senha123' })).rejects.toBeInstanceOf(AuthError);
+  });
+
+  it('propaga EmailNaoConfirmadoError lançado pelo repositório', async () => {
+    const repo = makeRepo({ login: vi.fn().mockRejectedValue(new EmailNaoConfirmadoError()) });
+    const useCase = new LoginUseCase(repo);
+    await expect(useCase.execute({ email: 'a@b.com', password: 'senha123' })).rejects.toBeInstanceOf(EmailNaoConfirmadoError);
   });
 });

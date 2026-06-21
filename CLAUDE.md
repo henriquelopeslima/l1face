@@ -1,5 +1,5 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan:
-specs/012-of-flow-update/plan.md
+specs/013-email-confirmation-flow/plan.md
 <!-- SPECKIT END -->

@@ -3,6 +3,7 @@ import { AuthProvider } from '@/features/auth/presentation/context/AuthContext';
 import { RootLayout } from '@/shared/components/layout/RootLayout';
 import { SelecionarVinculoLayout } from '@/shared/components/layout/SelecionarVinculoLayout';
 import { ProtectedRoute } from '@/shared/components/guards/ProtectedRoute';
+import { ConfirmarEmailPage } from '@/features/auth/presentation/pages/ConfirmarEmailPage';
 import { LoginPage } from '@/features/auth/presentation/pages/LoginPage';
 import { RegisterPage } from '@/features/auth/presentation/pages/RegisterPage';
 import { SelecionarVinculoPage } from '@/features/auth/presentation/pages/SelecionarVinculoPage';
@@ -42,6 +43,10 @@ export const router = createBrowserRouter([
       {
         path: '/cadastro',
         Component: RegisterPage,
+      },
+      {
+        path: '/confirmar-email',
+        Component: ConfirmarEmailPage,
       },
       {
         path: '/selecionar-vinculo',

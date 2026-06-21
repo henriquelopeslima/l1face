@@ -6,9 +6,11 @@ import { Label } from '@/shared/components/ui/label';
 import { LogoLicitaOne } from '@/shared/components/icons/LogoLicitaOne';
 import { Eye, EyeClosed, Page, EditPencil, GraphUp, Bell } from 'iconoir-react';
 import { useLogin } from '../hooks/useLogin';
+import { useReenviarConfirmacao } from '../hooks/useReenviarConfirmacao';
 
 export function LoginPage() {
-  const { login, isLoading, error } = useLogin();
+  const { login, isLoading, error, emailNaoConfirmado } = useLogin();
+  const { reenviar, isLoading: isReenviando, isSent, isDisabled: reenvioDesabilitado, error: reenvioError } = useReenviarConfirmacao();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -139,10 +141,40 @@ export function LoginPage() {
                 </div>
               </div>
 
-              {displayError && (
-                <p role="alert" data-testid="login-error" className="text-sm text-destructive">
-                  {displayError}
-                </p>
+              {emailNaoConfirmado ? (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30 p-4 space-y-3" data-testid="login-email-nao-confirmado">
+                  <p className="text-sm text-amber-800 dark:text-amber-300 font-medium">
+                    Seu e-mail ainda não foi confirmado.
+                  </p>
+                  {isSent ? (
+                    <p className="text-sm text-green-700 dark:text-green-400" data-testid="login-reenvio-sucesso">
+                      E-mail reenviado! Verifique sua caixa de entrada e spam.
+                    </p>
+                  ) : (
+                    <>
+                      {reenvioError && (
+                        <p className="text-sm text-destructive" data-testid="login-reenvio-erro">{reenvioError}</p>
+                      )}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                        disabled={isReenviando || reenvioDesabilitado}
+                        onClick={() => reenviar(email)}
+                        data-testid="login-btn-reenvio"
+                      >
+                        {isReenviando ? 'Reenviando...' : 'Reenviar e-mail de confirmação'}
+                      </Button>
+                    </>
+                  )}
+                </div>
+              ) : (
+                displayError && (
+                  <p role="alert" data-testid="login-error" className="text-sm text-destructive">
+                    {displayError}
+                  </p>
+                )
               )}
 
               <Button type="submit" className="w-full h-11 text-base" disabled={isLoading} data-testid="login-submit">

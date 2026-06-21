@@ -11,22 +11,27 @@ const validCredentials = {
   razaoSocial: 'Empresa Exemplo Ltda',
 };
 
+const successMessage = 'Cadastro realizado. Verifique seu e-mail para confirmar a conta.';
+
 function makeRepo(overrides?: Partial<IAuthRepository>): IAuthRepository {
   return {
     login: vi.fn().mockResolvedValue(undefined),
     logout: vi.fn().mockResolvedValue(undefined),
     getMe: vi.fn().mockResolvedValue({ id: '1', email: 'a@b.com', nomeCompleto: 'A', licitantes: [] }),
-    register: vi.fn().mockResolvedValue(undefined),
+    register: vi.fn().mockResolvedValue({ message: successMessage }),
+    confirmarEmail: vi.fn().mockResolvedValue(undefined),
+    reenviarConfirmacao: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
 }
 
 describe('RegisterUseCase', () => {
-  it('chama repository.register com as credenciais fornecidas', async () => {
+  it('chama repository.register com as credenciais fornecidas e retorna a mensagem', async () => {
     const repo = makeRepo();
     const useCase = new RegisterUseCase(repo);
-    await useCase.execute(validCredentials);
+    const result = await useCase.execute(validCredentials);
     expect(repo.register).toHaveBeenCalledWith(validCredentials);
+    expect(result).toEqual({ message: successMessage });
   });
 
   it('lança AuthError quando nome está vazio', async () => {

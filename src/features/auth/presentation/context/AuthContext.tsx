@@ -5,6 +5,7 @@ import type { AuthSession, LoginCredentials } from '../../domain/entities/authSe
 import type { Licitante } from '../../domain/entities/licitante';
 import type { RegisterCredentials } from '../../domain/entities/registerCredentials';
 import type { User } from '../../domain/entities/user';
+import { ConfirmarEmailUseCase } from '../../domain/usecases/ConfirmarEmailUseCase';
 import { GetMeUseCase } from '../../domain/usecases/GetMeUseCase';
 import { LoginUseCase } from '../../domain/usecases/LoginUseCase';
 import { LogoutUseCase } from '../../domain/usecases/LogoutUseCase';
@@ -20,7 +21,8 @@ interface AuthContextValue {
   logout: () => Promise<void>;
   selectLicitante: (licitante: Licitante) => void;
   clearLicitanteSelection: () => void;
-  register: (credentials: RegisterCredentials) => Promise<void>;
+  register: (credentials: RegisterCredentials) => Promise<{ message: string }>;
+  confirmarEmail: (token: string) => Promise<void>;
 }
 
 interface AuthState {
@@ -64,6 +66,7 @@ const loginUseCase = new LoginUseCase(repository);
 const getMeUseCase = new GetMeUseCase(repository);
 const logoutUseCase = new LogoutUseCase(repository);
 const registerUseCase = new RegisterUseCase(repository);
+const confirmarEmailUseCase = new ConfirmarEmailUseCase(repository);
 
 function resolveAutoLicitante(user: User): Licitante | null {
   if (user.licitantes.length === 1 && user.licitantes[0]) return user.licitantes[0];
@@ -118,15 +121,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     dispatch({ type: 'LOGOUT' });
   };
 
-  const register = async (credentials: RegisterCredentials): Promise<void> => {
+  const register = async (credentials: RegisterCredentials): Promise<{ message: string }> => {
     dispatch({ type: 'LOADING' });
     try {
-      await registerUseCase.execute(credentials);
+      const result = await registerUseCase.execute(credentials);
       dispatch({ type: 'LOGOUT' });
+      return result;
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Erro ao realizar cadastro.';
       dispatch({ type: 'SET_ERROR', error: message });
       throw err;
+    }
+  };
+
+  const confirmarEmail = async (token: string): Promise<void> => {
+    dispatch({ type: 'LOADING' });
+    // Token errors (TokenInvalidoError, TokenExpiradoError, ContaJaConfirmadaError) must propagate
+    await confirmarEmailUseCase.execute(token);
+
+    // Confirmation succeeded. Hydrate session if possible; failure here is not a token error.
+    try {
+      const user = await getMeUseCase.execute();
+      const licitante = resolveAutoLicitante(user);
+      setActiveLicitanteId(licitante?.id ?? null);
+      dispatch({ type: 'SET_USER', user, licitante });
+    } catch {
+      dispatch({ type: 'LOGOUT' });
     }
   };
 
@@ -156,6 +176,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     selectLicitante,
     clearLicitanteSelection,
     register,
+    confirmarEmail,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
