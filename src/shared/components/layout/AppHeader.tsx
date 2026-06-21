@@ -1,4 +1,5 @@
 import { Bell, HalfMoon, SunLight, User, NavArrowDown } from 'iconoir-react';
+import { getInitials } from '@/shared/utils/getInitials';
 import { useTheme } from 'next-themes';
 import { Link, useNavigate } from 'react-router';
 import { Button } from '@/shared/components/ui/button';
@@ -116,8 +117,8 @@ export function AppHeader({ breadcrumb = ['LicitaOne'] }: AppHeaderProps) {
                     className="w-9 h-9 rounded-full object-cover"
                   />
                 ) : (
-                  <div className="w-9 h-9 rounded-full border border-border bg-accent/40 flex items-center justify-center">
-                    <User className="h-5 w-5 text-muted-foreground" />
+                  <div className="w-9 h-9 rounded-full bg-primary flex items-center justify-center flex-shrink-0 select-none">
+                    <span className="text-primary-foreground font-semibold text-sm">{getInitials(session?.user.nomeCompleto)}</span>
                   </div>
                 )}
                 <div className="hidden md:flex flex-col items-start">
