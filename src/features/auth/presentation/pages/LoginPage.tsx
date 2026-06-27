@@ -84,9 +84,9 @@ export function LoginPage() {
         </div>
 
         <div className="flex flex-col justify-center p-6 lg:p-12 bg-card">
-          <div className="lg:hidden flex justify-start mb-8">
-            <LogoLicitaOne variant="light" className="h-10 w-auto mr-auto dark:hidden" />
-            <LogoLicitaOne variant="dark" className="h-10 w-auto mr-auto hidden dark:block" />
+          <div className="lg:hidden flex justify-center mb-8">
+            <LogoLicitaOne variant="light" className="h-10 w-auto dark:hidden" />
+            <LogoLicitaOne variant="dark" className="h-10 w-auto hidden dark:block" />
           </div>
 
           <div className="w-full max-w-md mx-auto">
