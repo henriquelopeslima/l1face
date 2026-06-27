@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/shared/components/ui/tooltip';
 import { LogoLicitaOne } from '@/shared/components/icons/LogoLicitaOne';
 import { Eye, EyeClosed, Page, EditPencil, GraphUp, Bell } from 'iconoir-react';
 import { useLogin } from '../hooks/useLogin';
@@ -207,15 +208,20 @@ export function LoginPage() {
                   </svg>
                   Google
                 </Button>
-                <Button type="button" variant="outline" className="h-11 gap-2" onClick={() => alert('Login com Microsoft em breve!')}>
-                  <svg className="h-5 w-5" viewBox="0 0 24 24">
-                    <path fill="#f35325" d="M1 1h10v10H1z" />
-                    <path fill="#81bc06" d="M13 1h10v10H13z" />
-                    <path fill="#05a6f0" d="M1 13h10v10H1z" />
-                    <path fill="#ffba08" d="M13 13h10v10H13z" />
-                  </svg>
-                  Microsoft
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button type="button" variant="outline" className="h-11 gap-2">
+                      <svg className="h-5 w-5" viewBox="0 0 24 24">
+                        <path fill="#f35325" d="M1 1h10v10H1z" />
+                        <path fill="#81bc06" d="M13 1h10v10H13z" />
+                        <path fill="#05a6f0" d="M1 13h10v10H1z" />
+                        <path fill="#ffba08" d="M13 13h10v10H13z" />
+                      </svg>
+                      Microsoft
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Em breve!</TooltipContent>
+                </Tooltip>
               </div>
             </form>
           </div>
