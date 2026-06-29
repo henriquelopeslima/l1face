@@ -220,6 +220,11 @@ export function CadastrarNotaEmpenho() {
                     <p className="text-sm text-muted-foreground">
                       Saldo: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(atas.find(a => a.id === ataId)?.saldo ?? 0)}
                     </p>
+                    {atas.find(a => a.id === ataId)?.aceitaAdesao && (
+                      <p className="text-sm text-muted-foreground">
+                        Saldo Carona: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(atas.find(a => a.id === ataId)?.saldoCarona ?? 0)}
+                      </p>
+                    )}
                   </div>
                 </div>
                 

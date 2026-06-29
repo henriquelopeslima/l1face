@@ -674,6 +674,11 @@ export function CadastrarContrato() {
                           <p className="text-sm text-muted-foreground">
                             Saldo: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(arpSelecionada.saldo)}
                           </p>
+                          {arpSelecionada.aceitaAdesao && (
+                            <p className="text-sm text-muted-foreground">
+                              Saldo Carona: {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(arpSelecionada.saldoCarona)}
+                            </p>
+                          )}
                         </div>
                       </div>
                       
