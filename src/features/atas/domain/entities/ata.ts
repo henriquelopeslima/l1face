@@ -9,6 +9,8 @@ export interface Ata {
   vigenciaFinal: string;
   valorRegistrado: number;
   saldo: number;
+  valorCarona: number;
+  saldoCarona: number;
   contratos: number;
   status: AtaStatus;
   aceitaAdesao: boolean;

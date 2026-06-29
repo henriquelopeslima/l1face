@@ -9,6 +9,8 @@ interface ApiAtaListagemResponse {
   vigencia_final: string;
   valor: number;
   saldo: number;
+  valor_carona: number;
+  saldo_carona: number;
   contratos: number;
   status: string;
   aceita_adesao: boolean;
@@ -25,6 +27,8 @@ export function mapApiAtaToAta(raw: ApiAtaListagemResponse): Ata {
     vigenciaFinal: raw.vigencia_final,
     valorRegistrado: raw.valor ?? 0,
     saldo: raw.saldo ?? 0,
+    valorCarona: raw.valor_carona ?? 0,
+    saldoCarona: raw.saldo_carona ?? 0,
     contratos: raw.contratos ?? 0,
     status: raw.status as AtaStatus,
     aceitaAdesao: raw.aceita_adesao,

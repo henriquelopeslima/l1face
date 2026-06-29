@@ -187,6 +187,10 @@ export function ArpGestaoPage() {
                     const percentualConsumo = ata.valorRegistrado > 0
                       ? Math.min(100, Math.max(0, (valorConsumido / ata.valorRegistrado) * 100))
                       : 0;
+                    const valorCaronaConsumido = ata.valorCarona - ata.saldoCarona;
+                    const percentualCaronaConsumo = ata.valorCarona > 0
+                      ? Math.min(100, Math.max(0, (valorCaronaConsumido / ata.valorCarona) * 100))
+                      : 0;
 
                     return [
                       <TableRow
@@ -268,6 +272,30 @@ export function ArpGestaoPage() {
                                     <p className="text-xs text-muted-foreground">{percentualConsumo.toFixed(1)}% consumido</p>
                                   </div>
                                 </div>
+                                {ata.aceitaAdesao && (
+                                  <div>
+                                    <p className="text-sm text-muted-foreground mb-2">Consumo do Saldo de Carona</p>
+                                    <div className="space-y-2">
+                                      <div className="flex justify-between text-sm">
+                                        <span>{formatCurrency(valorCaronaConsumido)}</span>
+                                        <span>{formatCurrency(ata.valorCarona)}</span>
+                                      </div>
+                                      <div className="h-2 bg-border rounded-full overflow-hidden">
+                                        <div
+                                          className={`h-full ${
+                                            percentualCaronaConsumo < 80
+                                              ? 'bg-[var(--success)]'
+                                              : percentualCaronaConsumo < 95
+                                                ? 'bg-[var(--warning)]'
+                                                : 'bg-[var(--danger)]'
+                                          }`}
+                                          style={{ width: `${percentualCaronaConsumo}%` }}
+                                        />
+                                      </div>
+                                      <p className="text-xs text-muted-foreground">{percentualCaronaConsumo.toFixed(1)}% consumido</p>
+                                    </div>
+                                  </div>
+                                )}
                                 <div>
                                   <p className="text-sm text-muted-foreground">Aceita Adesão (Carona)</p>
                                   <p className="font-medium">{ata.aceitaAdesao ? 'Sim' : 'Não'}</p>
