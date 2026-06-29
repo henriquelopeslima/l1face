@@ -52,11 +52,11 @@ function calcularDiasRestantes(dataFim: string): number {
 }
 
 function calcularSaldoOrgaoItem(item: ItemAta): number {
-  return item.qtdRegistrada - item.qtdConsumidaOrgao;
+  return item.qtdSaldoOrgao;
 }
 
 function calcularSaldoCaronaItem(item: ItemAta): number {
-  return item.qtdParaCarona - item.qtdConsumidaCarona;
+  return item.qtdSaldoCarona;
 }
 
 export function ArpDetalhesPage() {
@@ -114,7 +114,7 @@ export function ArpDetalhesPage() {
     ? ata.itens.reduce((acc, i) => acc + calcularSaldoCaronaItem(i) * i.valorEstimado, 0)
     : 0;
   const valorTotalRegistrado = ata.itens.reduce(
-    (acc, i) => acc + i.qtdRegistrada * i.valorEstimado,
+    (acc, i) => acc + i.qtdOrgao * i.valorEstimado,
     0,
   );
 
@@ -276,12 +276,12 @@ export function ArpDetalhesPage() {
                       const saldoOrgaoItem = calcularSaldoOrgaoItem(item);
                       const saldoCaronaItem = calcularSaldoCaronaItem(item);
                       const consumoOrgaoPct =
-                        item.qtdRegistrada > 0
-                          ? (item.qtdConsumidaOrgao / item.qtdRegistrada) * 100
+                        item.qtdOrgao > 0
+                          ? ((item.qtdOrgao - item.qtdSaldoOrgao) / item.qtdOrgao) * 100
                           : 0;
                       const consumoCaronaPct =
-                        item.qtdParaCarona > 0
-                          ? (item.qtdConsumidaCarona / item.qtdParaCarona) * 100
+                        item.qtdCarona > 0
+                          ? ((item.qtdCarona - item.qtdSaldoCarona) / item.qtdCarona) * 100
                           : 0;
 
                       return (
@@ -290,8 +290,8 @@ export function ArpDetalhesPage() {
                           <TableCell>{item.descricao}</TableCell>
                           <TableCell>{item.unidadeMedida}</TableCell>
                           <TableCell className="text-right">{formatCurrency(item.valorEstimado)}</TableCell>
-                          <TableCell className="text-right text-muted-foreground">{item.qtdRegistrada}</TableCell>
-                          <TableCell className="text-right">{item.qtdConsumidaOrgao}</TableCell>
+                          <TableCell className="text-right text-muted-foreground">{item.qtdOrgao}</TableCell>
+                          <TableCell className="text-right">{item.qtdOrgao - item.qtdSaldoOrgao}</TableCell>
                           <TableCell className="text-right">
                             <div className="space-y-1 items-end flex flex-col">
                               <p className={saldoOrgaoItem === 0 ? 'text-[var(--danger)] font-medium' : ''}>
@@ -326,10 +326,10 @@ export function ArpDetalhesPage() {
                           {ata.aceitaAdesao && (
                             <>
                               <TableCell className="text-right text-muted-foreground">
-                                {item.qtdParaCarona}
+                                {item.qtdCarona}
                               </TableCell>
                               <TableCell className="text-right">
-                                {item.qtdConsumidaCarona}
+                                {item.qtdCarona - item.qtdSaldoCarona}
                               </TableCell>
                               <TableCell className="text-right">
                                 <div className="space-y-1 items-end flex flex-col">

@@ -6,10 +6,10 @@ export interface ItemAta {
   descricao: string;
   unidadeMedida: string;
   valorEstimado: number;
-  qtdRegistrada: number;
-  qtdParaCarona: number;
-  qtdConsumidaOrgao: number;
-  qtdConsumidaCarona: number;
+  qtdOrgao: number;
+  qtdCarona: number;
+  qtdSaldoOrgao: number;
+  qtdSaldoCarona: number;
 }
 
 export interface AtaDetalhes {

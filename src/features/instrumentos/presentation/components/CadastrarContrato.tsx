@@ -173,8 +173,8 @@ export function CadastrarContrato() {
           quantidadeTotal: 0,
           valorUnitario: item.valorEstimado,
           valorTotal: 0,
-          saldoOrgao: (Number(item.qtdRegistrada) || 0) - (Number(item.qtdConsumidaOrgao) || 0),
-          saldoCarona: (Number(item.qtdParaCarona) || 0) - (Number(item.qtdConsumidaCarona) || 0),
+          saldoOrgao: Number(item.qtdSaldoOrgao) || 0,
+          saldoCarona: Number(item.qtdSaldoCarona) || 0,
         }))
       );
       setModoItens('manual');
@@ -254,7 +254,7 @@ export function CadastrarContrato() {
   const validarEtapaItens = () => {
     if (itensContrato.length === 0) return true;
     const itensComSaldo = itensContrato.filter((i) => {
-      if (i.saldoOrgao === undefined) return true;
+      if (!isItensVinculadosArp) return true;
       const saldo = isAdesao ? (i.saldoCarona ?? 0) : (i.saldoOrgao ?? 0);
       return saldo > 0;
     });
@@ -812,7 +812,13 @@ export function CadastrarContrato() {
                         <TableRow>
                           <TableHead className="min-w-[250px]">Descrição do Item</TableHead>
                           <TableHead className="min-w-[150px]">Unidade de Medida</TableHead>
-                          <TableHead className="min-w-[120px]">Quantidade</TableHead>
+                          <TableHead className="min-w-[120px]">
+                            {isItensVinculadosArp
+                              ? isAdesao
+                                ? 'Qtd. / Saldo Carona'
+                                : 'Qtd. / Saldo Órgão'
+                              : 'Quantidade'}
+                          </TableHead>
                           <TableHead className="min-w-[120px]">Valor Unitário</TableHead>
                           <TableHead className="min-w-[120px]">Valor Total</TableHead>
                           <TableHead className="w-[60px]"></TableHead>
@@ -821,7 +827,7 @@ export function CadastrarContrato() {
                       <TableBody>
                         {itensContrato.map((item) => {
                           const saldoAtual = isAdesao ? (item.saldoCarona ?? Infinity) : (item.saldoOrgao ?? Infinity);
-                          const semSaldo = item.saldoOrgao !== undefined && saldoAtual === 0;
+                          const semSaldo = isItensVinculadosArp && saldoAtual === 0;
                           return (
                           <TableRow key={item.id}>
                             <TableCell>
@@ -853,7 +859,7 @@ export function CadastrarContrato() {
                                     atualizarItem(item.id, 'quantidadeTotal', Math.min(Math.max(0, raw), max));
                                   }}
                                 />
-                                {item.saldoOrgao !== undefined && (
+                                {isItensVinculadosArp && (
                                   <span className={`text-xs whitespace-nowrap shrink-0 ${semSaldo ? 'text-destructive' : 'text-muted-foreground'}`}>
                                     {semSaldo ? 'Sem saldo' : `/ ${Number.isFinite(saldoAtual) ? saldoAtual.toLocaleString('pt-BR') : '?'}`}
                                   </span>
