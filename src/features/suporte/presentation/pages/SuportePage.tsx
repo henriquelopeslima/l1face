@@ -77,8 +77,8 @@ const categories: Category[] = [
 ];
 
 const channels = [
-  { id: 'email', icon: Mail, bgColor: 'bg-[#06D6A0]/10', title: 'E-mail', contact: 'suporte@licitaone.com.br', availability: 'Resposta em até 24h' },
-  { id: 'whatsapp', icon: Clock, bgColor: 'bg-[#0050FF]/10', title: 'WhatsApp', contact: '(11) 98765-4321', availability: 'Seg a Sex, 8h às 18h' },
+  { id: 'email', icon: Mail, bgColor: 'bg-[#06D6A0]/10', title: 'E-mail', contact: 'contato@licitaone.com.br', availability: 'Resposta em até 24h' },
+  { id: 'whatsapp', icon: Clock, bgColor: 'bg-[#0050FF]/10', title: 'WhatsApp', contact: '(88) 93613-0118', availability: 'Seg a Sex, 8h às 18h' },
 ];
 
 export function SuportePage() {
@@ -100,7 +100,7 @@ export function SuportePage() {
 
   const openWhatsApp = () => {
     const message = encodeURIComponent('Olá! Preciso de ajuda com o LicitaOne. Minha dúvida não foi respondida no FAQ.');
-    window.open(`https://wa.me/5511987654321?text=${message}`, '_blank');
+    window.open(`https://wa.me/5588936130118?text=${message}`, '_blank');
   };
 
   return (
@@ -241,7 +241,13 @@ export function SuportePage() {
         <CardContent>
           <div className="grid gap-3 lg:gap-4 sm:grid-cols-2">
             {channels.map((channel) => (
-              <div key={channel.id} className="flex items-start gap-3 p-3 lg:p-4 rounded-lg border border-border">
+              <a 
+                key={channel.id}
+                href={channel.id === 'whatsapp' ? 'https://api.whatsapp.com/send?phone=5588936130118&text=Ol%C3%A1%2C%20estou%20entrando%20em%20contato%20atrav%C3%A9s%20da%20plataforma.' : channel.id === 'email' ? 'mailto:contato@licitaone.com.br' : undefined}
+                target={channel.id === 'whatsapp' ? '_blank' : undefined}
+                rel={channel.id === 'whatsapp' ? 'noopener noreferrer' : undefined}
+                className="flex items-start gap-3 p-3 lg:p-4 rounded-lg border border-border cursor-pointer hover:bg-accent transition-colors"
+              >
                 <div className={`w-8 h-8 lg:w-10 lg:h-10 rounded-full ${channel.bgColor} flex items-center justify-center flex-shrink-0`}>
                   <channel.icon className="h-5 w-5 lg:h-6 lg:w-6" />
                 </div>
@@ -250,7 +256,7 @@ export function SuportePage() {
                   <p className="text-xs lg:text-sm text-muted-foreground mt-0.5">{channel.contact}</p>
                   <p className="text-[10px] lg:text-xs text-muted-foreground mt-1">{channel.availability}</p>
                 </div>
-              </div>
+              </a>
             ))}
           </div>
         </CardContent>
