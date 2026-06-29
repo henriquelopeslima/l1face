@@ -185,7 +185,7 @@ export function ArpGestaoPage() {
                     const isExpanded = expandedRow === ata.id;
                     const valorConsumido = ata.valorRegistrado - ata.saldo;
                     const percentualConsumo = ata.valorRegistrado > 0
-                      ? (valorConsumido / ata.valorRegistrado) * 100
+                      ? Math.min(100, Math.max(0, (valorConsumido / ata.valorRegistrado) * 100))
                       : 0;
 
                     return [
@@ -316,7 +316,7 @@ export function ArpGestaoPage() {
                                 )} */}
                               </div>
 
-                              {ata.saldo === 0 && (
+                              {ata.saldo === 0 && ata.valorRegistrado > 0 && (
                                 <div className="flex items-start gap-2 p-3 rounded-lg bg-[var(--danger-light)] border border-[var(--danger)]/20">
                                   <WarningTriangle className="h-4 w-4 text-[var(--danger)] mt-0.5 shrink-0" />
                                   <p className="text-sm text-[var(--danger)]">

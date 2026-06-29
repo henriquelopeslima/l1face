@@ -7,7 +7,7 @@ interface ApiAtaListagemResponse {
   orgao_gerenciador: { nome: string; cnpj: string };
   vigencia_inicial: string;
   vigencia_final: string;
-  valor_registrado: number;
+  valor: number;
   saldo: number;
   contratos: number;
   status: string;
@@ -23,9 +23,9 @@ export function mapApiAtaToAta(raw: ApiAtaListagemResponse): Ata {
     orgaoGerenciador: raw.orgao_gerenciador,
     vigenciaInicial: raw.vigencia_inicial,
     vigenciaFinal: raw.vigencia_final,
-    valorRegistrado: raw.valor_registrado,
-    saldo: raw.saldo,
-    contratos: raw.contratos,
+    valorRegistrado: raw.valor ?? 0,
+    saldo: raw.saldo ?? 0,
+    contratos: raw.contratos ?? 0,
     status: raw.status as AtaStatus,
     aceitaAdesao: raw.aceita_adesao,
     renovavel: raw.renovavel,
