@@ -1,5 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { Button } from '@/shared/components/ui/button';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/shared/components/ui/tooltip';
 import { Lock, Settings } from 'iconoir-react';
 
 export function SegurancaSection() {
@@ -17,10 +18,15 @@ export function SegurancaSection() {
           <Lock className="h-4 w-4 lg:h-5 lg:w-5" />
           Alterar senha
         </Button>
-        <Button variant="outline" className="w-full justify-start gap-2 lg:gap-3 h-10 lg:h-11 text-sm lg:text-base">
-          <Settings className="h-4 w-4 lg:h-5 lg:w-5" />
-          Autenticação em duas etapas
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="outline" className="w-full justify-start gap-2 lg:gap-3 h-10 lg:h-11 text-sm lg:text-base opacity-50 hover:opacity-70 transition-opacity cursor-not-allowed">
+              <Settings className="h-4 w-4 lg:h-5 lg:w-5" />
+              Autenticação em duas etapas
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Em breve!</TooltipContent>
+        </Tooltip>
       </CardContent>
     </Card>
   );
