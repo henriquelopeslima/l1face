@@ -7,10 +7,10 @@ interface ApiItemAtaResponse {
   descricao: string;
   unidade_medida: string;
   valor_estimado: number;
-  qtd_registrada: number;
-  qtd_para_carona: number;
-  qtd_consumida_orgao: number;
-  qtd_consumida_carona: number;
+  qtd_orgao: number | null;
+  qtd_carona: number | null;
+  qtd_saldo_orgao: number | null;
+  qtd_saldo_carona: number | null;
 }
 
 interface ApiAtaDetalhesResponse {
@@ -36,10 +36,10 @@ export function mapApiItemAtaToItemAta(raw: ApiItemAtaResponse): ItemAta {
     descricao: raw.descricao,
     unidadeMedida: raw.unidade_medida,
     valorEstimado: raw.valor_estimado,
-    qtdRegistrada: raw.qtd_registrada,
-    qtdParaCarona: raw.qtd_para_carona ?? 0,
-    qtdConsumidaOrgao: raw.qtd_consumida_orgao ?? 0,
-    qtdConsumidaCarona: raw.qtd_consumida_carona ?? 0,
+    qtdRegistrada: raw.qtd_orgao ?? 0,
+    qtdParaCarona: raw.qtd_carona ?? 0,
+    qtdConsumidaOrgao: (raw.qtd_orgao ?? 0) - (raw.qtd_saldo_orgao ?? 0),
+    qtdConsumidaCarona: (raw.qtd_carona ?? 0) - (raw.qtd_saldo_carona ?? 0),
   };
 }
 

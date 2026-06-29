@@ -35,11 +35,14 @@ import {
 
 interface ItemContrato {
   id: string;
+  itemAtaId?: string;
   descricao: string;
   unidadeMedida: string;
   quantidadeTotal: number;
   valorUnitario: number;
   valorTotal: number;
+  saldoOrgao?: number;
+  saldoCarona?: number;
 }
 
 interface DadosContrato {
@@ -164,11 +167,14 @@ export function CadastrarContrato() {
       setItensContrato(
         ata.itens.map((item) => ({
           id: `arp-item-${item.id}`,
+          itemAtaId: item.id,
           descricao: item.descricao,
           unidadeMedida: item.unidadeMedida,
-          quantidadeTotal: item.qtdRegistrada,
+          quantidadeTotal: 0,
           valorUnitario: item.valorEstimado,
-          valorTotal: item.qtdRegistrada * item.valorEstimado,
+          valorTotal: 0,
+          saldoOrgao: (Number(item.qtdRegistrada) || 0) - (Number(item.qtdConsumidaOrgao) || 0),
+          saldoCarona: (Number(item.qtdParaCarona) || 0) - (Number(item.qtdConsumidaCarona) || 0),
         }))
       );
       setModoItens('manual');
@@ -185,8 +191,14 @@ export function CadastrarContrato() {
       setIsAdesao(undefined);
       return;
     }
+    const ataAtual = atas.find((a) => a.id === dadosContrato.arpOrigem);
+    if (!ataAtual?.aceitaAdesao) {
+      setIsAdesao(false);
+    } else {
+      setIsAdesao((prev) => prev === undefined ? false : prev);
+    }
     void carregarItensDaArp(dadosContrato.arpOrigem);
-  }, [dadosContrato.arpOrigem, carregarItensDaArp]);
+  }, [dadosContrato.arpOrigem, carregarItensDaArp, atas]);
 
   const buscarPNCP = useCallback(() => {
     if (!dadosContrato.numeroPNCP?.trim()) return;
@@ -239,9 +251,16 @@ export function CadastrarContrato() {
       dadosContrato.vigenciaInicial && dadosContrato.vigenciaFinal && !erroNumeroInstrumento);
   };
 
-  const validarEtapaItens = () =>
-    itensContrato.length === 0 ||
-    itensContrato.every((i) => i.descricao && i.unidadeMedida && i.quantidadeTotal > 0 && i.valorUnitario > 0);
+  const validarEtapaItens = () => {
+    if (itensContrato.length === 0) return true;
+    const itensComSaldo = itensContrato.filter((i) => {
+      if (i.saldoOrgao === undefined) return true;
+      const saldo = isAdesao ? (i.saldoCarona ?? 0) : (i.saldoOrgao ?? 0);
+      return saldo > 0;
+    });
+    return itensComSaldo.length > 0 &&
+      itensComSaldo.every((i) => i.descricao && i.unidadeMedida && i.quantidadeTotal > 0 && i.valorUnitario > 0);
+  };
 
   const avancar = () => {
     if (etapaAtual === 1) {
@@ -260,13 +279,16 @@ export function CadastrarContrato() {
     setProgressoCadastro(0);
     setEtapaProcessamento('Enviando dados do contrato...');
 
-    const itensInput: ItemInstrumentoInput[] = itensContrato.map((i) => ({
-      descricao: i.descricao,
-      unidadeMedida: i.unidadeMedida,
-      quantidadeTotal: i.quantidadeTotal,
-      valorUnitario: i.valorUnitario,
-      valorTotal: i.valorTotal,
-    }));
+    const itensInput: ItemInstrumentoInput[] = itensContrato
+      .filter((i) => i.quantidadeTotal > 0)
+      .map((i) => ({
+        descricao: i.descricao,
+        unidadeMedida: i.unidadeMedida,
+        quantidadeTotal: i.quantidadeTotal,
+        valorUnitario: i.valorUnitario,
+        valorTotal: i.valorTotal,
+        ...(i.itemAtaId != null ? { itemAtaId: i.itemAtaId } : {}),
+      }));
 
     const input: CriarContratoInput = {
       numero: dadosContrato.numeroInstrumento,
@@ -666,8 +688,8 @@ export function CadastrarContrato() {
                         </div>
                         <RadioGroup value={isAdesao === undefined ? '' : isAdesao ? 'sim' : 'nao'} onValueChange={(v) => setIsAdesao(v === 'sim')}>
                           <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="sim" id="adesao-sim" />
-                            <Label htmlFor="adesao-sim" className="cursor-pointer font-normal text-sm">Sim</Label>
+                            <RadioGroupItem value="sim" id="adesao-sim" disabled={arpSelecionada?.aceitaAdesao === false} />
+                            <Label htmlFor="adesao-sim" className={`cursor-pointer font-normal text-sm ${arpSelecionada?.aceitaAdesao === false ? 'opacity-40 cursor-not-allowed' : ''}`}>Sim</Label>
                           </div>
                           <div className="flex items-center space-x-2">
                             <RadioGroupItem value="nao" id="adesao-nao" />
@@ -792,7 +814,10 @@ export function CadastrarContrato() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {itensContrato.map((item) => (
+                        {itensContrato.map((item) => {
+                          const saldoAtual = isAdesao ? (item.saldoCarona ?? Infinity) : (item.saldoOrgao ?? Infinity);
+                          const semSaldo = item.saldoOrgao !== undefined && saldoAtual === 0;
+                          return (
                           <TableRow key={item.id}>
                             <TableCell>
                               <Input placeholder="Ex: Arroz tipo 1" value={item.descricao}
@@ -807,8 +832,28 @@ export function CadastrarContrato() {
                                 onChange={(e) => atualizarItem(item.id, 'unidadeMedida', e.target.value)} />
                             </TableCell>
                             <TableCell>
-                              <Input type="number" min="0" step="0.01" placeholder="0" value={item.quantidadeTotal || ''}
-                                onChange={(e) => atualizarItem(item.id, 'quantidadeTotal', Number(e.target.value))} />
+                              <div className="flex items-center gap-1.5">
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  step="1"
+                                  placeholder={semSaldo ? 'Sem saldo' : '0'}
+                                  value={item.quantidadeTotal || ''}
+                                  max={saldoAtual === Infinity ? undefined : saldoAtual}
+                                  disabled={semSaldo}
+                                  className="min-w-0"
+                                  onChange={(e) => {
+                                    const raw = Math.trunc(Number(e.target.value));
+                                    const max = Number.isFinite(saldoAtual) ? saldoAtual : Infinity;
+                                    atualizarItem(item.id, 'quantidadeTotal', Math.min(Math.max(0, raw), max));
+                                  }}
+                                />
+                                {item.saldoOrgao !== undefined && (
+                                  <span className={`text-xs whitespace-nowrap shrink-0 ${semSaldo ? 'text-destructive' : 'text-muted-foreground'}`}>
+                                    {semSaldo ? 'Sem saldo' : `/ ${Number.isFinite(saldoAtual) ? saldoAtual.toLocaleString('pt-BR') : '?'}`}
+                                  </span>
+                                )}
+                              </div>
                             </TableCell>
                             <TableCell>
                               <Input type="number" min="0" step="0.01" placeholder="0,00" value={item.valorUnitario || ''}
@@ -827,7 +872,8 @@ export function CadastrarContrato() {
                               </Button>
                             </TableCell>
                           </TableRow>
-                        ))}
+                          );
+                        })}
                       </TableBody>
                     </TableComponent>
                   </div>
@@ -887,6 +933,13 @@ export function CadastrarContrato() {
                 <AlertTitle>Atenção</AlertTitle>
                 <AlertDescription>O Nº do Instrumento <strong>não poderá ser alterado</strong> após a criação do contrato.</AlertDescription>
               </Alert>
+              {erroSalvar && (
+                <Alert variant="destructive">
+                  <WarningTriangle className="h-4 w-4" />
+                  <AlertTitle>Erro ao cadastrar contrato</AlertTitle>
+                  <AlertDescription>{erroSalvar}</AlertDescription>
+                </Alert>
+              )}
               <div className="grid gap-4 lg:grid-cols-2">
                 <div><p className="text-muted-foreground text-sm">Órgão Contratante</p><p className="font-medium">{dadosContrato.orgaoContratante}</p></div>
                 <div><p className="text-muted-foreground text-sm">Secretaria / Unidade</p><p className="font-medium">{dadosContrato.secretaria}</p></div>

@@ -14,6 +14,7 @@ export interface ItemInstrumentoInput {
   quantidadeTotal: number;
   valorUnitario: number;
   valorTotal: number;
+  itemAtaId?: string;
 }
 
 export interface CriarContratoInput {

@@ -23,13 +23,17 @@ export function mapCriarContratoInputToApiRequest(input: CriarContratoInput): Re
   if (input.anexoUrl != null) body.anexo_url = input.anexoUrl;
 
   if (input.itens && input.itens.length > 0) {
-    body.itens = input.itens.map((item) => ({
-      descricao: item.descricao,
-      unidade_medida: item.unidadeMedida,
-      quantidade_total: item.quantidadeTotal,
-      valor_unitario: item.valorUnitario,
-      valor_total: item.valorTotal,
-    }));
+    body.itens = input.itens.map((item) => {
+      const apiItem: Record<string, unknown> = {
+        descricao: item.descricao,
+        unidade_medida: item.unidadeMedida,
+        quantidade_total: item.quantidadeTotal,
+        valor_unitario: item.valorUnitario,
+        valor_total: item.valorTotal,
+      };
+      if (item.itemAtaId != null) apiItem.item_ata_id = item.itemAtaId;
+      return apiItem;
+    });
   }
 
   return body;
