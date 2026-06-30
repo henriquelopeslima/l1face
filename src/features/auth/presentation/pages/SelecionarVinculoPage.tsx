@@ -43,7 +43,7 @@ export function SelecionarVinculoPage() {
       <div className="space-y-2 text-center max-w-lg mx-auto">
         <h1 className="text-2xl lg:text-4xl font-semibold tracking-tight">Selecione o vínculo</h1>
         <p className="text-muted-foreground text-sm lg:text-base">
-          Escolha o CNPJ com o qual deseja acessar a plataforma
+          Escolha o licitante com o qual deseja acessar a plataforma
         </p>
       </div>
 
