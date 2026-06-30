@@ -78,7 +78,7 @@ export function RecuperarSenhaPage() {
 
           <div className="w-full max-w-md mx-auto">
             <div className="mb-8">
-              <h2 className="text-4xl lg:text-[64px] font-medium mb-2 text-primary">Recuperar senha</h2>
+              <h2 className="text-4xl lg:text-[38px] font-medium mb-2 text-primary">Recuperar senha</h2>
               <p className="text-muted-foreground text-sm lg:text-base">
                 Informe seu e-mail e enviaremos uma nova senha temporária
               </p>
