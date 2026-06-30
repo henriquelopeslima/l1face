@@ -1,0 +1,1 @@
+export { ChangePasswordAPI } from './ChangePasswordAPI';
