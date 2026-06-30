@@ -12,7 +12,7 @@ import {
   TableRow,
 } from '@/shared/components/ui/table';
 import { Trash, Plus } from 'iconoir-react';
-import type { ItemInstrumentoDetalhe } from '../../domain/entities/instrumentoContratual';
+import type { ItemInstrumentoDetalhe, TipoPrazo } from '../../domain/entities/instrumentoContratual';
 import { useEmitirOrdemFornecimento } from '../hooks/useEmitirOrdemFornecimento';
 
 interface ItemOFFormulario {
@@ -25,7 +25,24 @@ interface CriarOrdemFornecimentoProps {
   onOpenChange: (open: boolean) => void;
   instrumentoId: string;
   itensContrato: ItemInstrumentoDetalhe[];
+  prazoEntregaInstrumento?: number | null;
+  tipoPrazoEntregaInstrumento?: TipoPrazo | null;
   onSuccess?: () => void;
+}
+
+function calcularDataSugerida(dataRecebimento: string, prazo: number, tipoPrazo: TipoPrazo | null): string {
+  const data = new Date(`${dataRecebimento}T00:00:00`);
+  if (tipoPrazo === 'UTEIS') {
+    let adicionados = 0;
+    while (adicionados < prazo) {
+      data.setDate(data.getDate() + 1);
+      const dia = data.getDay();
+      if (dia !== 0 && dia !== 6) adicionados++;
+    }
+  } else {
+    data.setDate(data.getDate() + prazo);
+  }
+  return data.toISOString().split('T')[0] ?? '';
 }
 
 export function CriarOrdemFornecimento({
@@ -33,6 +50,8 @@ export function CriarOrdemFornecimento({
   onOpenChange,
   instrumentoId,
   itensContrato,
+  prazoEntregaInstrumento,
+  tipoPrazoEntregaInstrumento,
   onSuccess,
 }: CriarOrdemFornecimentoProps) {
   const { emitir, isLoading, error } = useEmitirOrdemFornecimento();
@@ -48,8 +67,13 @@ export function CriarOrdemFornecimento({
 
   useEffect(() => {
     if (open) {
-      setDataRecebimento(new Date().toISOString().split('T')[0] ?? '');
-      setPrazoEntrega('');
+      const hoje = new Date().toISOString().split('T')[0] ?? '';
+      setDataRecebimento(hoje);
+      if (prazoEntregaInstrumento && prazoEntregaInstrumento > 0) {
+        setPrazoEntrega(calcularDataSugerida(hoje, prazoEntregaInstrumento, tipoPrazoEntregaInstrumento ?? null));
+      } else {
+        setPrazoEntrega('');
+      }
     } else {
       setItensSelecionados([]);
       setSelectStep(1);
@@ -58,7 +82,7 @@ export function CriarOrdemFornecimento({
       setShowSelecionados(false);
       setDateError(null);
     }
-  }, [open]);
+  }, [open, prazoEntregaInstrumento, tipoPrazoEntregaInstrumento]);
 
   const itensVisiveis = itensContrato.filter((i) => {
     if (showSelecionados) return selectedIds.includes(i.id);
@@ -170,7 +194,14 @@ export function CriarOrdemFornecimento({
                       id="of-data"
                       type="date"
                       value={dataRecebimento}
-                      onChange={(e) => { setDataRecebimento(e.target.value); setDateError(null); }}
+                      onChange={(e) => {
+                        const novaData = e.target.value;
+                        setDataRecebimento(novaData);
+                        setDateError(null);
+                        if (prazoEntregaInstrumento && prazoEntregaInstrumento > 0 && novaData) {
+                          setPrazoEntrega(calcularDataSugerida(novaData, prazoEntregaInstrumento, tipoPrazoEntregaInstrumento ?? null));
+                        }
+                      }}
                     />
                   </div>
                   <div className="space-y-1.5">
@@ -184,6 +215,12 @@ export function CriarOrdemFornecimento({
                       min={dataRecebimento}
                       onChange={(e) => { setPrazoEntrega(e.target.value); setDateError(null); }}
                     />
+                    {prazoEntregaInstrumento && prazoEntregaInstrumento > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        Sugestão baseada em {prazoEntregaInstrumento} dia{prazoEntregaInstrumento !== 1 ? 's' : ''}{' '}
+                        {tipoPrazoEntregaInstrumento === 'UTEIS' ? 'úteis' : 'corridos'} após o recebimento
+                      </p>
+                    )}
                   </div>
                 </div>
                 {dateError && <p className="text-sm text-destructive">{dateError}</p>}

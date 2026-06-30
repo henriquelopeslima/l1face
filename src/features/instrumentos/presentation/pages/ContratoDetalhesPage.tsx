@@ -733,7 +733,11 @@ export function ContratoDetalhesPage() {
                                 });
                               } else if (of.status === 'despachado') {
                                 expandirEAbrirFormulario(of.id, () => {
-                                  setEntregaForm({ dataEntrega: '', prazoPagamento: '' });
+                                  const hoje = new Date().toISOString().split('T')[0] ?? '';
+                                  const prazoPag = contrato.prazoPagamento
+                                    ? calcularPrazoFinalEntrega(hoje, contrato.prazoPagamento, contrato.tipoPrazoPagamento).toISOString().split('T')[0] ?? ''
+                                    : '';
+                                  setEntregaForm({ dataEntrega: hoje, prazoPagamento: prazoPag });
                                   setEntregaOpenId(of.id);
                                 });
                               }
@@ -939,7 +943,11 @@ export function ContratoDetalhesPage() {
                                   setDespachoForm({ dataDespacho: '', codigoRastreio: '', numeroNf: '' });
                                   setDespachoOpenId(of.id);
                                 } else if (of.status === 'despachado') {
-                                  setEntregaForm({ dataEntrega: '', prazoPagamento: '' });
+                                  const hoje = new Date().toISOString().split('T')[0] ?? '';
+                                  const prazoPag = contrato.prazoPagamento
+                                    ? calcularPrazoFinalEntrega(hoje, contrato.prazoPagamento, contrato.tipoPrazoPagamento).toISOString().split('T')[0] ?? ''
+                                    : '';
+                                  setEntregaForm({ dataEntrega: hoje, prazoPagamento: prazoPag });
                                   setEntregaOpenId(of.id);
                                 }
                               }}
@@ -1091,9 +1099,16 @@ export function ContratoDetalhesPage() {
                               <Input
                                 type="date"
                                 value={entregaForm.dataEntrega}
-                                onChange={(e) =>
-                                  setEntregaForm((f) => ({ ...f, dataEntrega: e.target.value }))
-                                }
+                                onChange={(e) => {
+                                  const novaData = e.target.value;
+                                  setEntregaForm((f) => ({
+                                    ...f,
+                                    dataEntrega: novaData,
+                                    prazoPagamento: contrato.prazoPagamento && novaData
+                                      ? calcularPrazoFinalEntrega(novaData, contrato.prazoPagamento, contrato.tipoPrazoPagamento).toISOString().split('T')[0] ?? f.prazoPagamento
+                                      : f.prazoPagamento,
+                                  }));
+                                }}
                               />
                             </div>
                             <div className="space-y-1">
@@ -1106,6 +1121,12 @@ export function ContratoDetalhesPage() {
                                   setEntregaForm((f) => ({ ...f, prazoPagamento: e.target.value }))
                                 }
                               />
+                              {contrato.prazoPagamento && (
+                                <p className="text-xs text-muted-foreground">
+                                  Sugestão baseada em {contrato.prazoPagamento} dia{contrato.prazoPagamento !== 1 ? 's' : ''}{' '}
+                                  {contrato.tipoPrazoPagamento === 'UTEIS' ? 'úteis' : 'corridos'} após a entrega
+                                </p>
+                              )}
                             </div>
                           </div>
                           {entregaError && (
@@ -1204,6 +1225,8 @@ export function ContratoDetalhesPage() {
         onOpenChange={setEmitirOFOpen}
         instrumentoId={instrumento.instrumentoId}
         itensContrato={itens}
+        prazoEntregaInstrumento={contrato.prazoEntrega}
+        tipoPrazoEntregaInstrumento={contrato.tipoPrazoEntrega}
         onSuccess={refetchOrdens}
       />
     </div>

@@ -549,7 +549,7 @@ export function NotaEmpenhoDetalhesPage() {
                                     setDespachoForm({ dataDespacho: '', codigoRastreio: '', numeroNf: '' });
                                     setDespachoOpenId(of.id);
                                   } else if (of.status === 'despachado') {
-                                    setEntregaForm({ dataEntrega: '', prazoPagamento: '' });
+                                    setEntregaForm({ dataEntrega: new Date().toISOString().split('T')[0] ?? '', prazoPagamento: '' });
                                     setEntregaOpenId(of.id);
                                   }
                                 }}
