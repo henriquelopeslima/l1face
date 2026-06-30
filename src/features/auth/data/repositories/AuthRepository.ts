@@ -150,4 +150,20 @@ export class AuthRepository implements IAuthRepository {
       throw new AuthError('Erro ao reenviar e-mail. Tente novamente.');
     }
   }
+
+  async recuperarSenha(email: string): Promise<void> {
+    let response: Response;
+    try {
+      response = await apiFetch('/api/auth/recuperar-senha', {
+        method: 'POST',
+        body: JSON.stringify({ email }),
+      });
+    } catch {
+      throw new AuthError('Serviço indisponível. Verifique sua conexão e tente novamente.');
+    }
+
+    if (!response.ok) {
+      throw new AuthError('Erro ao solicitar recuperação de senha. Tente novamente.');
+    }
+  }
 }

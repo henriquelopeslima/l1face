@@ -5,6 +5,7 @@ import { SelecionarVinculoLayout } from '@/shared/components/layout/SelecionarVi
 import { ProtectedRoute } from '@/shared/components/guards/ProtectedRoute';
 import { ConfirmarEmailPage } from '@/features/auth/presentation/pages/ConfirmarEmailPage';
 import { LoginPage } from '@/features/auth/presentation/pages/LoginPage';
+import { RecuperarSenhaPage } from '@/features/auth/presentation/pages/RecuperarSenhaPage';
 import { RegisterPage } from '@/features/auth/presentation/pages/RegisterPage';
 import { SelecionarVinculoPage } from '@/features/auth/presentation/pages/SelecionarVinculoPage';
 import { DashboardPage } from '@/features/dashboard/presentation/pages/DashboardPage';
@@ -47,6 +48,10 @@ export const router = createBrowserRouter([
       {
         path: '/confirmar-email',
         Component: ConfirmarEmailPage,
+      },
+      {
+        path: '/recuperar-senha',
+        Component: RecuperarSenhaPage,
       },
       {
         path: '/selecionar-vinculo',

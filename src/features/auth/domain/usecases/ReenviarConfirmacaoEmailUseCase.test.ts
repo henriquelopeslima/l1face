@@ -11,6 +11,7 @@ function makeRepo(overrides?: Partial<IAuthRepository>): IAuthRepository {
     register: vi.fn().mockResolvedValue({ message: '' }),
     confirmarEmail: vi.fn().mockResolvedValue(undefined),
     reenviarConfirmacao: vi.fn().mockResolvedValue(undefined),
+    recuperarSenha: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
 }

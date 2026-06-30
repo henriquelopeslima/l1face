@@ -115,7 +115,7 @@ export function LoginPage() {
                   <Label htmlFor="password">Senha</Label>
                   <button
                     type="button"
-                    onClick={() => alert('Funcionalidade de recuperação de senha em breve!')}
+                    onClick={() => navigate('/recuperar-senha')}
                     className="text-sm text-primary hover:underline font-medium"
                   >
                     Esqueceu a senha?

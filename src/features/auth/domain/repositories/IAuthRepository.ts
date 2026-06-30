@@ -9,4 +9,5 @@ export interface IAuthRepository {
   register(credentials: RegisterCredentials): Promise<{ message: string }>;
   confirmarEmail(token: string): Promise<void>;
   reenviarConfirmacao(email: string): Promise<void>;
+  recuperarSenha(email: string): Promise<void>;
 }
