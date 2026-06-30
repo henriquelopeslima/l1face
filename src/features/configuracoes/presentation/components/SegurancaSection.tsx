@@ -9,18 +9,14 @@ import { AlterarSenhaUseCase } from '../../domain/usecases/AlterarSenhaUseCase';
 import { ValidarForcaSenhaUseCase } from '../../domain/usecases/ValidarForcaSenhaUseCase';
 import { ChangePasswordRepository } from '../../data/repositories/ChangePasswordRepository';
 
+const _validarForcaSenha = new ValidarForcaSenhaUseCase();
+const _repository = new ChangePasswordRepository();
+const _changePasswordUseCase = new AlterarSenhaUseCase(_repository, _validarForcaSenha);
+
 export function SegurancaSection() {
   const [showForm, setShowForm] = useState(false);
 
-  // Initialize use cases and repositories
-  const repository = new ChangePasswordRepository();
-  const changePasswordUseCase = new AlterarSenhaUseCase(
-    repository,
-    new ValidarForcaSenhaUseCase()
-  );
-  const validarForcaSenha = new ValidarForcaSenhaUseCase();
-
-  const hook = useChangePassword(changePasswordUseCase, validarForcaSenha);
+  const hook = useChangePassword(_changePasswordUseCase, _validarForcaSenha);
 
   useEffect(() => {
     if (!hook.success) return;
@@ -29,7 +25,7 @@ export function SegurancaSection() {
       hook.reset();
     }, 5000);
     return () => clearTimeout(timer);
-  }, [hook.success]);
+  }, [hook.success, hook.reset]);
 
   return (
     <Card id="seguranca" className="scroll-mt-4">

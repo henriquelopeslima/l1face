@@ -54,13 +54,11 @@ export function useChangePassword(
     setSuccess(false);
 
     try {
-      // Create request object
       const request: ChangePasswordRequest = {
         currentPassword: formData.currentPassword,
         newPassword: formData.newPassword
       };
 
-      // Execute use case
       const response = await changePasswordUseCase.execute(request);
 
       if (response.success) {

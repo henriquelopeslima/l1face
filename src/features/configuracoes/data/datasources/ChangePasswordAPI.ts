@@ -12,11 +12,11 @@ export class ChangePasswordAPI {
         })
       });
 
-      const data = await response.json();
-
       if (response.status === 401) {
         throw new Error('JWT_EXPIRED');
       }
+
+      const data = await response.json();
 
       if (response.status >= 400 && response.status < 500) {
         return {

@@ -7,33 +7,18 @@ interface PasswordStrengthIndicatorProps {
 }
 
 export const PasswordStrengthIndicator: React.FC<PasswordStrengthIndicatorProps> = ({
-  password
+  password,
+  validationErrors = []
 }) => {
   if (!password) {
     return null;
   }
 
   const requirements = [
-    {
-      id: 'MIN_LENGTH',
-      label: 'Mínimo 8 caracteres',
-      met: password.length >= 8
-    },
-    {
-      id: 'MAX_LENGTH',
-      label: 'Máximo 20 caracteres',
-      met: password.length <= 20
-    },
-    {
-      id: 'NO_LETTERS',
-      label: 'Contém letras',
-      met: /[a-zA-Z]/.test(password)
-    },
-    {
-      id: 'NO_NUMBERS',
-      label: 'Contém números',
-      met: /\d/.test(password)
-    }
+    { id: 'MIN_LENGTH', label: 'Mínimo 8 caracteres',  met: !validationErrors.includes('MIN_LENGTH') },
+    { id: 'MAX_LENGTH', label: 'Máximo 20 caracteres', met: !validationErrors.includes('MAX_LENGTH') },
+    { id: 'NO_LETTERS', label: 'Contém letras',        met: !validationErrors.includes('NO_LETTERS') },
+    { id: 'NO_NUMBERS', label: 'Contém números',       met: !validationErrors.includes('NO_NUMBERS') },
   ];
 
   const metCount = requirements.filter(req => req.met).length;
