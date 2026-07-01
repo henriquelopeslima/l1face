@@ -32,47 +32,46 @@ import {
   SelectValue,
 } from '@/shared/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/shared/components/ui/table';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import { cn } from '@/shared/components/ui/utils';
+import type { UsuarioLicitante } from '../../domain/entities/UsuarioLicitante';
+import { useGestaoAcessos } from '../hooks/useGestaoAcessos';
 
-type TipoUsuario = 'admin' | 'colaborador';
-
-interface UsuarioAcesso {
-  id: string;
-  nome: string;
-  email: string;
-  tipo: TipoUsuario;
-}
+type Papel = 'ADMIN' | 'COLABORADOR';
 
 function gerarSenhaAleatoria(): string {
   const chars = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789!@#$%';
   return Array.from({ length: 14 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
 }
 
-const MOCK_INICIAL: UsuarioAcesso[] = [
-  { id: '1', nome: 'Maria Silva', email: 'maria.silva@lpsolucoes.com.br', tipo: 'colaborador' },
-  { id: '2', nome: 'João Ferreira', email: 'joao.ferreira@lpsolucoes.com.br', tipo: 'admin' },
-];
-
 export function GestaoAcessosSection() {
   const formId = useId();
-  const [usuarios, setUsuarios] = useState<UsuarioAcesso[]>(MOCK_INICIAL);
+  const {
+    usuarios,
+    isLoading,
+    error,
+    currentUserId,
+    removendoId,
+    removeError,
+    revogarAcesso,
+    clearRemoveError,
+  } = useGestaoAcessos();
+
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [modo, setModo] = useState<'criar' | 'editar'>('criar');
-  const [editandoId, setEditandoId] = useState<string | null>(null);
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
-  const [tipo, setTipo] = useState<TipoUsuario>('colaborador');
+  const [papel, setPapel] = useState<Papel>('COLABORADOR');
   const [senha, setSenha] = useState('');
   const [feedback, setFeedback] = useState<string | null>(null);
-  const [removerId, setRemoverId] = useState<string | null>(null);
+  const [confirmandoUserId, setConfirmandoUserId] = useState<string | null>(null);
 
   const resetForm = useCallback(() => {
     setNome('');
     setEmail('');
-    setTipo('colaborador');
+    setPapel('COLABORADOR');
     setSenha('');
     setFeedback(null);
-    setEditandoId(null);
   }, []);
 
   const abrirCriar = () => {
@@ -81,12 +80,11 @@ export function GestaoAcessosSection() {
     setDrawerOpen(true);
   };
 
-  const abrirEditar = (u: UsuarioAcesso) => {
+  const abrirEditar = (u: UsuarioLicitante) => {
     setModo('editar');
-    setEditandoId(u.id);
-    setNome(u.nome);
+    setNome(u.nomeCompleto);
     setEmail(u.email);
-    setTipo(u.tipo);
+    setPapel(u.papel);
     setSenha('');
     setFeedback(null);
     setDrawerOpen(true);
@@ -94,34 +92,29 @@ export function GestaoAcessosSection() {
 
   const gerarSenhaSomente = () => {
     setSenha(gerarSenhaAleatoria());
-    setFeedback('Senha gerada. Copie ou salve para enviar ao usuário por outro canal, se necessário.');
+    setFeedback('Senha gerada. As credenciais serão enviadas via email ao convidado.');
   };
 
-  const gerarSenhaEEnviarEmail = () => {
-    setSenha(gerarSenhaAleatoria());
-    setFeedback(`Senha gerada e enviada (simulação) para ${email || 'o e-mail informado'}.`);
+  // const gerarSenhaEEnviarEmail = () => {
+  //   setSenha(gerarSenhaAleatoria());
+  //   setFeedback(`Senha gerada e enviada (simulação) para ${email || 'o e-mail informado'}.`);
+  // };
+
+  const usuarioParaRemover = usuarios.find((u) => u.userId === confirmandoUserId);
+
+  const handleConfirmarRemocao = async () => {
+    if (!confirmandoUserId) return;
+    const userId = confirmandoUserId;
+    setConfirmandoUserId(null);
+    await revogarAcesso(userId);
   };
 
-  const salvar = () => {
-    const n = nome.trim();
-    const e = email.trim().toLowerCase();
-    if (!n || !e) return;
-    if (modo === 'criar') {
-      setUsuarios((prev) => [...prev, { id: crypto.randomUUID(), nome: n, email: e, tipo }]);
-    } else if (editandoId) {
-      setUsuarios((prev) => prev.map((u) => (u.id === editandoId ? { ...u, nome: n, email: e, tipo } : u)));
+  const handleFecharAlertDialog = (open: boolean) => {
+    if (!open) {
+      setConfirmandoUserId(null);
+      clearRemoveError();
     }
-    setDrawerOpen(false);
-    resetForm();
   };
-
-  const confirmarRemocao = () => {
-    if (!removerId) return;
-    setUsuarios((prev) => prev.filter((u) => u.id !== removerId));
-    setRemoverId(null);
-  };
-
-  const usuarioRemover = usuarios.find((u) => u.id === removerId);
 
   return (
     <>
@@ -143,69 +136,90 @@ export function GestaoAcessosSection() {
             </Button>
           </div>
         </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>E-mail</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead className="w-[120px] text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {usuarios.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={4} className="text-center text-muted-foreground">
-                    Nenhum acesso cadastrado. Use &quot;Adicionar usuário&quot; para incluir o primeiro.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                usuarios.map((u) => (
-                  <TableRow key={u.id}>
-                    <TableCell className="font-medium">{u.nome}</TableCell>
-                    <TableCell className="text-muted-foreground">{u.email}</TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          u.tipo === 'admin'
-                            ? 'border-[#0050FF] text-[#0050FF] bg-[#EDF4FF]/80 dark:bg-[#0050FF]/15'
-                            : ''
-                        )}
-                      >
-                        {u.tipo === 'admin' ? 'Administrador' : 'Colaborador'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-1">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          aria-label={`Editar ${u.nome}`}
-                          onClick={() => abrirEditar(u)}
-                        >
-                          <EditPencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-destructive hover:text-destructive"
-                          aria-label={`Remover ${u.nome}`}
-                          onClick={() => setRemoverId(u.id)}
-                        >
-                          <Trash className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
+        <CardContent className="space-y-3">
+          {isLoading ? (
+            <div className="space-y-3">
+              {[0, 1, 2].map((i) => (
+                <Skeleton key={i} className="h-10 w-full rounded" />
+              ))}
+            </div>
+          ) : error ? (
+            <p className="text-sm text-destructive">{error}</p>
+          ) : (
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>E-mail</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead className="w-[120px] text-right">Ações</TableHead>
                   </TableRow>
-                ))
+                </TableHeader>
+                <TableBody>
+                  {usuarios.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center text-muted-foreground">
+                        Nenhum acesso cadastrado. Use &quot;Adicionar usuário&quot; para incluir o primeiro.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    usuarios.map((u) => (
+                      <TableRow key={u.id}>
+                        <TableCell className="font-medium">{u.nomeCompleto}</TableCell>
+                        <TableCell className="text-muted-foreground">{u.email}</TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              u.papel === 'ADMIN'
+                                ? 'border-[#0050FF] text-[#0050FF] bg-[#EDF4FF]/80 dark:bg-[#0050FF]/15'
+                                : ''
+                            )}
+                          >
+                            {u.papel === 'ADMIN' ? 'Administrador' : 'Colaborador'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1">
+                            {u.userId !== currentUserId && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                aria-label={`Editar ${u.nomeCompleto}`}
+                                onClick={() => abrirEditar(u)}
+                              >
+                                <EditPencil className="h-4 w-4" />
+                              </Button>
+                            )}
+                            {u.userId !== currentUserId && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 text-destructive hover:text-destructive"
+                                aria-label={`Remover ${u.nomeCompleto}`}
+                                disabled={removendoId === u.userId}
+                                onClick={() => setConfirmandoUserId(u.userId)}
+                              >
+                                <Trash className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+
+              {removeError && (
+                <p className="text-sm text-destructive">{removeError}</p>
               )}
-            </TableBody>
-          </Table>
+            </>
+          )}
         </CardContent>
       </Card>
 
@@ -242,7 +256,8 @@ export function GestaoAcessosSection() {
               className="grid gap-4"
               onSubmit={(ev) => {
                 ev.preventDefault();
-                salvar();
+                setDrawerOpen(false);
+                resetForm();
               }}
             >
               <div className="grid gap-2">
@@ -253,18 +268,18 @@ export function GestaoAcessosSection() {
                 <Label htmlFor={`${formId}-email`}>E-mail</Label>
                 <Input id={`${formId}-email`} type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required />
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor={`${formId}-tipo`}>Tipo de usuário</Label>
-                <Select value={tipo} onValueChange={(v) => setTipo(v as TipoUsuario)}>
-                  <SelectTrigger id={`${formId}-tipo`}>
+              {/* <div className="grid gap-2">
+                <Label htmlFor={`${formId}-papel`}>Tipo de usuário</Label>
+                <Select value={papel} onValueChange={(v) => setPapel(v as Papel)}>
+                  <SelectTrigger id={`${formId}-papel`}>
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="admin">Administrador</SelectItem>
-                    <SelectItem value="colaborador">Colaborador</SelectItem>
+                    <SelectItem value="ADMIN">Administrador</SelectItem>
+                    <SelectItem value="COLABORADOR">Colaborador</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
+              </div> */}
 
               <div className="grid gap-2 rounded-lg border border-border bg-muted/30 p-3">
                 <Label htmlFor={`${formId}-senha`}>Senha de acesso</Label>
@@ -280,9 +295,9 @@ export function GestaoAcessosSection() {
                   <Button type="button" variant="outline" size="sm" onClick={gerarSenhaSomente}>
                     Gerar automaticamente
                   </Button>
-                  <Button type="button" variant="outline" size="sm" onClick={gerarSenhaEEnviarEmail}>
+                  {/* <Button type="button" variant="outline" size="sm" onClick={gerarSenhaEEnviarEmail}>
                     Gerar e enviar por e-mail
-                  </Button>
+                  </Button> */}
                 </div>
                 {feedback ? <p className="text-xs text-muted-foreground leading-snug">{feedback}</p> : null}
               </div>
@@ -298,13 +313,13 @@ export function GestaoAcessosSection() {
         </DrawerContent>
       </Drawer>
 
-      <AlertDialog open={!!removerId} onOpenChange={(open) => !open && setRemoverId(null)}>
+      <AlertDialog open={!!confirmandoUserId} onOpenChange={handleFecharAlertDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Remover acesso?</AlertDialogTitle>
             <AlertDialogDescription>
-              {usuarioRemover
-                ? `O usuário "${usuarioRemover.nome}" (${usuarioRemover.email}) perderá o acesso à organização. Esta ação pode ser irreversível.`
+              {usuarioParaRemover
+                ? `O usuário "${usuarioParaRemover.nomeCompleto}" (${usuarioParaRemover.email}) perderá o acesso à organização. Esta ação não pode ser desfeita.`
                 : 'Confirme a remoção deste acesso.'}
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -312,7 +327,7 @@ export function GestaoAcessosSection() {
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={confirmarRemocao}
+              onClick={handleConfirmarRemocao}
             >
               Remover
             </AlertDialogAction>
