@@ -10,6 +10,7 @@ describe('RevogarAcessoUseCase', () => {
     mockRepository = {
       listar: vi.fn(),
       revogar: vi.fn(),
+      convidar: vi.fn(),
     };
     useCase = new RevogarAcessoUseCase(mockRepository);
   });

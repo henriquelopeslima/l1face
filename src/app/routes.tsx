@@ -24,6 +24,8 @@ import { ArpRegistrarAdesaoPage } from '@/features/atas/presentation/pages/ArpRe
 import { ArpVisualizarPage } from '@/features/atas/presentation/pages/ArpVisualizarPage';
 import { SuportePage } from '@/features/suporte/presentation/pages/SuportePage';
 import { ConfiguracoesPage } from '@/features/configuracoes/presentation/pages/ConfiguracoesPage';
+import { AceitarConvitePage } from '@/features/configuracoes/presentation/pages/AceitarConvitePage';
+import { RecusarConvitePage } from '@/features/configuracoes/presentation/pages/RecusarConvitePage';
 
 function AuthRoot() {
   return (
@@ -48,6 +50,14 @@ export const router = createBrowserRouter([
       {
         path: '/confirmar-email',
         Component: ConfirmarEmailPage,
+      },
+      {
+        path: '/convites/aceitar',
+        Component: AceitarConvitePage,
+      },
+      {
+        path: '/convites/recusar',
+        Component: RecusarConvitePage,
       },
       {
         path: '/recuperar-senha',

@@ -1,23 +1,31 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '@/features/auth/presentation/context/AuthContext';
 import type { UsuarioLicitante } from '../../domain/entities/UsuarioLicitante';
 import { ListarUsuariosLicitanteUseCase } from '../../domain/usecases/ListarUsuariosLicitanteUseCase';
 import { RevogarAcessoUseCase } from '../../domain/usecases/RevogarAcessoUseCase';
+import { ConvidarColaboradorUseCase } from '../../domain/usecases/ConvidarColaboradorUseCase';
 import { UsuarioLicitanteRepository } from '../../data/repositories/UsuarioLicitanteRepository';
 
 const repository = new UsuarioLicitanteRepository();
 const listarUseCase = new ListarUsuariosLicitanteUseCase(repository);
 const revogarUseCase = new RevogarAcessoUseCase(repository);
+const convidarUseCase = new ConvidarColaboradorUseCase(repository);
 
 export interface UseGestaoAcessosReturn {
   usuarios: UsuarioLicitante[];
   isLoading: boolean;
   error: string | null;
   currentUserId: string | null;
+  isAdmin: boolean;
   removendoId: string | null;
   removeError: string | null;
   revogarAcesso: (userId: string) => Promise<void>;
   clearRemoveError: () => void;
+  convidando: boolean;
+  convidarError: string | null;
+  convidarSucesso: string | null;
+  convidarColaborador: (email: string, nome?: string) => Promise<boolean>;
+  clearConvidarFeedback: () => void;
 }
 
 export function useGestaoAcessos(): UseGestaoAcessosReturn {
@@ -30,6 +38,14 @@ export function useGestaoAcessos(): UseGestaoAcessosReturn {
   const [error, setError] = useState<string | null>(null);
   const [removendoId, setRemovendoId] = useState<string | null>(null);
   const [removeError, setRemoveError] = useState<string | null>(null);
+  const [convidando, setConvidando] = useState(false);
+  const [convidarError, setConvidarError] = useState<string | null>(null);
+  const [convidarSucesso, setConvidarSucesso] = useState<string | null>(null);
+
+  const isAdmin = useMemo(
+    () => usuarios.find((u) => u.userId === currentUserId)?.papel === 'ADMIN',
+    [usuarios, currentUserId]
+  );
 
   useEffect(() => {
     if (!licitanteId) return;
@@ -67,14 +83,49 @@ export function useGestaoAcessos(): UseGestaoAcessosReturn {
 
   const clearRemoveError = useCallback(() => setRemoveError(null), []);
 
+  const convidarColaborador = useCallback(
+    async (email: string, nome?: string): Promise<boolean> => {
+      if (!licitanteId) return false;
+
+      setConvidando(true);
+      setConvidarError(null);
+      setConvidarSucesso(null);
+
+      try {
+        await convidarUseCase.execute(licitanteId, email, nome);
+        setConvidarSucesso(`Convite enviado para ${email}.`);
+        return true;
+      } catch (err: unknown) {
+        const message =
+          err instanceof Error ? err.message : 'Erro ao enviar convite. Tente novamente.';
+        setConvidarError(message);
+        return false;
+      } finally {
+        setConvidando(false);
+      }
+    },
+    [licitanteId]
+  );
+
+  const clearConvidarFeedback = useCallback(() => {
+    setConvidarError(null);
+    setConvidarSucesso(null);
+  }, []);
+
   return {
     usuarios,
     isLoading,
     error,
     currentUserId,
+    isAdmin,
     removendoId,
     removeError,
     revogarAcesso,
     clearRemoveError,
+    convidando,
+    convidarError,
+    convidarSucesso,
+    convidarColaborador,
+    clearConvidarFeedback,
   };
 }

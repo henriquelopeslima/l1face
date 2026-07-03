@@ -2,9 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import type { UsuarioLicitante } from '../../domain/entities';
 
-const { mockListarExecute, mockRevogarExecute } = vi.hoisted(() => ({
+const { mockListarExecute, mockRevogarExecute, mockConvidarExecute } = vi.hoisted(() => ({
   mockListarExecute: vi.fn(),
   mockRevogarExecute: vi.fn(),
+  mockConvidarExecute: vi.fn(),
 }));
 
 vi.mock('@/features/auth/presentation/context/AuthContext', () => ({
@@ -15,6 +16,7 @@ vi.mock('../../data/repositories/UsuarioLicitanteRepository', () => ({
   UsuarioLicitanteRepository: class {
     listar = vi.fn();
     revogar = vi.fn();
+    convidar = vi.fn();
   },
 }));
 
@@ -27,6 +29,12 @@ vi.mock('../../domain/usecases/ListarUsuariosLicitanteUseCase', () => ({
 vi.mock('../../domain/usecases/RevogarAcessoUseCase', () => ({
   RevogarAcessoUseCase: class {
     execute = mockRevogarExecute;
+  },
+}));
+
+vi.mock('../../domain/usecases/ConvidarColaboradorUseCase', () => ({
+  ConvidarColaboradorUseCase: class {
+    execute = mockConvidarExecute;
   },
 }));
 
@@ -159,5 +167,163 @@ describe('useGestaoAcessos', () => {
     await waitFor(() => expect(result.current.isLoading).toBe(false));
 
     expect(result.current.currentUserId).toBe('user-1');
+  });
+
+  it('deve expor isAdmin true quando o usuário autenticado é ADMIN na lista', async () => {
+    const { result } = renderHook(() => useGestaoAcessos());
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.isAdmin).toBe(true);
+  });
+
+  it('deve expor isAdmin false quando o usuário autenticado é COLABORADOR na lista', async () => {
+    vi.mocked(useAuth).mockReturnValue({
+      ...mockAuthValue,
+      user: { ...mockAuthValue.user, id: 'user-2' },
+    } as ReturnType<typeof useAuth>);
+
+    const { result } = renderHook(() => useGestaoAcessos());
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    expect(result.current.isAdmin).toBe(false);
+  });
+
+  it('deve definir convidarSucesso ao convidar colaborador com sucesso', async () => {
+    mockConvidarExecute.mockResolvedValueOnce({
+      id: 'convite-1',
+      email: 'novo@empresa.com.br',
+      nome: 'novo',
+      licitanteId: 'licitante-1',
+      usuarioJaCadastrado: false,
+      status: 'PENDENTE',
+      criadoEm: '2026-01-15T10:30:00+00:00',
+      expiresAt: '2026-01-16T10:30:00+00:00',
+    });
+
+    const { result } = renderHook(() => useGestaoAcessos());
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    let sucesso = false;
+    await act(async () => {
+      sucesso = await result.current.convidarColaborador('novo@empresa.com.br');
+    });
+
+    expect(sucesso).toBe(true);
+    expect(result.current.convidarSucesso).toContain('novo@empresa.com.br');
+    expect(result.current.convidarError).toBeNull();
+    expect(mockConvidarExecute).toHaveBeenCalledWith('licitante-1', 'novo@empresa.com.br', undefined);
+  });
+
+  it('deve repassar o nome opcional ao use case ao convidar colaborador', async () => {
+    mockConvidarExecute.mockResolvedValueOnce({
+      id: 'convite-1',
+      email: 'novo@empresa.com.br',
+      nome: 'Maria Souza',
+      licitanteId: 'licitante-1',
+      usuarioJaCadastrado: false,
+      status: 'PENDENTE',
+      criadoEm: '2026-01-15T10:30:00+00:00',
+      expiresAt: '2026-01-16T10:30:00+00:00',
+    });
+
+    const { result } = renderHook(() => useGestaoAcessos());
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(async () => {
+      await result.current.convidarColaborador('novo@empresa.com.br', 'Maria Souza');
+    });
+
+    expect(mockConvidarExecute).toHaveBeenCalledWith('licitante-1', 'novo@empresa.com.br', 'Maria Souza');
+  });
+
+  it('deve definir convidarError quando o e-mail já tem acesso ao licitante (409)', async () => {
+    mockConvidarExecute.mockRejectedValueOnce(new Error('Este e-mail já tem acesso a esta empresa.'));
+
+    const { result } = renderHook(() => useGestaoAcessos());
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    let sucesso = true;
+    await act(async () => {
+      sucesso = await result.current.convidarColaborador('joao@empresa.com.br');
+    });
+
+    expect(sucesso).toBe(false);
+    expect(result.current.convidarError).toBe('Este e-mail já tem acesso a esta empresa.');
+    expect(result.current.convidarSucesso).toBeNull();
+    expect(result.current.usuarios).toEqual(mockUsuarios);
+  });
+
+  it('deve definir convidarError quando o e-mail é inválido (422)', async () => {
+    mockConvidarExecute.mockRejectedValueOnce(new Error('Informe um e-mail válido.'));
+
+    const { result } = renderHook(() => useGestaoAcessos());
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(async () => {
+      await result.current.convidarColaborador('invalido');
+    });
+
+    expect(result.current.convidarError).toBe('Informe um e-mail válido.');
+  });
+
+  it('deve limpar convidarError/convidarSucesso ao chamar clearConvidarFeedback', async () => {
+    mockConvidarExecute.mockRejectedValueOnce(new Error('Erro qualquer'));
+
+    const { result } = renderHook(() => useGestaoAcessos());
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(async () => {
+      await result.current.convidarColaborador('novo@empresa.com.br');
+    });
+
+    expect(result.current.convidarError).not.toBeNull();
+
+    act(() => {
+      result.current.clearConvidarFeedback();
+    });
+
+    expect(result.current.convidarError).toBeNull();
+    expect(result.current.convidarSucesso).toBeNull();
+  });
+
+  it('deve tratar convites repetidos para o mesmo e-mail (novo + reenvio) como dois sucessos independentes', async () => {
+    mockConvidarExecute.mockResolvedValue({
+      id: 'convite-1',
+      email: 'pendente@empresa.com.br',
+      nome: 'pendente',
+      licitanteId: 'licitante-1',
+      usuarioJaCadastrado: false,
+      status: 'PENDENTE',
+      criadoEm: '2026-01-15T10:30:00+00:00',
+      expiresAt: '2026-01-16T10:30:00+00:00',
+    });
+
+    const { result } = renderHook(() => useGestaoAcessos());
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    let primeiro = false;
+    await act(async () => {
+      primeiro = await result.current.convidarColaborador('pendente@empresa.com.br');
+    });
+    expect(primeiro).toBe(true);
+    expect(result.current.convidarSucesso).toContain('pendente@empresa.com.br');
+
+    let segundo = false;
+    await act(async () => {
+      segundo = await result.current.convidarColaborador('pendente@empresa.com.br');
+    });
+
+    expect(segundo).toBe(true);
+    expect(result.current.convidarSucesso).toContain('pendente@empresa.com.br');
+    expect(result.current.convidarError).toBeNull();
+    expect(mockConvidarExecute).toHaveBeenCalledTimes(2);
   });
 });

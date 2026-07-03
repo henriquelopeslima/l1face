@@ -21,6 +21,7 @@ describe('ListarUsuariosLicitanteUseCase', () => {
     mockRepository = {
       listar: vi.fn(),
       revogar: vi.fn(),
+      convidar: vi.fn(),
     };
     useCase = new ListarUsuariosLicitanteUseCase(mockRepository);
   });

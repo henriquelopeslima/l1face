@@ -1,5 +1,6 @@
-import { useCallback, useId, useState } from 'react';
-import { EditPencil, Group, PlusCircle, Trash } from 'iconoir-react';
+import { useState, type FormEvent } from 'react';
+import { z } from 'zod';
+import { Group, PlusCircle, Trash } from 'iconoir-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
@@ -24,81 +25,73 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/shared/components/ui/alert-dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/shared/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/shared/components/ui/table';
 import { Skeleton } from '@/shared/components/ui/skeleton';
 import { cn } from '@/shared/components/ui/utils';
-import type { UsuarioLicitante } from '../../domain/entities/UsuarioLicitante';
 import { useGestaoAcessos } from '../hooks/useGestaoAcessos';
 
-type Papel = 'ADMIN' | 'COLABORADOR';
-
-function gerarSenhaAleatoria(): string {
-  const chars = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789!@#$%';
-  return Array.from({ length: 14 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-}
+const emailSchema = z.string().min(1, 'Informe o e-mail.').email('Informe um e-mail válido.');
+const nomeSchema = z.string().trim().min(1, 'Informe o nome.');
 
 export function GestaoAcessosSection() {
-  const formId = useId();
   const {
     usuarios,
     isLoading,
     error,
     currentUserId,
+    isAdmin,
     removendoId,
     removeError,
     revogarAcesso,
     clearRemoveError,
+    convidando,
+    convidarError,
+    convidarSucesso,
+    convidarColaborador,
+    clearConvidarFeedback,
   } = useGestaoAcessos();
 
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [modo, setModo] = useState<'criar' | 'editar'>('criar');
-  const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
-  const [papel, setPapel] = useState<Papel>('COLABORADOR');
-  const [senha, setSenha] = useState('');
-  const [feedback, setFeedback] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [nome, setNome] = useState('');
+  const [nomeError, setNomeError] = useState<string | null>(null);
   const [confirmandoUserId, setConfirmandoUserId] = useState<string | null>(null);
 
-  const resetForm = useCallback(() => {
-    setNome('');
+  const abrirConvite = () => {
     setEmail('');
-    setPapel('COLABORADOR');
-    setSenha('');
-    setFeedback(null);
-  }, []);
-
-  const abrirCriar = () => {
-    resetForm();
-    setModo('criar');
+    setEmailError(null);
+    setNome('');
+    setNomeError(null);
+    clearConvidarFeedback();
     setDrawerOpen(true);
   };
 
-  const abrirEditar = (u: UsuarioLicitante) => {
-    setModo('editar');
-    setNome(u.nomeCompleto);
-    setEmail(u.email);
-    setPapel(u.papel);
-    setSenha('');
-    setFeedback(null);
-    setDrawerOpen(true);
+  const handleDrawerOpenChange = (open: boolean) => {
+    setDrawerOpen(open);
+    if (!open) {
+      clearConvidarFeedback();
+    }
   };
 
-  const gerarSenhaSomente = () => {
-    setSenha(gerarSenhaAleatoria());
-    setFeedback('Senha gerada. As credenciais serão enviadas via email ao convidado.');
-  };
+  const handleSubmitConvite = async (ev: FormEvent) => {
+    ev.preventDefault();
+    const emailResult = emailSchema.safeParse(email);
+    const nomeResult = nomeSchema.safeParse(nome);
 
-  // const gerarSenhaEEnviarEmail = () => {
-  //   setSenha(gerarSenhaAleatoria());
-  //   setFeedback(`Senha gerada e enviada (simulação) para ${email || 'o e-mail informado'}.`);
-  // };
+    setEmailError(emailResult.success ? null : emailResult.error.issues[0]?.message ?? 'Informe um e-mail válido.');
+    setNomeError(nomeResult.success ? null : nomeResult.error.issues[0]?.message ?? 'Informe o nome.');
+
+    if (!emailResult.success || !nomeResult.success) {
+      return;
+    }
+
+    const sucesso = await convidarColaborador(emailResult.data, nomeResult.data);
+    if (sucesso) {
+      setEmail('');
+      setNome('');
+    }
+  };
 
   const usuarioParaRemover = usuarios.find((u) => u.userId === confirmandoUserId);
 
@@ -127,13 +120,15 @@ export function GestaoAcessosSection() {
                 Gestão de acessos
               </CardTitle>
               <CardDescription className="text-sm lg:text-base">
-                Cadastre colaboradores e administradores, edite dados e controle senhas de acesso.
+                Convide colaboradores por e-mail e controle quem tem acesso à sua empresa.
               </CardDescription>
             </div>
-            <Button type="button" className="shrink-0 gap-2" onClick={abrirCriar}>
-              <PlusCircle className="h-4 w-4" />
-              Adicionar usuário
-            </Button>
+            {isAdmin && (
+              <Button type="button" className="shrink-0 gap-2" onClick={abrirConvite}>
+                <PlusCircle className="h-4 w-4" />
+                Convidar colaborador
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -153,14 +148,14 @@ export function GestaoAcessosSection() {
                     <TableHead>Nome</TableHead>
                     <TableHead>E-mail</TableHead>
                     <TableHead>Tipo</TableHead>
-                    <TableHead className="w-[120px] text-right">Ações</TableHead>
+                    <TableHead className="w-[80px] text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {usuarios.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={4} className="text-center text-muted-foreground">
-                        Nenhum acesso cadastrado. Use &quot;Adicionar usuário&quot; para incluir o primeiro.
+                        Nenhum acesso cadastrado. Use &quot;Convidar colaborador&quot; para incluir o primeiro.
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -182,18 +177,6 @@ export function GestaoAcessosSection() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-1">
-                            {u.userId !== currentUserId && (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8"
-                                aria-label={`Editar ${u.nomeCompleto}`}
-                                onClick={() => abrirEditar(u)}
-                              >
-                                <EditPencil className="h-4 w-4" />
-                              </Button>
-                            )}
                             {u.userId !== currentUserId && (
                               <Button
                                 type="button"
@@ -225,10 +208,7 @@ export function GestaoAcessosSection() {
 
       <Drawer
         open={drawerOpen}
-        onOpenChange={(open) => {
-          setDrawerOpen(open);
-          if (!open) resetForm();
-        }}
+        onOpenChange={handleDrawerOpenChange}
         direction="right"
         shouldScaleBackground={false}
       >
@@ -240,75 +220,68 @@ export function GestaoAcessosSection() {
           )}
         >
           <DrawerHeader className="border-b border-border text-left">
-            <DrawerTitle className="text-lg">
-              {modo === 'criar' ? 'Adicionar usuário' : 'Gerenciar acesso'}
-            </DrawerTitle>
+            <DrawerTitle className="text-lg">Convidar colaborador</DrawerTitle>
             <DrawerDescription>
-              {modo === 'criar'
-                ? 'Preencha nome, e-mail e tipo. Defina a senha manualmente ou use as opções de geração abaixo.'
-                : 'Atualize os dados do usuário. Para alterar a senha, use o campo ou as ações de geração.'}
+              Informe o e-mail e o nome da pessoa que você deseja convidar. Ela receberá um link por e-mail para aceitar o acesso à sua empresa.
             </DrawerDescription>
           </DrawerHeader>
 
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4">
-            <form
-              id={formId}
-              className="grid gap-4"
-              onSubmit={(ev) => {
-                ev.preventDefault();
-                setDrawerOpen(false);
-                resetForm();
-              }}
-            >
-              <div className="grid gap-2">
-                <Label htmlFor={`${formId}-nome`}>Nome</Label>
-                <Input id={`${formId}-nome`} value={nome} onChange={(e) => setNome(e.target.value)} autoComplete="name" required />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor={`${formId}-email`}>E-mail</Label>
-                <Input id={`${formId}-email`} type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" required />
-              </div>
-              {/* <div className="grid gap-2">
-                <Label htmlFor={`${formId}-papel`}>Tipo de usuário</Label>
-                <Select value={papel} onValueChange={(v) => setPapel(v as Papel)}>
-                  <SelectTrigger id={`${formId}-papel`}>
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ADMIN">Administrador</SelectItem>
-                    <SelectItem value="COLABORADOR">Colaborador</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div> */}
-
-              <div className="grid gap-2 rounded-lg border border-border bg-muted/30 p-3">
-                <Label htmlFor={`${formId}-senha`}>Senha de acesso</Label>
-                <Input
-                  id={`${formId}-senha`}
-                  type="text"
-                  value={senha}
-                  onChange={(e) => setSenha(e.target.value)}
-                  placeholder={modo === 'editar' ? 'Nova senha (opcional)' : 'Digite uma senha ou gere automaticamente'}
-                  autoComplete="new-password"
-                />
-                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-                  <Button type="button" variant="outline" size="sm" onClick={gerarSenhaSomente}>
-                    Gerar automaticamente
-                  </Button>
-                  {/* <Button type="button" variant="outline" size="sm" onClick={gerarSenhaEEnviarEmail}>
-                    Gerar e enviar por e-mail
-                  </Button> */}
+            <form id="convidar-colaborador-form" className="grid gap-4" onSubmit={handleSubmitConvite}>
+              {convidarSucesso && (
+                <div className="rounded-md border border-green-200 bg-green-50 p-3">
+                  <p className="text-sm font-medium text-green-800">{convidarSucesso}</p>
                 </div>
-                {feedback ? <p className="text-xs text-muted-foreground leading-snug">{feedback}</p> : null}
+              )}
+              {convidarError && (
+                <div className="rounded-md border border-red-200 bg-red-50 p-3">
+                  <p className="text-sm font-medium text-red-800">{convidarError}</p>
+                </div>
+              )}
+              <div className="grid gap-2">
+                <Label htmlFor="convidar-colaborador-email">E-mail do colaborador</Label>
+                <Input
+                  id="convidar-colaborador-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setEmailError(null);
+                  }}
+                  autoComplete="email"
+                  placeholder="colaborador@empresa.com.br"
+                  disabled={convidando}
+                  required
+                />
+                {emailError && <p className="text-xs text-destructive">{emailError}</p>}
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="convidar-colaborador-nome">Nome do colaborador</Label>
+                <Input
+                  id="convidar-colaborador-nome"
+                  type="text"
+                  value={nome}
+                  onChange={(e) => {
+                    setNome(e.target.value);
+                    setNomeError(null);
+                  }}
+                  autoComplete="name"
+                  placeholder="Maria Souza"
+                  disabled={convidando}
+                  required
+                />
+                {nomeError && <p className="text-xs text-destructive">{nomeError}</p>}
               </div>
             </form>
           </div>
 
           <DrawerFooter className="border-t border-border bg-background sm:flex-row sm:justify-end sm:gap-2">
             <DrawerClose asChild>
-              <Button type="button" variant="outline">Cancelar</Button>
+              <Button type="button" variant="outline">Fechar</Button>
             </DrawerClose>
-            <Button type="submit" form={formId}>Salvar</Button>
+            <Button type="submit" form="convidar-colaborador-form" disabled={convidando}>
+              {convidando ? 'Enviando...' : 'Enviar convite'}
+            </Button>
           </DrawerFooter>
         </DrawerContent>
       </Drawer>
