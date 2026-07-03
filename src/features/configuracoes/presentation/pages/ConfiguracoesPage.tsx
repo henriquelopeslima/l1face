@@ -10,10 +10,12 @@ import { NotificacoesSection } from '../components/NotificacoesSection';
 import { PerfilSection } from '../components/PerfilSection';
 import { SegurancaSection } from '../components/SegurancaSection';
 import { useHashScroll } from '../hooks/useHashScroll';
+import { useIsAdminLicitante } from '../hooks/useIsAdminLicitante';
 
 export function ConfiguracoesPage() {
   useHashScroll();
   const navigate = useNavigate();
+  const { isAdmin, isLoading: isLoadingPapel } = useIsAdminLicitante();
 
   return (
     <div className="space-y-4 lg:space-y-6">
@@ -29,9 +31,9 @@ export function ConfiguracoesPage() {
       <PerfilSection />
       <AparenciaSection />
       <NotificacoesSection />
-      <AssinaturaSection />
+      {!isLoadingPapel && isAdmin && <AssinaturaSection />}
       <SegurancaSection />
-      <GestaoAcessosSection />
+      {!isLoadingPapel && isAdmin && <GestaoAcessosSection />}
 
       <Card className="border-destructive/50">
         <CardContent className="pt-4 lg:pt-6">

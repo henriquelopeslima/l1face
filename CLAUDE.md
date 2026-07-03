@@ -1,5 +1,5 @@
 <!-- SPECKIT START -->
 For additional context about technologies to be used, project structure,
 shell commands, and other important information, read the current plan:
-specs/023-convidar-colaborador/plan.md
+specs/024-restringir-config-colaborador/plan.md
 <!-- SPECKIT END -->

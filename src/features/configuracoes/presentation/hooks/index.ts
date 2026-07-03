@@ -2,6 +2,8 @@ export { useChangePassword } from './useChangePassword';
 export type { UseChangePasswordState, UseChangePasswordActions, UseChangePasswordReturn } from './useChangePassword';
 export { useGestaoAcessos } from './useGestaoAcessos';
 export type { UseGestaoAcessosReturn } from './useGestaoAcessos';
+export { useIsAdminLicitante } from './useIsAdminLicitante';
+export type { UseIsAdminLicitanteReturn } from './useIsAdminLicitante';
 export { useAceitarConvite } from './useAceitarConvite';
 export type { UseAceitarConviteReturn } from './useAceitarConvite';
 export { useRecusarConvite } from './useRecusarConvite';

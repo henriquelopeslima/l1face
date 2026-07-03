@@ -22,6 +22,7 @@ import {
 import { cn } from '@/shared/components/ui/utils';
 import { LogoLicitaOne } from '@/shared/components/icons/LogoLicitaOne';
 import { LicitaOneIcon } from '@/shared/components/icons/LicitaOneIcon';
+import { useIsAdminLicitante } from '@/features/configuracoes/presentation/hooks/useIsAdminLicitante';
 
 interface MenuItem {
   title: string;
@@ -95,10 +96,14 @@ function isSubmenuActive(pathname: string, hash: string, search: string, submenu
   return submenu.some((s) => isPathActive(pathname, hash, search, s.path));
 }
 
+const CONFIGURACOES_TITULOS_RESTRITOS = new Set(['Assinatura e cobrança', 'Gestão de acessos']);
+
 export function AppSidebar() {
   const { pathname, hash, search } = useLocation();
   const [openMenus, setOpenMenus] = useState<string[]>([]);
   const [collapsed, setCollapsed] = useState(true);
+  const { isAdmin, isLoading: isLoadingPapel } = useIsAdminLicitante();
+  const podeVerSecoesRestritas = !isLoadingPapel && isAdmin;
 
   const expanded = !collapsed;
 
@@ -172,17 +177,21 @@ export function AppSidebar() {
         <div className={cn('min-w-0 space-y-0.5', expanded && 'space-y-1')}>
           {MENU_ITEMS.map((item) => {
             const Icon = item.icon;
-            const hasSubmenu = Boolean(item.submenu?.length);
+            const visibleSubmenu =
+              item.title === 'Configurações' && !podeVerSecoesRestritas
+                ? item.submenu?.filter((s) => !CONFIGURACOES_TITULOS_RESTRITOS.has(s.title))
+                : item.submenu;
+            const hasSubmenu = Boolean(visibleSubmenu?.length);
             const menuOpen = openMenus.includes(item.title);
-            const submenuActive = item.submenu
-              ? isSubmenuActive(pathname, hash, search, item.submenu)
+            const submenuActive = visibleSubmenu
+              ? isSubmenuActive(pathname, hash, search, visibleSubmenu)
               : false;
             const prefixActive = item.groupPathPrefix ? pathname.startsWith(item.groupPathPrefix) : false;
             const itemActive = item.path
               ? isPathActive(pathname, hash, search, item.path)
               : submenuActive || prefixActive;
 
-            if (hasSubmenu && item.submenu) {
+            if (hasSubmenu && visibleSubmenu) {
               return (
                 <div key={item.title} className="min-w-0">
                   <button
@@ -209,7 +218,7 @@ export function AppSidebar() {
 
                   {!collapsed && menuOpen && (
                     <div className="mt-0.5 space-y-0.5 border-l-2 border-border py-0.5 pl-2 ml-1.5">
-                      {item.submenu.map((sub) => {
+                      {visibleSubmenu.map((sub) => {
                         const SubIcon = sub.icon;
                         const subActive = isPathActive(pathname, hash, search, sub.path);
                         return (
