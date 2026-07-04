@@ -50,10 +50,10 @@ const mockUsuarios: UsuarioLicitante[] = [
 
 const mockAuthValue = {
   session: {
-    licitante: { id: 'licitante-1', cnpj: '00000000000000', nome_empresa: 'Empresa' },
-    user: { id: 'user-1', email: 'joao@empresa.com.br', nome_completo: 'João', licitantes: [], fotoPerfil: null },
+    licitante: { id: 'licitante-1', cnpj: '00000000000000', nomeEmpresa: 'Empresa' },
+    user: { id: 'user-1', email: 'joao@empresa.com.br', nomeCompleto: 'João', licitantes: [], fotoPerfil: null },
   },
-  user: { id: 'user-1', email: 'joao@empresa.com.br', nome_completo: 'João', licitantes: [], fotoPerfil: null },
+  user: { id: 'user-1', email: 'joao@empresa.com.br', nomeCompleto: 'João', licitantes: [], fotoPerfil: null },
   isLoading: false,
   isAuthenticated: true,
   error: null,

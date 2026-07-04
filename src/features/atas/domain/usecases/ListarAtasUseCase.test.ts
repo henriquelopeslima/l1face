@@ -13,6 +13,8 @@ const ataFixture: Ata = {
   vigenciaFinal: '2026-12-31',
   valorRegistrado: 25000,
   saldo: 0,
+  valorCarona: 0,
+  saldoCarona: 0,
   contratos: 0,
   status: 'ATIVA',
   aceitaAdesao: true,
