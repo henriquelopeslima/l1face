@@ -11,6 +11,7 @@ import { Switch } from '@/shared/components/ui/switch';
 import { Alert, AlertDescription, AlertTitle } from '@/shared/components/ui/alert';
 import { Table as TableComponent, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/shared/components/ui/table';
 import { Badge } from '@/shared/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { CadastroSucesso } from '@/shared/components/feedback/CadastroSucesso';
 import { useConsultarContratoPncp } from '../hooks/useConsultarContratoPncp';
 import { useCriarContrato } from '../hooks/useCriarContrato';
@@ -387,7 +388,10 @@ export function CadastrarContrato() {
           <CardContent className="space-y-4 lg:space-y-6">
             <RadioGroup
               value={metodoEntrada}
-              onValueChange={(v) => setMetodoEntrada(v as 'manual' | 'excel')}
+              onValueChange={(v) => {
+                if (v === 'excel') return;
+                setMetodoEntrada(v as 'manual' | 'excel');
+              }}
               className="grid gap-4 lg:grid-cols-2"
             >
               <label
@@ -403,19 +407,24 @@ export function CadastrarContrato() {
                   <p className="text-muted-foreground text-xs lg:text-sm">Preencha o formulário passo a passo</p>
                 </div>
               </label>
-              <label
-                htmlFor="metodo-excel"
-                className={`relative flex cursor-pointer flex-col items-center gap-3 rounded-lg border-2 p-6 transition-all ${metodoEntrada === 'excel' ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50 hover:bg-muted/30'}`}
-              >
-                <RadioGroupItem value="excel" id="metodo-excel" className="sr-only" />
-                <div className={`rounded-full p-3 ${metodoEntrada === 'excel' ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
-                  <Table className="h-6 w-6" />
-                </div>
-                <div className="text-center space-y-1">
-                  <p className="font-medium">Importar via Excel</p>
-                  <p className="text-muted-foreground text-xs lg:text-sm">Use nosso modelo de planilha</p>
-                </div>
-              </label>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <label
+                    htmlFor="metodo-excel"
+                    className="relative flex cursor-not-allowed flex-col items-center gap-3 rounded-lg border-2 border-border p-6 opacity-50 transition-opacity hover:opacity-70"
+                  >
+                    <RadioGroupItem value="excel" id="metodo-excel" className="sr-only" disabled />
+                    <div className="rounded-full bg-muted p-3 text-muted-foreground">
+                      <Table className="h-6 w-6" />
+                    </div>
+                    <div className="space-y-1 text-center">
+                      <p className="font-medium">Importar via Excel</p>
+                      <p className="text-muted-foreground text-xs lg:text-sm">Use nosso modelo de planilha</p>
+                    </div>
+                  </label>
+                </TooltipTrigger>
+                <TooltipContent>Em breve!</TooltipContent>
+              </Tooltip>
             </RadioGroup>
 
             {metodoEntrada === 'excel' && (
