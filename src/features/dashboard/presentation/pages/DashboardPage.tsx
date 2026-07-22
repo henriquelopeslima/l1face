@@ -5,13 +5,18 @@ import {
   CheckCircle,
   DollarCircle,
   StatsUpSquare,
+  StatsDownSquare,
   Clock,
   WarningTriangle,
   ArrowUpRight,
+  RefreshDouble,
 } from 'iconoir-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { Button } from '@/shared/components/ui/button';
 import { useAuth } from '@/features/auth/presentation/context/AuthContext';
+import { useDashboard } from '../hooks/useDashboard';
+import type { StatusInstrumento, TipoOrigemAlerta } from '../../domain/entities/DashboardData';
+import { LoadingLogo } from '@/shared/components/feedback/LoadingLogo';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -26,29 +31,63 @@ import {
   Cell,
 } from 'recharts';
 
-const monthlyData = [
-  { month: 'Jan', contratos: 4200000, atas: 1500000 },
-  { month: 'Fev', contratos: 3800000, atas: 1800000 },
-  { month: 'Mar', contratos: 5100000, atas: 2100000 },
-  { month: 'Abr', contratos: 4600000, atas: 1900000 },
-  { month: 'Mai', contratos: 5800000, atas: 2400000 },
-  { month: 'Jun', contratos: 6200000, atas: 2800000 },
-];
+const MESES_ABREVIADOS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
-const statusData = [
-  { name: 'Vigentes', value: 45, color: '#0050FF' },
-  { name: 'Vencendo', value: 8, color: '#4D8EFF' },
-  { name: 'Vencidos', value: 3, color: '#6B4DFF' },
-];
+function formatarMesAbreviado(mes: string): string {
+  const [, mesNumero] = mes.split('-');
+  const indice = Number(mesNumero) - 1;
+  return MESES_ABREVIADOS[indice] ?? mes;
+}
 
-const alertas = [
-  { id: '1', tipo: 'vencimento', texto: 'Contrato 042/2024 — Merenda Escolar', sub: 'Vence em 12 dias', icon: Clock, cor: '#F39C12' },
-  { id: '2', tipo: 'financeiro', texto: 'NE 88442/2025 — Medicamentos', sub: 'OF com prazo próximo', icon: WarningTriangle, cor: '#EF5B5B' },
-];
+const STATUS_LABEL_COR: Record<StatusInstrumento, { label: string; color: string }> = {
+  ATIVA: { label: 'Vigentes', color: '#0050FF' },
+  PROXIMA_AO_VENCIMENTO: { label: 'Vencendo', color: '#4D8EFF' },
+  ENCERRADA: { label: 'Vencidos', color: '#6B4DFF' },
+};
+
+const TIPO_ORIGEM_ICONE: Record<TipoOrigemAlerta, typeof Clock> = {
+  instrumento: Clock,
+  ata: Clock,
+  of: WarningTriangle,
+};
+
+function formatarMoeda(valor: number): string {
+  return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
 
 export function DashboardPage() {
   const { session } = useAuth();
+  const { dashboard, isLoading, error, refetch } = useDashboard();
   const currencyValueClass = 'font-bold whitespace-nowrap leading-tight text-[clamp(0.875rem,1.6vw,1.875rem)]';
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <LoadingLogo />
+      </div>
+    );
+  }
+
+  if (error || !dashboard) {
+    return (
+      <div className="space-y-4 lg:space-y-6">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex flex-col items-center gap-4 py-8 text-center">
+              <WarningTriangle className="h-8 w-8 text-[var(--danger)]" />
+              <p className="text-[var(--danger)]">{error ?? 'Não foi possível carregar os dados da tela inicial.'}</p>
+              <Button variant="outline" onClick={refetch}>
+                <RefreshDouble className="h-4 w-4 mr-2" />
+                Tentar novamente
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const { cards, evolucaoMensal, statusInstrumentos, alertas } = dashboard;
 
   return (
     <div className="space-y-4 lg:space-y-6">
@@ -66,15 +105,14 @@ export function DashboardPage() {
             <Page className="h-4 w-4 md:h-4.5 md:w-4.5 lg:h-5 lg:w-5 text-muted-foreground" />
           </CardHeader>
           <CardContent className="pb-3 md:pb-4 lg:pb-6">
-            <div className={currencyValueClass}>R$ 1.000.000,00</div>
-            <p className="text-xs md:text-xs lg:text-sm text-muted-foreground mt-1 md:mt-1.5 lg:mt-2">
-              <span className="text-[#06D6A0] inline-flex items-center font-medium">
-                <StatsUpSquare className="h-3 w-3 md:h-3.5 md:w-3.5 lg:h-4 lg:w-4 mr-1" />
-                +12.5%
-              </span>{' '}
-              <span className="hidden md:inline">em relação ao mês anterior</span>
-              <span className="md:hidden">vs mês anterior</span>
-            </p>
+            <div className={currencyValueClass}>{formatarMoeda(cards.valorTotalContratado.valor)}</div>
+            {cards.valorTotalContratado.variacaoPercentualMesAnterior !== null && (
+              <p className="text-xs md:text-xs lg:text-sm text-muted-foreground mt-1 md:mt-1.5 lg:mt-2">
+                <VariacaoPercentual valor={cards.valorTotalContratado.variacaoPercentualMesAnterior} />{' '}
+                <span className="hidden md:inline">em relação ao mês anterior</span>
+                <span className="md:hidden">vs mês anterior</span>
+              </p>
+            )}
           </CardContent>
         </Card>
 
@@ -84,15 +122,14 @@ export function DashboardPage() {
             <Notes className="h-4 w-4 md:h-4.5 md:w-4.5 lg:h-5 lg:w-5 text-muted-foreground" />
           </CardHeader>
           <CardContent className="pb-3 md:pb-4 lg:pb-6">
-            <div className={currencyValueClass}>R$ 359.112,10</div>
-            <p className="text-xs md:text-xs lg:text-sm text-muted-foreground mt-1 md:mt-1.5 lg:mt-2">
-              <span className="text-[#06D6A0] inline-flex items-center font-medium">
-                <StatsUpSquare className="h-3 w-3 md:h-3.5 md:w-3.5 lg:h-4 lg:w-4 mr-1" />
-                +8.2%
-              </span>{' '}
-              <span className="hidden md:inline">em relação ao mês anterior</span>
-              <span className="md:hidden">vs mês anterior</span>
-            </p>
+            <div className={currencyValueClass}>{formatarMoeda(cards.valorTotalAtas.valor)}</div>
+            {cards.valorTotalAtas.variacaoPercentualMesAnterior !== null && (
+              <p className="text-xs md:text-xs lg:text-sm text-muted-foreground mt-1 md:mt-1.5 lg:mt-2">
+                <VariacaoPercentual valor={cards.valorTotalAtas.variacaoPercentualMesAnterior} />{' '}
+                <span className="hidden md:inline">em relação ao mês anterior</span>
+                <span className="md:hidden">vs mês anterior</span>
+              </p>
+            )}
           </CardContent>
         </Card>
 
@@ -102,9 +139,9 @@ export function DashboardPage() {
             <CheckCircle className="h-4 w-4 md:h-4.5 md:w-4.5 lg:h-5 lg:w-5 text-muted-foreground" />
           </CardHeader>
           <CardContent className="pb-3 md:pb-4 lg:pb-6">
-            <div className="text-lg md:text-xl lg:text-2xl xl:text-3xl font-bold">56</div>
+            <div className="text-lg md:text-xl lg:text-2xl xl:text-3xl font-bold">{cards.instrumentosAtivos.quantidade}</div>
             <p className="text-xs md:text-xs lg:text-sm text-muted-foreground mt-1 md:mt-1.5 lg:mt-2">
-              <span className="text-[#FFB800] font-medium">8</span> próximos ao vencimento
+              <span className="text-[#FFB800] font-medium">{cards.instrumentosAtivos.proximosAoVencimento}</span> próximos ao vencimento
             </p>
           </CardContent>
         </Card>
@@ -115,9 +152,9 @@ export function DashboardPage() {
             <DollarCircle className="h-4 w-4 md:h-4.5 md:w-4.5 lg:h-5 lg:w-5 text-muted-foreground" />
           </CardHeader>
           <CardContent className="pb-3 md:pb-4 lg:pb-6">
-            <div className={currencyValueClass}>R$ 125.450,00</div>
+            <div className={currencyValueClass}>{formatarMoeda(cards.pendenciasFinanceiras.valor)}</div>
             <p className="text-xs md:text-xs lg:text-sm text-muted-foreground mt-1 md:mt-1.5 lg:mt-2">
-              <span className="text-[#EF5B5B] font-medium">5</span> aguardando processamento
+              <span className="text-[#EF5B5B] font-medium">{cards.pendenciasFinanceiras.quantidadeAguardandoProcessamento}</span> aguardando processamento
             </p>
           </CardContent>
         </Card>
@@ -133,7 +170,7 @@ export function DashboardPage() {
           </CardHeader>
           <CardContent className="pt-2 lg:pt-4">
             <ResponsiveContainer width="100%" height={240}>
-              <AreaChart data={monthlyData}>
+              <AreaChart data={evolucaoMensal.map((ponto) => ({ ...ponto, month: formatarMesAbreviado(ponto.mes) }))}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                 <XAxis dataKey="month" className="text-[10px] lg:text-xs" />
                 <YAxis className="text-[10px] lg:text-xs" tickFormatter={(value: number) => `${(value / 1000000).toFixed(1)}M`} />
@@ -165,29 +202,30 @@ export function DashboardPage() {
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
                 <Pie
-                  data={statusData}
+                  data={statusInstrumentos}
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={({ name, percent }) => `${name ?? ''} ${((percent ?? 0) * 100).toFixed(0)}%`}
+                  label={({ percent }) => `${((percent ?? 0) * 100).toFixed(0)}%`}
                   outerRadius={60}
-                  dataKey="value"
+                  dataKey="quantidade"
+                  nameKey="status"
                 >
-                  {statusData.map((entry) => (
-                    <Cell key={entry.name} fill={entry.color} />
+                  {statusInstrumentos.map((entry) => (
+                    <Cell key={entry.status} fill={STATUS_LABEL_COR[entry.status].color} />
                   ))}
                 </Pie>
-                <Tooltip />
+                <Tooltip formatter={(value, _name, entry) => [value, STATUS_LABEL_COR[(entry.payload as { status: StatusInstrumento }).status].label]} />
               </PieChart>
             </ResponsiveContainer>
             <div className="mt-4 space-y-2">
-              {statusData.map((item) => (
-                <div key={item.name} className="flex items-center justify-between">
+              {statusInstrumentos.map((item) => (
+                <div key={item.status} className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: item.color }} />
-                    <span className="text-sm">{item.name}</span>
+                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: STATUS_LABEL_COR[item.status].color }} />
+                    <span className="text-sm">{STATUS_LABEL_COR[item.status].label}</span>
                   </div>
-                  <span className="font-semibold text-sm">{item.value}</span>
+                  <span className="font-semibold text-sm">{item.quantidade}</span>
                 </div>
               ))}
             </div>
@@ -232,14 +270,17 @@ export function DashboardPage() {
           </div>
         </CardHeader>
         <CardContent className="space-y-3">
+          {alertas.length === 0 && (
+            <p className="text-sm text-muted-foreground text-center py-4">Nenhum alerta no momento.</p>
+          )}
           {alertas.map((alerta) => {
-            const Icon = alerta.icon;
+            const Icon = TIPO_ORIGEM_ICONE[alerta.tipoOrigem];
             return (
               <div key={alerta.id} className="flex items-start gap-3 p-3 rounded-lg border border-border">
-                <Icon className="h-4 w-4 mt-0.5 flex-shrink-0" style={{ color: alerta.cor }} />
+                <Icon className="h-4 w-4 mt-0.5 flex-shrink-0" style={{ color: alerta.conteudo.cor }} />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium">{alerta.texto}</p>
-                  <p className="text-xs text-muted-foreground">{alerta.sub}</p>
+                  <p className="text-sm font-medium">{alerta.conteudo.titulo}</p>
+                  <p className="text-xs text-muted-foreground">{alerta.conteudo.descricao}</p>
                 </div>
               </div>
             );
@@ -247,5 +288,17 @@ export function DashboardPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function VariacaoPercentual({ valor }: { valor: number }) {
+  const isPositivo = valor >= 0;
+  const Icon = isPositivo ? StatsUpSquare : StatsDownSquare;
+  return (
+    <span className={`inline-flex items-center font-medium ${isPositivo ? 'text-[#06D6A0]' : 'text-[#EF5B5B]'}`}>
+      <Icon className="h-3 w-3 md:h-3.5 md:w-3.5 lg:h-4 lg:w-4 mr-1" />
+      {isPositivo ? '+' : ''}
+      {valor.toFixed(1)}%
+    </span>
   );
 }

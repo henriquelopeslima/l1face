@@ -52,17 +52,19 @@
 
 ## Tratamento de erros
 
-**Decision**: Mapear os status HTTP de `GET /api/dashboard` seguindo o mesmo padrão já usado em `InstrumentosRepository`/`UsuarioLicitanteRepository`:
+**Decision**: Mapear os status HTTP de `GET /api/dashboard` seguindo o padrão real de `InstrumentosRepository` — mensagem amigável lançada como erro, **sem redirecionamento automático** para `/login` no 401:
 
-- 401 → `JWT_EXPIRED` → redireciona para `/login`
 - 400 → "Não foi possível identificar a empresa ativa. Atualize a página e tente novamente." (header `X-Licitante-Id` ausente — cenário defensivo, não deve ocorrer em uso normal)
+- 401 → "Sessão expirada. Faça login novamente."
 - 403 → "Você não tem acesso aos dados desta empresa."
 - 404 → "Não foi possível localizar a empresa. Atualize a página e tente novamente."
 - Falha de rede/5xx → "Não foi possível carregar os dados da tela inicial. Tente novamente."
 
-**Rationale**: Consistência direta com o tratamento já implementado nas duas features mais recentes (`instrumentos`, `configuracoes`), e alinhamento com RF-009 e o caso de borda de indisponibilidade da spec.
+**Rationale**: Consistência direta com o tratamento já implementado na feature mais recentemente construída (`instrumentos`), que segue exatamente essa abordagem, e alinhamento com RF-009 e o caso de borda de indisponibilidade da spec.
 
-**Alternatives considered**: Nenhuma — o padrão de mapeamento de erro já está bem estabelecido no projeto; não há motivo para uma abordagem diferente aqui.
+**Correção durante a implementação**: a primeira versão desta decisão (e do `plan.md`) previa `401` lançando `Error('JWT_EXPIRED')` com redirecionamento via `window.location.href = '/login'`, copiando o padrão de `UsuarioLicitanteRepository`/`ConvidarColaboradorUseCase` (`configuracoes`). Ao implementar, a inspeção direta de `InstrumentosRepository.listarInstrumentos()` mostrou que a feature mais recente do projeto **não redireciona** no 401 — apenas lança uma mensagem amigável ("Sessão expirada. Faça login novamente.") e deixa a UI exibi-la como qualquer outro erro. Como toda a decisão de estrutura desta feature já segue `instrumentos` (ver seção "Convenção de pastas da feature" acima), manter os dois padrões de 401 misturados dentro do projeto não trazia benefício — a implementação final segue `instrumentos`.
+
+**Alternatives considered**: Manter o redirecionamento automático (padrão de `configuracoes`). Rejeitado nesta implementação por inconsistência com o restante das decisões de estrutura já tomadas para esta feature.
 
 ---
 

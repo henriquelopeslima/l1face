@@ -104,7 +104,7 @@ export interface IDashboardRepository {
 
 **`DashboardRepository.ts`**
 - `obterDashboard()`: chama `apiFetch('/api/dashboard')`, mapeia a resposta com `dashboardMappers`.
-- Tratamento de erro HTTP (ver `contracts/api-contracts.md`): 401 → redireciona para `/login` (mesmo padrão de `UsuarioLicitanteRepository`); 400/403/404/5xx/falha de rede → mensagem amigável lançada como `Error`, sem detalhes de infraestrutura.
+- Tratamento de erro HTTP (ver `contracts/api-contracts.md`): 400/401/403/404/5xx/falha de rede → mensagem amigável lançada como `Error`, sem detalhes de infraestrutura (401 não redireciona automaticamente — mesmo padrão de `InstrumentosRepository`; ver correção em `research.md`).
 
 ### Presentation
 

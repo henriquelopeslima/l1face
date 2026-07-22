@@ -67,7 +67,7 @@ Licitante sem nenhum dado cadastrado recebe a mesma estrutura (200), com todos o
 | Status | Causa                                              | Mensagem para o usuário                                                        |
 |--------|-----------------------------------------------------|------------------------------------------------------------------------------------|
 | 400    | Header `X-Licitante-Id` ausente                      | "Não foi possível identificar a empresa ativa. Atualize a página e tente novamente." |
-| 401    | Token ausente, inválido ou expirado                  | (redireciona para `/login`, mesmo padrão de `InstrumentosRepository`/`UsuarioLicitanteRepository`) |
+| 401    | Token ausente, inválido ou expirado                  | "Sessão expirada. Faça login novamente." (mesmo padrão de `InstrumentosRepository` — sem redirecionamento automático) |
 | 403    | Usuário sem vínculo com o licitante informado        | "Você não tem acesso aos dados desta empresa."                                     |
 | 404    | Licitante não encontrado                             | "Não foi possível localizar a empresa. Atualize a página e tente novamente."       |
 | 5xx / falha de rede | Erro de servidor ou indisponibilidade  | "Não foi possível carregar os dados da tela inicial. Tente novamente."             |
