@@ -110,6 +110,8 @@ export function CadastrarContrato() {
   const [progressoCadastro, setProgressoCadastro] = useState(0);
   const [etapaProcessamento, setEtapaProcessamento] = useState('Preparando informações do cadastro...');
 
+  const sanitizeNumeroInstrumento = (value: string) => value.replace(/[^0-9/-]/g, '');
+
   const processarArquivoExcel = async (file: File) => {
     setProcessandoExcel(true);
     setArquivoExcel(file);
@@ -592,7 +594,7 @@ export function CadastrarContrato() {
                   <Label>Nº do Instrumento <span className="text-destructive">*</span></Label>
                   <Input placeholder="Ex: 042/2024" value={dadosContrato.numeroInstrumento}
                     readOnly={!isManual}
-                    onChange={(e) => setDadosContrato({ ...dadosContrato, numeroInstrumento: e.target.value })}
+                    onChange={(e) => setDadosContrato({ ...dadosContrato, numeroInstrumento: sanitizeNumeroInstrumento(e.target.value) })}
                     className={`${erroNumeroInstrumento ? 'border-destructive' : ''} ${readonlyCls}`} />
                   {erroNumeroInstrumento && (
                     <p className="text-destructive text-sm flex items-center gap-1">
