@@ -100,6 +100,8 @@ export function CadastrarArp() {
   const [arquivoPlanilha, setArquivoPlanilha] = useState<File | null>(null);
   const [processandoPlanilha, setProcessandoPlanilha] = useState(false);
 
+  const sanitizeNumero = (value: string) => value.replace(/[^0-9/-]/g, '');
+
   useEffect(() => {
     if (!dadosPncp) return;
     setDadosArp((prev) => ({
@@ -373,7 +375,7 @@ export function CadastrarArp() {
                     id="numero"
                     placeholder="Ex: 001/2026"
                     value={dadosArp.numero}
-                    onChange={(e) => setDadosArp((p) => ({ ...p, numero: e.target.value }))}
+                    onChange={(e) => setDadosArp((p) => ({ ...p, numero: sanitizeNumero(e.target.value) }))}
                   />
                 </div>
                 <div className="space-y-2 lg:col-span-2">
