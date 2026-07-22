@@ -446,7 +446,7 @@ export function CadastrarArp() {
                   />
                 </div>
 
-                <div className="space-y-2">
+                {/* <div className="space-y-2">
                   <Label htmlFor="anexoUrl">URL do Anexo da ARP (opcional)</Label>
                   <Input
                     id="anexoUrl"
@@ -456,7 +456,7 @@ export function CadastrarArp() {
                     onChange={(e) => setDadosArp((p) => ({ ...p, anexoUrl: e.target.value }))}
                   />
                   <p className="text-muted-foreground text-xs">Informe a URL do documento PDF da ARP assinada (opcional)</p>
-                </div>
+                </div> */}
               </div>
             </div>
           </CardContent>
