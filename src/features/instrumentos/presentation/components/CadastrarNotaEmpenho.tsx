@@ -22,6 +22,8 @@ import { useCriarEmpenho } from '../hooks/useCriarEmpenho';
 import { useListarAtas } from '@/features/atas/presentation/hooks/useListarAtas';
 import { AtasRepository } from '@/features/atas/data/repositories/AtasRepository';
 import { GetAtaUseCase } from '@/features/atas/domain/usecases/GetAtaUseCase';
+import { InstrumentosRepository } from '../../data/repositories/InstrumentosRepository';
+import { ConsultarContratoPncpUseCase } from '../../domain/useCases/ConsultarContratoPncpUseCase';
 import type { CriarEmpenhoInput, ItemInstrumentoInput } from '../../domain/entities/criarContrato';
 
 interface ItemLinha {
@@ -37,6 +39,8 @@ interface ItemLinha {
 
 const atasRepository = new AtasRepository();
 const getAtaUseCase = new GetAtaUseCase(atasRepository);
+const instrumentosRepository = new InstrumentosRepository();
+const consultarContratoPncpUseCase = new ConsultarContratoPncpUseCase(instrumentosRepository);
 
 function parseBRL(s: string): number {
   const n = Number(s.replace(/\./g, '').replace(',', '.'));
@@ -67,8 +71,28 @@ export function CadastrarNotaEmpenho() {
   const [erro, setErro] = useState<string | null>(null);
   const [isCarregandoItensArp, setIsCarregandoItensArp] = useState(false);
   const [erroItensArp, setErroItensArp] = useState<string | null>(null);
+  const [isBuscandoPncp, setIsBuscandoPncp] = useState(false);
+  const [erroPncp, setErroPncp] = useState<string | null>(null);
 
   const sanitizeNumero = (value: string) => value.replace(/[^0-9/-]/g, '');
+
+  const buscarPNCP = async () => {
+    const codigo = numeroPncp.trim();
+    if (!codigo) return;
+    setIsBuscandoPncp(true);
+    setErroPncp(null);
+    try {
+      const dados = await consultarContratoPncpUseCase.execute(codigo);
+      setOrgao(dados.orgaoDoContratante);
+      setSecretaria(dados.unidade);
+      setObjeto(dados.objeto);
+      setCodigoEmpenho(dados.nDoInstrumento.replace(/\D/g, ''));
+    } catch (err) {
+      setErroPncp(err instanceof Error ? err.message : 'Erro ao consultar PNCP. Tente novamente.');
+    } finally {
+      setIsBuscandoPncp(false);
+    }
+  };
 
   const isItensVinculadosArp = Boolean(ataId);
 
@@ -172,11 +196,11 @@ export function CadastrarNotaEmpenho() {
         </AlertDescription>
       </Alert>
 
-      {(erro ?? erroSalvar) && (
+      {(erro ?? erroSalvar ?? erroPncp) && (
         <Alert variant="destructive">
           <WarningTriangle className="h-4 w-4" />
           <AlertTitle>Atenção</AlertTitle>
-          <AlertDescription>{erro ?? erroSalvar}</AlertDescription>
+          <AlertDescription>{erro ?? erroSalvar ?? erroPncp}</AlertDescription>
         </Alert>
       )}
 
@@ -191,12 +215,20 @@ export function CadastrarNotaEmpenho() {
         <CardContent className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2 sm:col-span-1">
             <Label htmlFor="ne-numero-pncp">Código PNCP (opcional)</Label>
-            <Input
-              id="ne-numero-pncp"
-              placeholder="Ex.: 12345678000195-2-000001/2026"
-              value={numeroPncp}
-              onChange={(e) => setNumeroPncp(e.target.value)}
-            />
+            <div className="flex gap-2">
+              <Input
+                id="ne-numero-pncp"
+                placeholder="Ex.: 12345678000195-2-000001/2026"
+                value={numeroPncp}
+                onChange={(e) => setNumeroPncp(e.target.value)}
+              />
+              <Button type="button" variant="outline" onClick={buscarPNCP} disabled={isBuscandoPncp || !numeroPncp.trim()}>
+                {isBuscandoPncp ? 'Buscando...' : 'Buscar'}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Se informado, busca automaticamente órgão, unidade, objeto e código do empenho no PNCP.
+            </p>
           </div>
           <div className="space-y-2 sm:col-span-1">
             <Label htmlFor="ne-codigo-empenho">Código do Empenho <span className="text-destructive">*</span></Label>
