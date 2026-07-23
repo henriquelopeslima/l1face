@@ -1,4 +1,5 @@
 import { Outlet, useLocation } from 'react-router';
+import { NotificacoesProvider } from '@/features/notificacoes/presentation/context/NotificacoesContext';
 import { AppHeader } from './AppHeader';
 import { AppSidebar } from './AppSidebar';
 import { MobileBottomNav } from './MobileBottomNav';
@@ -42,20 +43,22 @@ export function RootLayout() {
   const breadcrumb = getBreadcrumb(location.pathname);
 
   return (
-    <div className="flex h-full min-h-0 w-full overflow-hidden">
-      <AppSidebar />
+    <NotificacoesProvider>
+      <div className="flex h-full min-h-0 w-full overflow-hidden">
+        <AppSidebar />
 
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        <AppHeader breadcrumb={breadcrumb} />
-        <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-background pb-20 lg:pb-0">
-          <div className="container mx-auto px-4 py-4 lg:px-4 lg:py-5 xl:px-8 xl:py-6">
-            <Outlet />
-          </div>
-        </main>
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          <AppHeader breadcrumb={breadcrumb} />
+          <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden bg-background pb-20 lg:pb-0">
+            <div className="container mx-auto px-4 py-4 lg:px-4 lg:py-5 xl:px-8 xl:py-6">
+              <Outlet />
+            </div>
+          </main>
+        </div>
+
+        <MobileBottomNav />
+        <SupportChatbot />
       </div>
-
-      <MobileBottomNav />
-      <SupportChatbot />
-    </div>
+    </NotificacoesProvider>
   );
 }
