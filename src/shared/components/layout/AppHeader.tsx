@@ -14,6 +14,9 @@ import {
 import { Badge } from '@/shared/components/ui/badge';
 import { LogoLicitaOne } from '@/shared/components/icons/LogoLicitaOne';
 import { useAuth } from '@/features/auth/presentation/context/AuthContext';
+import { useNotificacoes } from '@/features/notificacoes/presentation/context/NotificacoesContext';
+import { useAbrirNotificacao } from '@/features/notificacoes/presentation/hooks/useAbrirNotificacao';
+import { NotificacaoItem } from '@/features/notificacoes/presentation/components/NotificacaoItem';
 
 interface AppHeaderProps {
   breadcrumb?: string[];
@@ -23,6 +26,8 @@ export function AppHeader({ breadcrumb = ['LicitaOne'] }: AppHeaderProps) {
   const { theme, setTheme } = useTheme();
   const navigate = useNavigate();
   const { session, logout, clearLicitanteSelection } = useAuth();
+  const { notificacoes, quantidadeNaoLidas, isLoading, error, marcarTodasComoLidas } = useNotificacoes();
+  const abrirNotificacao = useAbrirNotificacao();
 
   const handleLogout = async () => {
     await logout();
@@ -56,42 +61,43 @@ export function AppHeader({ breadcrumb = ['LicitaOne'] }: AppHeaderProps) {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="relative h-11 w-11">
                 <Bell className="h-5 w-5" />
-                <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-[#EF4444] text-white text-xs">
-                  3
-                </Badge>
+                {quantidadeNaoLidas > 0 && (
+                  <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 bg-[#EF4444] text-white text-xs">
+                    {quantidadeNaoLidas > 9 ? '9+' : quantidadeNaoLidas}
+                  </Badge>
+                )}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-80">
-              <DropdownMenuLabel>Notificações</DropdownMenuLabel>
+              <div className="flex items-center justify-between">
+                <DropdownMenuLabel>Notificações</DropdownMenuLabel>
+                {quantidadeNaoLidas > 0 && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-auto py-1 px-2 text-xs text-[#0050FF]"
+                    onClick={() => marcarTodasComoLidas()}
+                  >
+                    Marcar todas como lidas
+                  </Button>
+                )}
+              </div>
               <DropdownMenuSeparator />
               <div className="max-h-96 overflow-y-auto">
-                <div className="p-3 hover:bg-accent cursor-pointer border-b">
-                  <div className="flex gap-2">
-                    <div className="w-2 h-2 rounded-full bg-[#EF4444] mt-1.5 flex-shrink-0" />
-                    <div>
-                      <p className="text-sm font-medium">Contrato 042/2024 próximo ao vencimento</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">Vence em 15 dias</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="p-3 hover:bg-accent cursor-pointer border-b">
-                  <div className="flex gap-2">
-                    <div className="w-2 h-2 rounded-full bg-[#F59E0B] mt-1.5 flex-shrink-0" />
-                    <div>
-                      <p className="text-sm font-medium">Ata de registro precisa de renovação</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">Vence em 45 dias</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="p-3 hover:bg-accent cursor-pointer">
-                  <div className="flex gap-2">
-                    <div className="w-2 h-2 rounded-full bg-[#10B981] mt-1.5 flex-shrink-0" />
-                    <div>
-                      <p className="text-sm font-medium">Pagamento processado com sucesso</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">Há 2 horas</p>
-                    </div>
-                  </div>
-                </div>
+                {isLoading && (
+                  <p className="text-sm text-muted-foreground text-center py-4">Carregando notificações…</p>
+                )}
+                {!isLoading && error && (
+                  <p className="text-sm text-muted-foreground text-center py-4">{error}</p>
+                )}
+                {!isLoading && !error && notificacoes.length === 0 && (
+                  <p className="text-sm text-muted-foreground text-center py-4">Nenhuma notificação no momento.</p>
+                )}
+                {!isLoading &&
+                  !error &&
+                  notificacoes.map((notificacao) => (
+                    <NotificacaoItem key={notificacao.id} notificacao={notificacao} onClick={abrirNotificacao} />
+                  ))}
               </div>
             </DropdownMenuContent>
           </DropdownMenu>
