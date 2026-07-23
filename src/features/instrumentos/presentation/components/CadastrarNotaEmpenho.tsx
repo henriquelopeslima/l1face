@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useNavigate, Link } from 'react-router';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
@@ -20,15 +20,23 @@ import {
 import { InfoCircle, Plus, Trash, CloudUpload, Wallet, WarningTriangle } from 'iconoir-react';
 import { useCriarEmpenho } from '../hooks/useCriarEmpenho';
 import { useListarAtas } from '@/features/atas/presentation/hooks/useListarAtas';
+import { AtasRepository } from '@/features/atas/data/repositories/AtasRepository';
+import { GetAtaUseCase } from '@/features/atas/domain/usecases/GetAtaUseCase';
 import type { CriarEmpenhoInput, ItemInstrumentoInput } from '../../domain/entities/criarContrato';
 
 interface ItemLinha {
   id: string;
+  itemAtaId?: string;
   descricao: string;
   unidadeMedida: string;
   quantidade: string;
   valorUnitario: string;
+  saldoOrgao?: number;
+  saldoCarona?: number;
 }
+
+const atasRepository = new AtasRepository();
+const getAtaUseCase = new GetAtaUseCase(atasRepository);
 
 function parseBRL(s: string): number {
   const n = Number(s.replace(/\./g, '').replace(',', '.'));
@@ -57,8 +65,36 @@ export function CadastrarNotaEmpenho() {
   const [itens, setItens] = useState<ItemLinha[]>([]);
   const [anexo, setAnexo] = useState<File | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const [isCarregandoItensArp, setIsCarregandoItensArp] = useState(false);
+  const [erroItensArp, setErroItensArp] = useState<string | null>(null);
 
   const sanitizeNumero = (value: string) => value.replace(/[^0-9/-]/g, '');
+
+  const isItensVinculadosArp = Boolean(ataId);
+
+  const carregarItensDaArp = useCallback(async (id: string) => {
+    setIsCarregandoItensArp(true);
+    setErroItensArp(null);
+    try {
+      const ata = await getAtaUseCase.execute(id);
+      setItens(
+        ata.itens.map((item) => ({
+          id: `arp-item-${item.id}`,
+          itemAtaId: item.id,
+          descricao: item.descricao,
+          unidadeMedida: item.unidadeMedida,
+          quantidade: '',
+          valorUnitario: item.valorEstimado.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+          saldoOrgao: Number(item.qtdSaldoOrgao) || 0,
+          saldoCarona: Number(item.qtdSaldoCarona) || 0,
+        }))
+      );
+    } catch {
+      setErroItensArp('Não foi possível carregar os itens da ARP selecionada. Tente novamente.');
+    } finally {
+      setIsCarregandoItensArp(false);
+    }
+  }, []);
 
   const addItem = () => {
     setItens((prev) => [
@@ -71,6 +107,16 @@ export function CadastrarNotaEmpenho() {
 
   const updateItem = (id: string, patch: Partial<ItemLinha>) => {
     setItens((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
+  };
+
+  const updateQuantidade = (row: ItemLinha, raw: string) => {
+    if (!isItensVinculadosArp) {
+      updateItem(row.id, { quantidade: raw });
+      return;
+    }
+    const saldoAtual = isAdesao ? (row.saldoCarona ?? 0) : (row.saldoOrgao ?? 0);
+    const clamped = Math.min(Math.max(0, parseBRL(raw)), saldoAtual);
+    updateItem(row.id, { quantidade: clamped ? String(clamped) : '' });
   };
 
   const salvar = async (e: React.FormEvent) => {
@@ -93,6 +139,7 @@ export function CadastrarNotaEmpenho() {
           quantidadeTotal: qtd,
           valorUnitario: val,
           valorTotal: qtd * val,
+          ...(i.itemAtaId ? { itemAtaId: i.itemAtaId } : {}),
         };
       });
 
@@ -121,7 +168,7 @@ export function CadastrarNotaEmpenho() {
           Sobre as notas de empenho
         </AlertTitle>
         <AlertDescription className="!block w-full min-w-0 text-pretty text-xs leading-normal text-muted-foreground">
-          Informe o código do empenho, órgão, unidade e objeto. Os itens são opcionais no cadastro inicial.
+          Informe o código do empenho, órgão, unidade e objeto. Os itens são opcionais no cadastro inicial, exceto quando uma ARP é vinculada — nesse caso, os itens vêm obrigatoriamente da ARP selecionada.
         </AlertDescription>
       </Alert>
 
@@ -199,6 +246,10 @@ export function CadastrarNotaEmpenho() {
               setAtaId(newAtaId);
               if (!newAtaId) {
                 setIsAdesao(undefined);
+                setItens([]);
+                setErroItensArp(null);
+              } else {
+                void carregarItensDaArp(newAtaId);
               }
             }}>
               <SelectTrigger id="ne-ata"><SelectValue placeholder="Selecione uma ARP (opcional)" /></SelectTrigger>
@@ -264,50 +315,121 @@ export function CadastrarNotaEmpenho() {
             <CardTitle>Itens empenhados</CardTitle>
             <CardDescription>Detalhamento do objeto por linha (opcional no cadastro inicial).</CardDescription>
           </div>
-          <Button type="button" variant="outline" size="sm" className="gap-2 shrink-0" onClick={addItem}>
+          <Button type="button" variant="outline" size="sm" className="gap-2 shrink-0" onClick={addItem} disabled={isItensVinculadosArp}>
             <Plus className="h-4 w-4" />
             Adicionar item
           </Button>
         </CardHeader>
         <CardContent className="space-y-3">
-          {itens.length === 0 ? (
+          {isItensVinculadosArp && !isCarregandoItensArp && !erroItensArp && itens.length > 0 && (
+            <Alert>
+              <InfoCircle className="h-4 w-4" />
+              <AlertDescription>
+                Os itens do empenho foram vinculados automaticamente a partir da ARP selecionada.
+              </AlertDescription>
+            </Alert>
+          )}
+          {isCarregandoItensArp && (
+            <Alert>
+              <InfoCircle className="h-4 w-4" />
+              <AlertDescription>Carregando itens da ARP selecionada...</AlertDescription>
+            </Alert>
+          )}
+          {erroItensArp && (
+            <Alert variant="destructive">
+              <WarningTriangle className="h-4 w-4" />
+              <AlertDescription>{erroItensArp}</AlertDescription>
+            </Alert>
+          )}
+          {isItensVinculadosArp && !isCarregandoItensArp && !erroItensArp && itens.length === 0 && (
+            <Alert>
+              <InfoCircle className="h-4 w-4" />
+              <AlertDescription>Esta ARP não possui itens cadastrados.</AlertDescription>
+            </Alert>
+          )}
+          {itens.length === 0 && !isItensVinculadosArp ? (
             <p className="text-sm text-muted-foreground">Nenhum item. Use "Adicionar item" para incluir linhas.</p>
-          ) : (
+          ) : itens.length > 0 ? (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Descrição</TableHead>
                   <TableHead className="w-[100px]">Unidade</TableHead>
-                  <TableHead className="w-[90px]">Qtd.</TableHead>
+                  <TableHead className="w-[110px]">
+                    {isItensVinculadosArp ? (isAdesao ? 'Qtd. / Saldo Carona' : 'Qtd. / Saldo Órgão') : 'Qtd.'}
+                  </TableHead>
                   <TableHead className="w-[120px]">Valor unit. (R$)</TableHead>
                   <TableHead className="w-[48px]" />
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {itens.map((row) => (
-                  <TableRow key={row.id}>
-                    <TableCell>
-                      <Input value={row.descricao} onChange={(e) => updateItem(row.id, { descricao: e.target.value })} placeholder="Descrição" />
-                    </TableCell>
-                    <TableCell>
-                      <Input value={row.unidadeMedida} onChange={(e) => updateItem(row.id, { unidadeMedida: e.target.value })} placeholder="UN" />
-                    </TableCell>
-                    <TableCell>
-                      <Input value={row.quantidade} onChange={(e) => updateItem(row.id, { quantidade: e.target.value })} placeholder="0" />
-                    </TableCell>
-                    <TableCell>
-                      <Input value={row.valorUnitario} onChange={(e) => updateItem(row.id, { valorUnitario: formatBRLInput(e.target.value) })} placeholder="0,00" />
-                    </TableCell>
-                    <TableCell>
-                      <Button type="button" variant="ghost" size="icon" className="text-destructive" onClick={() => removeItem(row.id)} aria-label="Remover item">
-                        <Trash className="h-4 w-4" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {itens.map((row) => {
+                  const saldoAtual = isAdesao ? (row.saldoCarona ?? 0) : (row.saldoOrgao ?? 0);
+                  const semSaldo = isItensVinculadosArp && saldoAtual <= 0;
+                  const readonlyCls = isItensVinculadosArp ? 'bg-muted text-muted-foreground cursor-not-allowed select-none' : '';
+                  return (
+                    <TableRow key={row.id}>
+                      <TableCell>
+                        <Input
+                          value={row.descricao}
+                          readOnly={isItensVinculadosArp}
+                          className={readonlyCls}
+                          onChange={(e) => updateItem(row.id, { descricao: e.target.value })}
+                          placeholder="Descrição"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          value={row.unidadeMedida}
+                          readOnly={isItensVinculadosArp}
+                          className={readonlyCls}
+                          onChange={(e) => updateItem(row.id, { unidadeMedida: e.target.value })}
+                          placeholder="UN"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1.5">
+                          <Input
+                            value={row.quantidade}
+                            disabled={semSaldo}
+                            className="min-w-0"
+                            onChange={(e) => updateQuantidade(row, e.target.value)}
+                            placeholder={semSaldo ? 'Sem saldo' : '0'}
+                          />
+                          {isItensVinculadosArp && (
+                            <span className={`text-xs whitespace-nowrap shrink-0 ${semSaldo ? 'text-destructive' : 'text-muted-foreground'}`}>
+                              {semSaldo ? 'Sem saldo' : `/ ${saldoAtual.toLocaleString('pt-BR')}`}
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          value={row.valorUnitario}
+                          readOnly={isItensVinculadosArp}
+                          className={readonlyCls}
+                          onChange={(e) => updateItem(row.id, { valorUnitario: formatBRLInput(e.target.value) })}
+                          placeholder="0,00"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive"
+                          onClick={() => removeItem(row.id)}
+                          aria-label="Remover item"
+                        >
+                          <Trash className="h-4 w-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
               </TableBody>
             </Table>
-          )}
+          ) : null}
         </CardContent>
       </Card>
 
