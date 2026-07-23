@@ -454,7 +454,7 @@ export function ContratoDetalhesPage() {
 
                     {ataId !== null && (
                       <button
-                        onClick={() => navigate(`/atas/detalhes/${ataId}`)}
+                        onClick={() => navigate(`/atas/${ataId}`)}
                         className="w-full flex items-center justify-between py-2 px-0 hover:opacity-80 transition-opacity text-left"
                       >
                         <div className="flex items-center gap-2">
