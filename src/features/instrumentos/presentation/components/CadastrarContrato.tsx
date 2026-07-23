@@ -149,7 +149,7 @@ export function CadastrarContrato() {
       orgaoContratante: dadosPncp.orgaoDoContratante,
       secretaria: dadosPncp.unidade,
       objeto: dadosPncp.objeto,
-      numeroInstrumento: dadosPncp.nDoInstrumento,
+      numeroInstrumento: sanitizeNumeroInstrumento(dadosPncp.nDoInstrumento),
       vigenciaInicial: dadosPncp.vigenciaInicial,
       vigenciaFinal: dadosPncp.vigenciaFinal,
     }));
