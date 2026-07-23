@@ -19,11 +19,16 @@ import {
   Plus,
   OpenInBrowser,
   RefreshDouble,
+  Page,
 } from 'iconoir-react';
 import { LoadingLogo } from '@/shared/components/feedback/LoadingLogo';
 import type { AtaStatus } from '../../domain/entities/ata';
 import type { ItemAta } from '../../domain/entities/ataDetalhes';
 import { useGetAta } from '../hooks/useGetAta';
+import type {
+  TipoInstrumento,
+  StatusInstrumento,
+} from '@/features/instrumentos/domain/entities/instrumentoContratual';
 
 const STATUS_LABELS: Record<AtaStatus, string> = {
   ATIVA: 'Ativa',
@@ -43,6 +48,25 @@ function formatCurrency(v: number) {
 
 function formatDate(d: string) {
   return new Date(d).toLocaleDateString('pt-BR');
+}
+
+function formatDateOrDash(d: string | null) {
+  if (!d) return '—';
+  return formatDate(d);
+}
+
+function badgeTipoInstrumento(t: TipoInstrumento) {
+  if (t === 'CONTRATO') return <Badge className="border-0 bg-[#0050FF] text-white hover:bg-[#0050FF]/90">Contrato</Badge>;
+  return <Badge className="border-0 bg-[#4B5563] text-white hover:bg-[#4B5563]/90">Empenho</Badge>;
+}
+
+function getStatusBadgeInstrumento(status: StatusInstrumento) {
+  switch (status) {
+    case 'ATIVA': return <Badge className="bg-[#0050FF] text-white border-[#0050FF]">Em execução</Badge>;
+    case 'PROXIMA_AO_VENCIMENTO': return <Badge className="bg-[#F39C12] text-white border-[#F39C12]">Próx. vencimento</Badge>;
+    case 'ENCERRADA': return <Badge className="bg-gray-500 text-white border-gray-500">Encerrado</Badge>;
+    default: return <Badge variant="outline">{status}</Badge>;
+  }
 }
 
 function calcularDiasRestantes(dataFim: string): number {
@@ -394,22 +418,132 @@ export function ArpDetalhesPage() {
         {/* ABA 3 - CONTRATOS GERADOS */}
         <TabsContent value="contratos" className="space-y-4">
           <Card>
-            <CardContent className="pt-6">
-              <div className="flex flex-col items-center gap-4 py-12 text-center text-muted-foreground">
-                <p>Visualização de contratos gerados em breve.</p>
-                <div className="flex gap-2">
-                  <Button onClick={() => navigate(`/atas/${id}/gerar-contrato`)} disabled={saldoOrgao === 0}>
+            <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <CardTitle>Contratos e Empenhos Gerados</CardTitle>
+              <div className="flex flex-wrap gap-2">
+                <Button onClick={() => navigate(`/atas/${id}/gerar-contrato`)} disabled={saldoOrgao === 0}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Gerar Contrato
+                </Button>
+                {ata.aceitaAdesao && (
+                  <Button variant="outline" onClick={() => navigate(`/atas/${id}/registrar-adesao`)} disabled={saldoCarona === 0}>
                     <Plus className="h-4 w-4 mr-2" />
-                    Gerar Contrato
+                    Registrar Adesão
                   </Button>
-                  {ata.aceitaAdesao && (
-                    <Button variant="outline" onClick={() => navigate(`/atas/${id}/registrar-adesao`)} disabled={saldoCarona === 0}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Registrar Adesão
-                    </Button>
-                  )}
-                </div>
+                )}
               </div>
+            </CardHeader>
+            <CardContent>
+              {ata.instrumentos.length === 0 ? (
+                <p className="py-12 text-center text-muted-foreground">
+                  Nenhum contrato ou empenho gerado a partir desta ata ainda.
+                </p>
+              ) : (
+                <>
+                  {/* Desktop table */}
+                  <div className="hidden lg:block overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Tipo</TableHead>
+                          <TableHead>Nº</TableHead>
+                          <TableHead>Órgão / Unidade</TableHead>
+                          <TableHead>Prazo final</TableHead>
+                          <TableHead className="text-right">Valor</TableHead>
+                          <TableHead className="text-right">Saldo</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="w-[110px]" />
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {ata.instrumentos.map((instrumento) => (
+                          <TableRow key={instrumento.id}>
+                            <TableCell>
+                              <div className="flex flex-col gap-1">
+                                {badgeTipoInstrumento(instrumento.tipo)}
+                                {instrumento.adesao && (
+                                  <Badge variant="outline" className="w-fit">Adesão</Badge>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell className="font-mono text-xs font-medium">
+                              {instrumento.numero ?? '—'}
+                            </TableCell>
+                            <TableCell>
+                              <p className="text-xs font-medium">{instrumento.orgao}</p>
+                              <p className="text-[11px] text-muted-foreground">{instrumento.unidade}</p>
+                            </TableCell>
+                            <TableCell className="font-mono text-xs">{formatDateOrDash(instrumento.prazoFinal)}</TableCell>
+                            <TableCell className="text-right font-mono text-xs">{formatCurrency(instrumento.valor)}</TableCell>
+                            <TableCell className="text-right font-mono text-xs font-semibold">{formatCurrency(instrumento.saldo)}</TableCell>
+                            <TableCell>{getStatusBadgeInstrumento(instrumento.status)}</TableCell>
+                            <TableCell>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="gap-2"
+                                onClick={() =>
+                                  navigate(
+                                    instrumento.tipo === 'CONTRATO'
+                                      ? `/contratos/detalhes/${instrumento.id}`
+                                      : `/notas-empenho/detalhes/${instrumento.id}`,
+                                  )
+                                }
+                              >
+                                <Page className="h-4 w-4" />
+                                Detalhes
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+
+                  {/* Mobile cards */}
+                  <div className="space-y-3 lg:hidden">
+                    {ata.instrumentos.map((instrumento) => (
+                      <Card key={instrumento.id}>
+                        <CardContent className="space-y-2 p-4 text-sm">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex flex-col gap-1">
+                              {badgeTipoInstrumento(instrumento.tipo)}
+                              {instrumento.adesao && (
+                                <Badge variant="outline" className="w-fit">Adesão</Badge>
+                              )}
+                            </div>
+                            {getStatusBadgeInstrumento(instrumento.status)}
+                          </div>
+                          <p className="font-mono font-semibold">{instrumento.numero ?? '—'}</p>
+                          <p className="text-xs text-muted-foreground">{instrumento.orgao} — {instrumento.unidade}</p>
+                          <div className="flex justify-between border-t pt-2 text-xs">
+                            <span className="text-muted-foreground">Prazo final</span>
+                            <span className="font-mono">{formatDateOrDash(instrumento.prazoFinal)}</span>
+                          </div>
+                          <div className="flex justify-between text-xs">
+                            <span className="text-muted-foreground">Saldo</span>
+                            <span className="font-mono font-semibold">{formatCurrency(instrumento.saldo)}</span>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full"
+                            onClick={() =>
+                              navigate(
+                                instrumento.tipo === 'CONTRATO'
+                                  ? `/contratos/detalhes/${instrumento.id}`
+                                  : `/notas-empenho/detalhes/${instrumento.id}`,
+                              )
+                            }
+                          >
+                            Abrir detalhes
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

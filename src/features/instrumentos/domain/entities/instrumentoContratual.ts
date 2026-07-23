@@ -15,6 +15,7 @@ export interface InstrumentoListagem {
   valor: number;
   saldo: number;
   status: StatusInstrumento;
+  adesao: boolean;
 }
 
 export interface ItemInstrumentoDetalhe {

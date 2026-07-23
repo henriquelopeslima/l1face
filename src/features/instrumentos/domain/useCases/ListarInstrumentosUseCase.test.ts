@@ -27,6 +27,7 @@ describe('ListarInstrumentosUseCase', () => {
         valor: 100000,
         saldo: 100000,
         status: 'ATIVA',
+        adesao: false,
       },
     ];
     const repository = makeRepository({ listarInstrumentos: vi.fn().mockResolvedValue(instrumentos) });

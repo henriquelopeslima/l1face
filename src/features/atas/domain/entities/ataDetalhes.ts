@@ -1,4 +1,5 @@
 import type { AtaStatus } from './ata';
+import type { InstrumentoListagem } from '@/features/instrumentos/domain/entities/instrumentoContratual';
 
 export interface ItemAta {
   id: string;
@@ -26,4 +27,5 @@ export interface AtaDetalhes {
   anexoUrl: string | null;
   status: AtaStatus;
   itens: ItemAta[];
+  instrumentos: InstrumentoListagem[];
 }

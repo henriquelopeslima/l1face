@@ -9,7 +9,7 @@ import type {
   TipoPrazo,
 } from '../../domain/entities/instrumentoContratual';
 
-interface ApiInstrumentoListagemResponse {
+export interface ApiInstrumentoListagemResponse {
   id: string;
   tipo: TipoInstrumento;
   numero: string | null;
@@ -20,6 +20,7 @@ interface ApiInstrumentoListagemResponse {
   valor: number;
   saldo: number;
   status: StatusInstrumento;
+  adesao: boolean;
 }
 
 export function mapApiInstrumentoListagemToInstrumentoListagem(
@@ -36,6 +37,7 @@ export function mapApiInstrumentoListagemToInstrumentoListagem(
     valor: raw.valor,
     saldo: raw.saldo,
     status: raw.status,
+    adesao: raw.adesao,
   };
 }
 

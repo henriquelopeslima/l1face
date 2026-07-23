@@ -30,6 +30,7 @@ const ataDetalhesFixture: AtaDetalhes = {
       qtdSaldoCarona: 2000,
     },
   ],
+  instrumentos: [],
 };
 
 function makeRepo(overrides?: Partial<IAtasRepository>): IAtasRepository {

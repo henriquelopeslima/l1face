@@ -1,5 +1,9 @@
 import type { AtaDetalhes, ItemAta } from '../../domain/entities/ataDetalhes';
 import type { AtaStatus } from '../../domain/entities/ata';
+import {
+  mapApiInstrumentoListagemToInstrumentoListagem,
+  type ApiInstrumentoListagemResponse,
+} from '@/features/instrumentos/data/mappers/instrumentosMappers';
 
 interface ApiItemAtaResponse {
   id: string;
@@ -27,6 +31,7 @@ interface ApiAtaDetalhesResponse {
   anexo_url: string | null;
   status: string;
   itens: ApiItemAtaResponse[];
+  instrumentos: ApiInstrumentoListagemResponse[];
 }
 
 export function mapApiItemAtaToItemAta(raw: ApiItemAtaResponse): ItemAta {
@@ -58,5 +63,6 @@ export function mapApiAtaDetalhesToAtaDetalhes(raw: ApiAtaDetalhesResponse): Ata
     anexoUrl: raw.anexo_url,
     status: raw.status as AtaStatus,
     itens: raw.itens.map(mapApiItemAtaToItemAta),
+    instrumentos: raw.instrumentos.map(mapApiInstrumentoListagemToInstrumentoListagem),
   };
 }
