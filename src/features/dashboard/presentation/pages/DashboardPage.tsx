@@ -6,7 +6,6 @@ import {
   DollarCircle,
   StatsUpSquare,
   StatsDownSquare,
-  Clock,
   WarningTriangle,
   ArrowUpRight,
   RefreshDouble,
@@ -15,8 +14,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/sha
 import { Button } from '@/shared/components/ui/button';
 import { useAuth } from '@/features/auth/presentation/context/AuthContext';
 import { useDashboard } from '../hooks/useDashboard';
-import type { StatusInstrumento, TipoOrigemAlerta } from '../../domain/entities/DashboardData';
+import type { StatusInstrumento } from '../../domain/entities/DashboardData';
 import { LoadingLogo } from '@/shared/components/feedback/LoadingLogo';
+import { NotificacaoItem } from '@/features/notificacoes/presentation/components/NotificacaoItem';
+import { useAbrirNotificacao } from '@/features/notificacoes/presentation/hooks/useAbrirNotificacao';
 import {
   ResponsiveContainer,
   AreaChart,
@@ -45,12 +46,6 @@ const STATUS_LABEL_COR: Record<StatusInstrumento, { label: string; color: string
   ENCERRADA: { label: 'Vencidos', color: '#6B4DFF' },
 };
 
-const TIPO_ORIGEM_ICONE: Record<TipoOrigemAlerta, typeof Clock> = {
-  instrumento: Clock,
-  ata: Clock,
-  of: WarningTriangle,
-};
-
 function formatarMoeda(valor: number): string {
   return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
@@ -58,6 +53,7 @@ function formatarMoeda(valor: number): string {
 export function DashboardPage() {
   const { session } = useAuth();
   const { dashboard, isLoading, error, refetch } = useDashboard();
+  const abrirNotificacao = useAbrirNotificacao();
   const currencyValueClass = 'font-bold whitespace-nowrap leading-tight text-[clamp(0.875rem,1.6vw,1.875rem)]';
 
   if (isLoading) {
@@ -273,18 +269,11 @@ export function DashboardPage() {
           {alertas.length === 0 && (
             <p className="text-sm text-muted-foreground text-center py-4">Nenhum alerta no momento.</p>
           )}
-          {alertas.map((alerta) => {
-            const Icon = TIPO_ORIGEM_ICONE[alerta.tipoOrigem];
-            return (
-              <div key={alerta.id} className="flex items-start gap-3 p-3 rounded-lg border border-border">
-                <Icon className="h-4 w-4 mt-0.5 flex-shrink-0" style={{ color: alerta.conteudo.cor }} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium">{alerta.conteudo.titulo}</p>
-                  <p className="text-xs text-muted-foreground">{alerta.conteudo.descricao}</p>
-                </div>
-              </div>
-            );
-          })}
+          {alertas.map((alerta) => (
+            <div key={alerta.id} className="rounded-lg border border-border overflow-hidden">
+              <NotificacaoItem notificacao={alerta} onClick={abrirNotificacao} />
+            </div>
+          ))}
         </CardContent>
       </Card>
     </div>
