@@ -49,8 +49,8 @@ O componente `CadastrarArp.tsx` usa nomes internos que diferem da API:
 | `anexoArp` (File) | `anexo_url` (string \| null) | **Mudar para campo de URL de texto**; upload de arquivo está fora de escopo |
 | Item `id` (uuid local) | não enviado | Gerado internamente apenas para React key |
 | Item sem `numero_item` | `numero_item` (integer único) | **Adicionar campo número do item ao formulário** |
-| Item `quantidadeRegistrada` | `qtd_registrada` | |
-| Item `quantidadeCarona` | `qtd_para_carona` | |
+| Item `quantidadeRegistrada` | `qtd_orgao` | |
+| Item `quantidadeCarona` | `qtd_carona` | |
 | Item `valorUnitario` | `valor_estimado` | |
 | Item `unidadeMedida` | `unidade_medida` | Máx 20 chars |
 

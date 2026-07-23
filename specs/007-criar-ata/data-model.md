@@ -94,8 +94,8 @@ Resposta da API após criação bem-sucedida. Já definida em `domain/entities/a
 | `itens[n].descricao` | `itens[n].descricao` |
 | `itens[n].unidadeMedida` | `itens[n].unidade_medida` |
 | `itens[n].valorEstimado` | `itens[n].valor_estimado` |
-| `itens[n].qtdRegistrada` | `itens[n].qtd_registrada` |
-| `itens[n].qtdParaCarona` | `itens[n].qtd_para_carona` |
+| `itens[n].qtdRegistrada` | `itens[n].qtd_orgao` |
+| `itens[n].qtdParaCarona` | `itens[n].qtd_carona` |
 | *(fixo)* `ativo: true` | `ativo` |
 
 ### `GET /api/pncp/atas?codigo=` → `DadosAtaPncp`

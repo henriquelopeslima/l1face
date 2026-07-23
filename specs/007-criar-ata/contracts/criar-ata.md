@@ -25,8 +25,8 @@
       "descricao": "Seringa descartável 10ml",
       "unidade_medida": "UN",
       "valor_estimado": 1.50,
-      "qtd_registrada": 10000.0,
-      "qtd_para_carona": 2000.0
+      "qtd_orgao": 10000.0,
+      "qtd_carona": 2000.0
     }
   ]
 }

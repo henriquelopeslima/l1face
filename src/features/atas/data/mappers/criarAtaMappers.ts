@@ -5,8 +5,8 @@ interface ApiItemAtaRequest {
   descricao: string;
   unidade_medida: string;
   valor_estimado: number;
-  qtd_registrada: number;
-  qtd_para_carona: number;
+  qtd_orgao: number;
+  qtd_carona: number;
 }
 
 interface ApiCriarAtaRequest {
@@ -30,8 +30,8 @@ function mapItemAtaInputToApiRequest(item: ItemAtaInput): ApiItemAtaRequest {
     descricao: item.descricao,
     unidade_medida: item.unidadeMedida,
     valor_estimado: item.valorEstimado,
-    qtd_registrada: item.qtdRegistrada,
-    qtd_para_carona: item.qtdParaCarona,
+    qtd_orgao: item.qtdRegistrada,
+    qtd_carona: item.qtdParaCarona,
   };
 }
 
