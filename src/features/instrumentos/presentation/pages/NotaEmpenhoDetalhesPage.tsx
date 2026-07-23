@@ -199,7 +199,6 @@ export function NotaEmpenhoDetalhesPage() {
               {ataId !== null && <Badge variant="outline" className="text-xs">ARP</Badge>}
               {getStatusBadge(empenho.status)}
             </div>
-            <p className="text-muted-foreground text-sm lg:text-base">{empenho.objeto}</p>
           </div>
         </div>
         {empenho.anexoUrl && (
@@ -230,7 +229,7 @@ export function NotaEmpenhoDetalhesPage() {
       )}
 
       {/* Detalhes */}
-      <Card>
+      <Card className="gap-3">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base lg:text-lg">Detalhes do Empenho</CardTitle>
@@ -253,25 +252,26 @@ export function NotaEmpenhoDetalhesPage() {
                   <Building className="h-4 w-4" />
                   Informações Gerais
                 </h3>
-                <div className="space-y-2.5">
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-1">Órgão Contratante</p>
-                    <p className="text-sm font-medium">{empenho.orgaoContratante}</p>
+                <div className="grid gap-6 lg:grid-cols-2">
+                  <div className="space-y-2.5">
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-1">Órgão Contratante</p>
+                      <p className="text-sm font-medium">{empenho.orgaoContratante}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-1">Unidade</p>
+                      <p className="text-sm">{empenho.unidade}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-1">Nº PNCP</p>
+                      <p className="text-sm font-mono">{empenho.numeroPncp ?? 'Não informado'}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground mb-1">Unidade</p>
-                    <p className="text-sm">{empenho.unidade}</p>
-                  </div>
+
                   <div>
                     <p className="text-xs font-medium text-muted-foreground mb-1">Objeto</p>
                     <p className="text-sm leading-relaxed">{empenho.objeto}</p>
                   </div>
-                  {empenho.numeroPncp && (
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground mb-1">Nº PNCP</p>
-                      <p className="text-sm font-mono">{empenho.numeroPncp}</p>
-                    </div>
-                  )}
                 </div>
               </div>
 
