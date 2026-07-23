@@ -43,6 +43,23 @@ Quando o usuário seleciona uma ARP de origem para o empenho, os itens empenhado
 
 ---
 
+### História de Usuário 3 - Preenchimento automático via código PNCP (Prioridade: P2)
+
+O código PNCP continua opcional no cadastro de empenho. Quando o usuário informa esse código e solicita a busca, o sistema consulta as informações do contrato correspondente no PNCP e preenche automaticamente os campos de órgão, unidade, objeto e código do empenho.
+
+**Por que esta prioridade**: Reduz a digitação manual e o risco de erro de transcrição quando o usuário já possui o código PNCP do instrumento, reaproveitando uma consulta que já existe no sistema para o cadastro de contratos. Prioridade P2 porque o cadastro continua funcional sem esse recurso (código PNCP é opcional).
+
+**Teste Independente**: Pode ser testado informando um código PNCP válido no campo correspondente e acionando a busca; os campos de órgão, unidade, objeto e código do empenho devem ser preenchidos com os dados retornados.
+
+**Cenários de Aceite**:
+
+1. **Dado** que o usuário informou um código PNCP válido, **Quando** ele aciona a busca, **Então** os campos de órgão, unidade e objeto são preenchidos com os dados retornados pela consulta.
+2. **Dado** que o usuário informou um código PNCP válido, **Quando** a busca é concluída com sucesso, **Então** o campo de código do empenho é preenchido a partir do identificador do instrumento retornado, mantendo somente os caracteres numéricos (o campo de código do empenho aceita apenas dígitos).
+3. **Dado** que o usuário não informou nenhum código PNCP, **Quando** ele preenche o restante do formulário manualmente, **Então** o cadastro funciona normalmente, sem exigir a consulta.
+4. **Dado** que o usuário informou um código PNCP que não retorna resultado (ou retorna erro), **Quando** a busca é realizada, **Então** o sistema exibe uma mensagem de erro e mantém os campos disponíveis para preenchimento manual.
+
+---
+
 ### Casos de Borda
 
 - O que acontece quando a ARP selecionada não possui nenhum item cadastrado? O sistema deve informar que não há itens disponíveis para vínculo e impedir a inclusão de itens manuais enquanto a ARP estiver selecionada.
@@ -69,6 +86,9 @@ Quando o usuário seleciona uma ARP de origem para o empenho, os itens empenhado
 - **RF-012**: Quando nenhuma ARP estiver selecionada, o sistema DEVE manter o comportamento atual de cadastro de itens manuais e opcionais.
 - **RF-013**: O sistema DEVE informar ao usuário quando a ARP selecionada não possuir itens disponíveis para vínculo.
 - **RF-014**: O sistema DEVE informar ao usuário quando ocorrer falha ao carregar os itens da ARP selecionada, permitindo nova tentativa.
+- **RF-015**: O sistema DEVE permitir a busca de informações do instrumento a partir de um código PNCP informado, preenchendo automaticamente os campos de órgão, unidade e objeto com os dados retornados.
+- **RF-016**: Ao preencher automaticamente o código do empenho a partir do código PNCP, o sistema DEVE manter apenas os caracteres numéricos do identificador retornado, respeitando a mesma restrição já aplicada à digitação manual desse campo.
+- **RF-017**: O sistema DEVE informar ao usuário quando a busca por código PNCP falhar (código não encontrado, ambíguo ou serviço indisponível), sem impedir o preenchimento manual do formulário.
 
 ### Entidades Principais
 

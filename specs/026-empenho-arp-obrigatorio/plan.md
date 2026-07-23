@@ -108,6 +108,14 @@ Atualizar `inputMinimo` para incluir `numero: '2026.000123'` (ou similar), já q
 - No `onValueChange` do `Select` de ARP já existente (linha ~195-201), ao trocar para `'none'`: além de já limpar `isAdesao`, também limpar `itens` e `erroItensArp` (hoje esse `Select` não mexe em `itens` — passa a mexer).
 - Ao montar o objeto `itensInput` em `salvar`, incluir `itemAtaId: i.itemAtaId` no item mapeado quando presente (hoje o filtro/map de `itens` não propaga nenhum id de origem).
 
+**Preenchimento automático via código PNCP** (adicionado após feedback do usuário, RF-015 a RF-017):
+- Reutiliza `GET /api/pncp/contratos?codigo=` (`ConsultarContratoPncpUseCase` + `InstrumentosRepository`, já existentes e usados por `CadastrarContrato.tsx`) — nenhuma mudança de backend necessária.
+- **Não** reutiliza o hook `useConsultarContratoPncp` diretamente: esse hook expõe o resultado via estado interno (`dados`), o que exigiria um `useEffect` reagindo a `dados` para preencher os campos — violando a regra de lint `react-hooks/set-state-in-effect` já evitada no restante desta feature (ver decisão equivalente para o carregamento de itens da ARP). Em vez disso, `consultarContratoPncpUseCase` é instanciado no módulo (mesmo padrão de `getAtaUseCase`) e chamado diretamente dentro do handler assíncrono `buscarPNCP`, preenchendo os campos logo após o `await` — sem efeito, sem hook compartilhado.
+- Botão "Buscar" ao lado do campo "Código PNCP", com estados locais `isBuscandoPncp`/`erroPncp` (mesmo padrão visual do botão de contrato).
+- Mapeamento de campos: `orgaoDoContratante → orgao`, `unidade → secretaria`, `objeto → objeto`, `nDoInstrumento → codigoEmpenho` (aplicando `replace(/\D/g, '')` para manter só dígitos, já que o campo de código do empenho é numérico obrigatório). `cnpjDoContratante`, `vigenciaInicial` e `vigenciaFinal` do retorno não são usados (empenho não tem esses campos).
+- Campos preenchidos automaticamente permanecem editáveis (diferente de `CadastrarContrato.tsx`, que tem um modo "automático" com campos somente leitura) — o formulário de empenho não é um wizard, então o autopreenchimento é só uma conveniência inicial.
+- Erro de busca (código não encontrado, ambíguo ou serviço indisponível) reaproveita o alerta de erro genérico já existente no topo do formulário (`erro ?? erroSalvar ?? erroPncp`).
+
 ## Rastreamento de Complexidade
 
 *Nenhuma violação de constituição identificada. Seção não aplicável.*
