@@ -153,9 +153,12 @@ export function CadastrarArp() {
         if (item.id !== id) return item;
         const updated = { ...item, [campo]: valor };
         if (campo === 'qtdRegistrada' || campo === 'valorEstimado') {
+          if (dadosArp.aceitaAdesao) {
+            updated.qtdParaCarona = Number(updated.qtdRegistrada) * 2;
+          }
           updated.valorTotal = Number(updated.qtdRegistrada) * Number(updated.valorEstimado);
         }
-        if ((campo === 'qtdParaCarona' || campo === 'valorEstimado') && dadosArp.aceitaAdesao) {
+        if ((campo === 'qtdRegistrada' || campo === 'valorEstimado') && dadosArp.aceitaAdesao) {
           updated.valorPotencialCarona = Number(updated.qtdParaCarona) * Number(updated.valorEstimado);
         }
         return updated;
@@ -431,7 +434,7 @@ export function CadastrarArp() {
                   <Alert>
                     <InfoCircle className="h-4 w-4" />
                     <AlertDescription className="text-sm">
-                      <strong>Atenção:</strong> Ao ativar a adesão, informe a quantidade para carona em cada item.
+                      <strong>Atenção:</strong> A quantidade para carona é calculada automaticamente como o dobro da quantidade registrada.
                     </AlertDescription>
                   </Alert>
                 )}
@@ -596,7 +599,7 @@ export function CadastrarArp() {
                             </TableCell>
                             {dadosArp.aceitaAdesao && (
                               <TableCell>
-                                <Input type="number" min="0" step="0.01" placeholder="0" value={item.qtdParaCarona || ''} onChange={(e) => atualizarItem(item.id, 'qtdParaCarona', Number(e.target.value))} />
+                                <Input type="number" min="0" step="0.01" value={item.qtdParaCarona || ''} readOnly disabled />
                               </TableCell>
                             )}
                             <TableCell>
@@ -636,7 +639,7 @@ export function CadastrarArp() {
                   <Alert>
                     <InfoCircle className="h-4 w-4" />
                     <AlertDescription className="text-sm">
-                      Informe a quantidade disponível para adesão (carona) em cada item.
+                      A quantidade disponível para adesão (carona) é calculada automaticamente como o dobro da quantidade registrada.
                     </AlertDescription>
                   </Alert>
                 )}
