@@ -42,6 +42,7 @@ export interface CriarEmpenhoInput {
   ataId?: string | null;
   isAdesao?: boolean | null;
   numeroPncp?: string | null;
+  numero: string;
   orgaoContratante: string;
   unidade: string;
   objeto: string;

@@ -14,6 +14,7 @@ const makeRepository = (overrides?: Partial<IInstrumentosRepository>): IInstrume
 } as IInstrumentosRepository);
 
 const inputMinimo: CriarEmpenhoInput = {
+  numero: '2026.000123',
   orgaoContratante: 'Prefeitura Municipal',
   unidade: 'Secretaria de Saúde',
   objeto: 'Aquisição de insumos médicos',

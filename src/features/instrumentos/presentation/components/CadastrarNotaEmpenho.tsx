@@ -77,8 +77,8 @@ export function CadastrarNotaEmpenho() {
     e.preventDefault();
     setErro(null);
 
-    if (!orgao.trim() || !secretaria.trim() || !objeto.trim()) {
-      setErro('Preencha órgão, unidade e objeto.');
+    if (!orgao.trim() || !secretaria.trim() || !objeto.trim() || !codigoEmpenho.trim()) {
+      setErro('Preencha o código do empenho, órgão, unidade e objeto.');
       return;
     }
 
@@ -97,6 +97,7 @@ export function CadastrarNotaEmpenho() {
       });
 
     const input: CriarEmpenhoInput = {
+      numero: codigoEmpenho.trim(),
       orgaoContratante: orgao.trim(),
       unidade: secretaria.trim(),
       objeto: objeto.trim(),
@@ -120,7 +121,7 @@ export function CadastrarNotaEmpenho() {
           Sobre as notas de empenho
         </AlertTitle>
         <AlertDescription className="!block w-full min-w-0 text-pretty text-xs leading-normal text-muted-foreground">
-          Informe órgão, unidade e objeto. Os itens são opcionais no cadastro inicial.
+          Informe o código do empenho, órgão, unidade e objeto. Os itens são opcionais no cadastro inicial.
         </AlertDescription>
       </Alert>
 
@@ -151,12 +152,13 @@ export function CadastrarNotaEmpenho() {
             />
           </div>
           <div className="space-y-2 sm:col-span-1">
-            <Label htmlFor="ne-codigo-empenho">Código do Empenho (opcional)</Label>
+            <Label htmlFor="ne-codigo-empenho">Código do Empenho <span className="text-destructive">*</span></Label>
             <Input
               id="ne-codigo-empenho"
               placeholder="Ex.: 2024.000001"
               value={codigoEmpenho}
               onChange={(e) => setCodigoEmpenho(sanitizeNumero(e.target.value))}
+              required
             />
           </div>
           <div className="space-y-2 sm:col-span-1">
@@ -178,7 +180,7 @@ export function CadastrarNotaEmpenho() {
               onChange={(e) => setOrgao(e.target.value)}
               required
             />
-          </div> 
+          </div>
           <div className="space-y-2 sm:col-span-2">
             <Label htmlFor="ne-objeto">Objeto do empenho <span className="text-destructive">*</span></Label>
             <Textarea
@@ -229,10 +231,10 @@ export function CadastrarNotaEmpenho() {
                     )}
                   </div>
                 </div>
-                
+
                 {/* Separador vertical */}
                 <div className="border-l border-border"></div>
-                
+
                 {/* Coluna direita - Pergunta de adesão */}
                 <div className="flex-1 space-y-3">
                   <div className="flex items-center gap-2">

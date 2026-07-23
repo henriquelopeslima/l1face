@@ -2,6 +2,7 @@ import type { CriarEmpenhoInput } from '../../domain/entities/criarContrato';
 
 export function mapCriarEmpenhoInputToApiRequest(input: CriarEmpenhoInput): Record<string, unknown> {
   const body: Record<string, unknown> = {
+    numero: input.numero,
     orgao_contratante: input.orgaoContratante,
     unidade: input.unidade,
     objeto: input.objeto,
