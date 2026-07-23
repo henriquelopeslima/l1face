@@ -2,7 +2,7 @@ import { CadastrarArp } from '@/features/atas/presentation/components/CadastrarA
 
 export function ArpCadastrarPage() {
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
+    <div className="mx-auto max-w-7xl space-y-6">
       <CadastrarArp />
     </div>
   );
