@@ -58,6 +58,8 @@ export function CadastrarNotaEmpenho() {
   const [anexo, setAnexo] = useState<File | null>(null);
   const [erro, setErro] = useState<string | null>(null);
 
+  const sanitizeNumero = (value: string) => value.replace(/[^0-9/-]/g, '');
+
   const addItem = () => {
     setItens((prev) => [
       ...prev,
@@ -154,7 +156,7 @@ export function CadastrarNotaEmpenho() {
               id="ne-codigo-empenho"
               placeholder="Ex.: 2024.000001"
               value={codigoEmpenho}
-              onChange={(e) => setCodigoEmpenho(e.target.value)}
+              onChange={(e) => setCodigoEmpenho(sanitizeNumero(e.target.value))}
             />
           </div>
           <div className="space-y-2 sm:col-span-1">
