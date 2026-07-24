@@ -78,7 +78,7 @@ const categories: Category[] = [
 
 const channels = [
   { id: 'email', icon: Mail, bgColor: 'bg-[#06D6A0]/10', title: 'E-mail', contact: 'contato@licitaone.com.br', availability: 'Resposta em até 24h' },
-  { id: 'whatsapp', icon: Clock, bgColor: 'bg-[#0050FF]/10', title: 'WhatsApp', contact: '(88) 93613-0118', availability: 'Seg a Sex, 8h às 18h' },
+  { id: 'whatsapp', icon: Clock, bgColor: 'bg-[#0050FF]/10', title: 'WhatsApp', contact: '(88) 99361-3011', availability: 'Seg a Sex, 8h às 18h' },
 ];
 
 export function SuportePage() {
@@ -100,7 +100,7 @@ export function SuportePage() {
 
   const openWhatsApp = () => {
     const message = encodeURIComponent('Olá! Preciso de ajuda com o LicitaOne. Minha dúvida não foi respondida no FAQ.');
-    window.open(`https://wa.me/5588936130118?text=${message}`, '_blank');
+    window.open(`https://wa.me/5588993613011?text=${message}`, '_blank');
   };
 
   return (
@@ -243,7 +243,7 @@ export function SuportePage() {
             {channels.map((channel) => (
               <a 
                 key={channel.id}
-                href={channel.id === 'whatsapp' ? 'https://api.whatsapp.com/send?phone=5588936130118&text=Ol%C3%A1%2C%20estou%20entrando%20em%20contato%20atrav%C3%A9s%20da%20plataforma.' : channel.id === 'email' ? 'mailto:contato@licitaone.com.br' : undefined}
+                href={channel.id === 'whatsapp' ? 'https://api.whatsapp.com/send?phone=5588993613011&text=Ol%C3%A1%2C%20estou%20entrando%20em%20contato%20atrav%C3%A9s%20da%20plataforma.' : channel.id === 'email' ? 'mailto:contato@licitaone.com.br' : undefined}
                 target={channel.id === 'whatsapp' ? '_blank' : undefined}
                 rel={channel.id === 'whatsapp' ? 'noopener noreferrer' : undefined}
                 className="flex items-start gap-3 p-3 lg:p-4 rounded-lg border border-border cursor-pointer hover:bg-accent transition-colors"
