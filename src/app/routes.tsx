@@ -24,6 +24,7 @@ import { ArpRegistrarAdesaoPage } from '@/features/atas/presentation/pages/ArpRe
 import { ArpVisualizarPage } from '@/features/atas/presentation/pages/ArpVisualizarPage';
 import { SuportePage } from '@/features/suporte/presentation/pages/SuportePage';
 import { ConfiguracoesPage } from '@/features/configuracoes/presentation/pages/ConfiguracoesPage';
+import { NotificacoesListagemPage } from '@/features/notificacoes/presentation/pages/NotificacoesListagemPage';
 import { AceitarConvitePage } from '@/features/configuracoes/presentation/pages/AceitarConvitePage';
 import { RecusarConvitePage } from '@/features/configuracoes/presentation/pages/RecusarConvitePage';
 
@@ -93,6 +94,7 @@ export const router = createBrowserRouter([
               { path: 'atas/:id', Component: ArpDetalhesPage },
               { path: 'suporte', Component: SuportePage },
               { path: 'configuracoes', Component: ConfiguracoesPage },
+              { path: 'notificacoes', Component: NotificacoesListagemPage },
             ],
           },
         ],

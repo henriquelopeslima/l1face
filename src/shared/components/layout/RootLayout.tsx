@@ -33,6 +33,7 @@ function getBreadcrumb(pathname: string): string[] {
     '/atas/gestao': ['Atas de Registro de Preços', 'Gestão'],
     '/suporte': ['Suporte'],
     '/configuracoes': ['Configurações'],
+    '/notificacoes': ['Notificações'],
   };
 
   return breadcrumbMap[pathname] ?? ['LicitaOne'];
