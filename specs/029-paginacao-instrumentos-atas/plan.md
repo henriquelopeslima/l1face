@@ -9,7 +9,8 @@
 backend (`l1core/docs/openapi.yaml`), sem exigir nenhuma mudança de contrato — hoje o frontend
 simplesmente não usa esses parâmetros e busca a coleção inteira de uma vez. Esta funcionalidade
 estende as features já existentes `instrumentos` e `atas` para carregar os registros em lotes de
-20 (mesmo padrão já validado em `notificacoes`/028), com um botão "Carregar mais" que acumula
+10, com um botão "Carregar mais" (mesmo padrão de interação já validado em `notificacoes`/028,
+com tamanho de lote próprio) que acumula
 páginas no cliente. Busca por texto e filtros (tipo/status) continuam sendo aplicados no cliente,
 mas agora apenas sobre os itens já carregados — a mesma limitação já aceita e documentada em 028,
 reaplicada aqui após confirmação explícita do usuário (nenhuma extensão de busca/filtro no backend

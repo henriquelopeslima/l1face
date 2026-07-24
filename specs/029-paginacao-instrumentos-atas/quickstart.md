@@ -5,27 +5,27 @@ cobrindo as três histórias de usuário da spec.
 
 ## Pré-requisitos
 
-- Backend `l1core` rodando localmente com um usuário/licitante de teste com mais de 20 instrumentos
-  (mistura de contratos e empenhos) e mais de 20 atas cadastradas, para garantir múltiplos lotes.
+- Backend `l1core` rodando localmente com um usuário/licitante de teste com mais de 10 instrumentos
+  (mistura de contratos e empenhos) e mais de 10 atas cadastradas, para garantir múltiplos lotes.
 - Frontend `l1face` rodando (`npm run dev`), logado com esse usuário.
 
 ## História 1 — Carregar instrumentos em lotes (P1)
 
-1. Abrir "Gestão de Instrumentos" (`/instrumentos/gestao`) — confirmar que apenas os primeiros 20
+1. Abrir "Gestão de Instrumentos" (`/instrumentos/gestao`) — confirmar que apenas os primeiros 10
    instrumentos aparecem inicialmente e que a tela fica pronta rapidamente (sem esperar a base
    inteira carregar).
 2. Clicar em "Carregar mais" — confirmar que o próximo lote é adicionado ao final da lista já
    exibida, sem recarregar nem resetar a rolagem.
 3. Continuar clicando até esgotar os lotes — confirmar que o botão "Carregar mais" desaparece ou
    fica desabilitado quando não há mais registros.
-4. Com um licitante de teste que tenha 20 instrumentos ou menos, confirmar que todos aparecem de
+4. Com um licitante de teste que tenha 10 instrumentos ou menos, confirmar que todos aparecem de
    uma vez e nenhum botão "Carregar mais" é exibido.
 5. Confirmar que o cartão "Total na base" mostra o total real de instrumentos mesmo antes de
    carregar todos os lotes.
 
 ## História 2 — Carregar atas em lotes (P1)
 
-1. Abrir "Gestão de Atas" — confirmar que apenas as primeiras 20 atas aparecem inicialmente.
+1. Abrir "Gestão de Atas" — confirmar que apenas as primeiras 10 atas aparecem inicialmente.
 2. Clicar em "Carregar mais" — confirmar acumulação sem perder a posição de rolagem.
 3. Esgotar os lotes — confirmar que "Carregar mais" some/desabilita.
 4. Confirmar que os seletores de Ata em "Cadastrar Contrato" e "Cadastrar Nota de Empenho"

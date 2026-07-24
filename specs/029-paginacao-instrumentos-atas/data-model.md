@@ -29,7 +29,7 @@ pontuais e novos tipos de envelope/paginação, seguindo o mesmo formato já usa
 | Campo   | Tipo     | Obrigatório | Default | Descrição |
 |---------|----------|-------------|---------|-----------|
 | `page`  | `number` | Não         | 1       | Página a buscar. |
-| `limit` | `number` | Não         | 20      | Itens por página (ver research.md #3). |
+| `limit` | `number` | Não         | 10      | Itens por página (ver research.md #3). |
 
 - **Instrumentos**: `IInstrumentosRepository.listarInstrumentos(params?: ListarInstrumentosParams): Promise<ListaInstrumentos>`
   — substitui a assinatura atual (`(): Promise<InstrumentoListagem[]>`); único consumidor

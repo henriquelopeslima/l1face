@@ -28,12 +28,12 @@ array simples para o envelope paginado:
 ```json
 {
   "data": [ /* InstrumentoListagemResponse[] */ ],
-  "meta": { "page": 1, "limit": 20, "total": 22, "totalPages": 2 }
+  "meta": { "page": 1, "limit": 10, "total": 22, "totalPages": 3 }
 }
 ```
 
 - **Query params usados por esta feature**: `page` (incrementado a cada "Carregar mais"), `limit`
-  (fixo em 20 — ver research.md #3).
+  (fixo em 10 — ver research.md #3).
 - Não existe filtro por `tipo` (Contrato/Empenho), `status` ou busca textual na API — ver
   research.md #2. Esses filtros continuam resolvidos no cliente, sobre os itens já acumulados.
 - Nenhum novo endpoint é necessário.
@@ -52,7 +52,7 @@ export class ListarInstrumentosUseCase {
 
 ## Consumo pelo hook renomeado (`useListagemInstrumentos`)
 
-O hook chama `listarInstrumentosUseCase.execute({ page, limit: 20 })`, incrementando `page` a cada
+O hook chama `listarInstrumentosUseCase.execute({ page, limit: 10 })`, incrementando `page` a cada
 "Carregar mais", acumulando `itens` no estado local e usando `totalPaginas` para habilitar/
 desabilitar o botão. `total` (do envelope) alimenta diretamente o cartão "Total na base". Os
 filtros de tipo/busca continuam aplicados em memória sobre o acumulado, nunca enviados ao backend.

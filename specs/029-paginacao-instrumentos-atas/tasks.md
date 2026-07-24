@@ -51,10 +51,10 @@ diferentes (`instrumentos` vs. `atas`), cada uma com seu próprio domínio de da
 
 ## Fase 3: História de Usuário 1 - Carregar instrumentos em lotes (Prioridade: P1) 🎯 MVP
 
-**Objetivo**: A tela de Gestão de Instrumentos carrega os registros em lotes de 20 via "Carregar
+**Objetivo**: A tela de Gestão de Instrumentos carrega os registros em lotes de 10 via "Carregar
 mais", em vez de buscar a coleção inteira de uma vez, mantendo o cartão "Total na base" exato.
 
-**Teste Independente**: Abrir Gestão de Instrumentos com uma base de mais de 20 instrumentos,
+**Teste Independente**: Abrir Gestão de Instrumentos com uma base de mais de 10 instrumentos,
 confirmar que só o primeiro lote aparece, clicar em "Carregar mais" até esgotar, conferir "Total na
 base" (quickstart.md, História 1).
 
@@ -63,10 +63,10 @@ base" (quickstart.md, História 1).
 - [X] T001 [US1] Adicionar a entidade `ListaInstrumentos { itens: InstrumentoListagem[]; total: number; paginaAtual: number; totalPaginas: number }` (ver data-model.md) em `src/features/instrumentos/domain/entities/instrumentoContratual.ts`
 - [X] T002 [US1] Alterar `IInstrumentosRepository.listarInstrumentos` para `listarInstrumentos(params?: ListarInstrumentosParams): Promise<ListaInstrumentos>` (ver contracts/IInstrumentosRepository-paginacao.md), em `src/features/instrumentos/domain/contracts/IInstrumentosRepository.ts` (depende de T001)
 - [X] T003 [P] [US1] Adicionar `mapApiListaInstrumentosToListaInstrumentos` mapeando `meta.page`→`paginaAtual`, `meta.total`→`total`, `meta.totalPages`→`totalPaginas` e `data[]` via `mapApiInstrumentoListagemToInstrumentoListagem` já existente, em `src/features/instrumentos/data/mappers/instrumentosMappers.ts` (depende de T001)
-- [X] T004 [US1] Alterar `InstrumentosRepository.listarInstrumentos(params?)` para chamar `GET /api/instrumentos?page=${page}&limit=${limit}` (default `page=1&limit=20`, sempre enviados) e retornar o envelope mapeado, em `src/features/instrumentos/data/repositories/InstrumentosRepository.ts` (depende de T002, T003)
+- [X] T004 [US1] Alterar `InstrumentosRepository.listarInstrumentos(params?)` para chamar `GET /api/instrumentos?page=${page}&limit=${limit}` (default `page=1&limit=10`, sempre enviados) e retornar o envelope mapeado, em `src/features/instrumentos/data/repositories/InstrumentosRepository.ts` (depende de T002, T003)
 - [X] T005 [US1] Alterar `ListarInstrumentosUseCase.execute(params?)` para repassar os parâmetros e retornar `ListaInstrumentos`, em `src/features/instrumentos/domain/useCases/ListarInstrumentosUseCase.ts` (depende de T002)
 - [X] T006 [P] [US1] Criar `ListarInstrumentosUseCase.test.ts` cobrindo chamada com `{ page, limit }` e o mapeamento do envelope retornado, em `src/features/instrumentos/domain/useCases/ListarInstrumentosUseCase.test.ts` (depende de T005)
-- [X] T007 [US1] Renomear `useListarInstrumentos.ts` para `useListagemInstrumentos.ts`, acumulando páginas via `listarInstrumentosUseCase.execute({ page, limit: 20 })`, expondo `instrumentos` (acumulado), `totalNaBase` (de `total`), `temMaisPaginas` (`paginaAtual < totalPaginas`), `isLoading`, `isLoadingMais`, `error`, `carregarMais`, `refetch` (ver data-model.md), em `src/features/instrumentos/presentation/hooks/useListagemInstrumentos.ts` (depende de T004, T005)
+- [X] T007 [US1] Renomear `useListarInstrumentos.ts` para `useListagemInstrumentos.ts`, acumulando páginas via `listarInstrumentosUseCase.execute({ page, limit: 10 })`, expondo `instrumentos` (acumulado), `totalNaBase` (de `total`), `temMaisPaginas` (`paginaAtual < totalPaginas`), `isLoading`, `isLoadingMais`, `error`, `carregarMais`, `refetch` (ver data-model.md), em `src/features/instrumentos/presentation/hooks/useListagemInstrumentos.ts` (depende de T004, T005)
 - [X] T008 [US1] Atualizar `InstrumentosGestaoPage.tsx` para usar `useListagemInstrumentos`, adicionar botão "Carregar mais" (habilitado por `temMaisPaginas`, desabilitado durante `isLoadingMais`, com mensagem de erro e "tentar novamente" em caso de falha — RF-009) abaixo da tabela desktop e da lista mobile, e trocar o cartão "Total na base" para usar `totalNaBase` mantendo "Contratos"/"Notas de empenho" como contagem sobre os itens já carregados com indicação visual de que pode aumentar (RF-008), em `src/features/instrumentos/presentation/pages/InstrumentosGestaoPage.tsx` (depende de T007)
 
 **Checkpoint**: Neste ponto, a História de Usuário 1 deve ser totalmente funcional e testável independentemente.
@@ -75,11 +75,11 @@ base" (quickstart.md, História 1).
 
 ## Fase 4: História de Usuário 2 - Carregar atas em lotes (Prioridade: P1) 🎯 MVP
 
-**Objetivo**: A tela de Gestão de Atas carrega os registros em lotes de 20 via "Carregar mais", sem
+**Objetivo**: A tela de Gestão de Atas carrega os registros em lotes de 10 via "Carregar mais", sem
 alterar `useListarAtas()`/`listarAtas()`, que continuam intocados para os seletores de Ata em
 "Cadastrar Contrato"/"Cadastrar Nota de Empenho" (ver research.md #4).
 
-**Teste Independente**: Abrir Gestão de Atas com uma base de mais de 20 atas, confirmar que só o
+**Teste Independente**: Abrir Gestão de Atas com uma base de mais de 10 atas, confirmar que só o
 primeiro lote aparece, clicar em "Carregar mais" até esgotar; confirmar que os seletores de Ata nos
 formulários de Cadastro continuam mostrando a lista completa (quickstart.md, História 2).
 
@@ -88,10 +88,10 @@ formulários de Cadastro continuam mostrando a lista completa (quickstart.md, Hi
 - [X] T009 [US2] Adicionar a entidade `ListaAtas { itens: Ata[]; total: number; paginaAtual: number; totalPaginas: number }` (ver data-model.md) em `src/features/atas/domain/entities/ata.ts`
 - [X] T010 [US2] Adicionar `listarAtasPaginado(params?: ListarAtasParams): Promise<ListaAtas>` a `IAtasRepository`, mantendo `listarAtas(): Promise<Ata[]>` sem nenhuma alteração (ver contracts/IAtasRepository-paginacao.md), em `src/features/atas/domain/repositories/IAtasRepository.ts` (depende de T009)
 - [X] T011 [P] [US2] Adicionar `mapApiListaAtasToListaAtas` mapeando `meta.page`→`paginaAtual`, `meta.total`→`total`, `meta.totalPages`→`totalPaginas` e `data[]` via `mapApiAtaToAta` já existente, em `src/features/atas/data/mappers/atasMappers.ts` (depende de T009)
-- [X] T012 [US2] Implementar `AtasRepository.listarAtasPaginado(params?)` chamando `GET /api/atas?page=${page}&limit=${limit}` (default `page=1&limit=20`, sempre enviados) e retornando o envelope mapeado, sem tocar em `listarAtas()`, em `src/features/atas/data/repositories/AtasRepository.ts` (depende de T010, T011)
+- [X] T012 [US2] Implementar `AtasRepository.listarAtasPaginado(params?)` chamando `GET /api/atas?page=${page}&limit=${limit}` (default `page=1&limit=10`, sempre enviados) e retornando o envelope mapeado, sem tocar em `listarAtas()`, em `src/features/atas/data/repositories/AtasRepository.ts` (depende de T010, T011)
 - [X] T013 [US2] Criar `ListarAtasPaginadoUseCase.execute(params?)` delegando a `repository.listarAtasPaginado(params)`, em `src/features/atas/domain/usecases/ListarAtasPaginadoUseCase.ts` (depende de T010)
 - [X] T014 [P] [US2] Criar `ListarAtasPaginadoUseCase.test.ts` cobrindo chamada com `{ page, limit }` e o mapeamento do envelope retornado, em `src/features/atas/domain/usecases/ListarAtasPaginadoUseCase.test.ts` (depende de T013)
-- [X] T015 [US2] Criar `useListagemAtas`, acumulando páginas via `listarAtasPaginadoUseCase.execute({ page, limit: 20 })`, expondo `atas` (acumulado), `temMaisPaginas`, `isLoading`, `isLoadingMais`, `error`, `carregarMais`, `refetch` (ver data-model.md), ao lado de `useListarAtas.ts` que permanece sem alteração, em `src/features/atas/presentation/hooks/useListagemAtas.ts` (depende de T012, T013)
+- [X] T015 [US2] Criar `useListagemAtas`, acumulando páginas via `listarAtasPaginadoUseCase.execute({ page, limit: 10 })`, expondo `atas` (acumulado), `temMaisPaginas`, `isLoading`, `isLoadingMais`, `error`, `carregarMais`, `refetch` (ver data-model.md), ao lado de `useListarAtas.ts` que permanece sem alteração, em `src/features/atas/presentation/hooks/useListagemAtas.ts` (depende de T012, T013)
 - [X] T016 [US2] Atualizar `ArpGestaoPage.tsx` para trocar `useListarAtas` por `useListagemAtas`, adicionar botão "Carregar mais" (habilitado por `temMaisPaginas`, desabilitado durante `isLoadingMais`, com mensagem de erro e "tentar novamente" — RF-009) abaixo da tabela, em `src/features/atas/presentation/pages/ArpGestaoPage.tsx` (depende de T015)
 - [X] T017 [P] [US2] Verificar que `src/features/instrumentos/presentation/components/CadastrarContrato.tsx` e `src/features/instrumentos/presentation/components/CadastrarNotaEmpenho.tsx` continuam importando `useListarAtas` (não `useListagemAtas`) e recebendo a lista completa de atas sem alteração de comportamento (regressão) (depende de T016)
 
@@ -123,7 +123,7 @@ múltiplos lotes carregados e confirmar que a listagem filtrada reflete corretam
 ## Fase 6: Polimento & Aspectos Transversais
 
 - [X] T021 [P] Executar `npm run test -- instrumentos` e `npm run test -- atas`, confirmar que `ListarInstrumentosUseCase.test.ts` e `ListarAtasPaginadoUseCase.test.ts` passam junto com a suíte existente (depende de T006, T014)
-- [ ] T022 Executar o roteiro completo de `specs/029-paginacao-instrumentos-atas/quickstart.md` (3 histórias + casos de borda: falha de rede ao carregar mais, base vazia, cadastro concorrente) manualmente no navegador (depende de T008, T016, T020) — PENDENTE: requer backend `l1core` local com dados de teste (>20 instrumentos e >20 atas); não executado nesta sessão.
+- [ ] T022 Executar o roteiro completo de `specs/029-paginacao-instrumentos-atas/quickstart.md` (3 histórias + casos de borda: falha de rede ao carregar mais, base vazia, cadastro concorrente) manualmente no navegador (depende de T008, T016, T020) — PENDENTE: requer backend `l1core` local com dados de teste (>10 instrumentos e >10 atas); não executado nesta sessão.
 - [X] T023 [P] Revisar os arquivos criados/modificados quanto aos Princípios da constituição (sem `any`/`as unknown`, isolamento `domain`/`data`/`presentation`, lógica extraída para hooks customizados, Interface Segregation entre `listarAtas`/`listarAtasPaginado`) antes de finalizar
 
 ---
@@ -173,7 +173,7 @@ Task: "Adicionar ListaAtas em src/features/atas/domain/entities/ata.ts"
 ### MVP First (US1 + US2)
 
 1. Concluir Fase 3 (US1) e Fase 4 (US2) — em paralelo se houver duas pessoas, ou sequencialmente.
-2. **PARAR e VALIDAR**: rodar quickstart.md Histórias 1 e 2 com uma base de mais de 20 registros em
+2. **PARAR e VALIDAR**: rodar quickstart.md Histórias 1 e 2 com uma base de mais de 10 registros em
    cada tela.
 3. Fazer deploy/demo — já resolve o problema de performance central (o pedido original).
 

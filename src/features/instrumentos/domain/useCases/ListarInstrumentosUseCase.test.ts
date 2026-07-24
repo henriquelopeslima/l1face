@@ -52,10 +52,10 @@ describe('ListarInstrumentosUseCase', () => {
     const repository = makeRepository({ listarInstrumentos: vi.fn().mockResolvedValue(lista) });
     const useCase = new ListarInstrumentosUseCase(repository);
 
-    const result = await useCase.execute({ page: 2, limit: 20 });
+    const result = await useCase.execute({ page: 2, limit: 10 });
 
     expect(result).toEqual(lista);
-    expect(repository.listarInstrumentos).toHaveBeenCalledWith({ page: 2, limit: 20 });
+    expect(repository.listarInstrumentos).toHaveBeenCalledWith({ page: 2, limit: 10 });
   });
 
   it('propaga erro lançado pelo repositório', async () => {

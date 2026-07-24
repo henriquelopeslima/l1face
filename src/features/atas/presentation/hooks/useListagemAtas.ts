@@ -4,7 +4,7 @@ import type { Ata } from '../../domain/entities/ata';
 import { AtaError } from '../../domain/errors/ataErrors';
 import { ListarAtasPaginadoUseCase } from '../../domain/usecases/ListarAtasPaginadoUseCase';
 
-const LIMITE_POR_PAGINA = 20;
+const LIMITE_POR_PAGINA = 10;
 
 const repository = new AtasRepository();
 const listarAtasPaginadoUseCase = new ListarAtasPaginadoUseCase(repository);

@@ -55,10 +55,10 @@ describe('ListarAtasPaginadoUseCase', () => {
     const repo = makeRepo({ listarAtasPaginado: vi.fn().mockResolvedValue(lista) });
     const useCase = new ListarAtasPaginadoUseCase(repo);
 
-    const result = await useCase.execute({ page: 2, limit: 20 });
+    const result = await useCase.execute({ page: 2, limit: 10 });
 
     expect(result).toEqual(lista);
-    expect(repo.listarAtasPaginado).toHaveBeenCalledWith({ page: 2, limit: 20 });
+    expect(repo.listarAtasPaginado).toHaveBeenCalledWith({ page: 2, limit: 10 });
   });
 
   it('propaga AtaError lançado pelo repositório', async () => {

@@ -3,7 +3,7 @@ import { InstrumentosRepository } from '../../data/repositories/InstrumentosRepo
 import type { InstrumentoListagem } from '../../domain/entities/instrumentoContratual';
 import { ListarInstrumentosUseCase } from '../../domain/useCases/ListarInstrumentosUseCase';
 
-const LIMITE_POR_PAGINA = 20;
+const LIMITE_POR_PAGINA = 10;
 
 const repository = new InstrumentosRepository();
 const listarInstrumentosUseCase = new ListarInstrumentosUseCase(repository);

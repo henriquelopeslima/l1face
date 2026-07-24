@@ -17,8 +17,8 @@ código atual do frontend, além de uma decisão confirmada com o usuário duran
 - **Alternativas consideradas**:
   - *Pedir extensão de backend para paginação*: descartado — já existe, nenhuma mudança necessária
     em `l1core`.
-  - *Usar o limite padrão da API (10)*: descartado em favor de 20, para manter consistência com o
-    tamanho de lote já usado em `notificacoes` (028) — ver decisão #3.
+  - *Usar um tamanho de lote diferente do padrão da API*: descartado — o `limit` de 10 usado por
+    estas duas telas coincide com o padrão já documentado da própria API (ver decisão #3).
 
 ## 2. Busca e filtros continuam client-side, apenas sobre os itens já carregados
 
@@ -45,20 +45,22 @@ código atual do frontend, além de uma decisão confirmada com o usuário duran
     central da feature (evitar carregar a coleção inteira) e poderia gerar N requisições em
     sequência para bases grandes.
 
-## 3. Tamanho de lote: 20 registros, botão "Carregar mais" (não rolagem infinita nem paginação numerada)
+## 3. Tamanho de lote: 10 registros, botão "Carregar mais" (não rolagem infinita nem paginação numerada)
 
-- **Decision**: Ambas as telas usam `limit=20` por carregamento e um botão explícito "Carregar
-  mais", reaproveitando exatamente o padrão de `useListagemNotificacoes` (028).
+- **Decision**: Ambas as telas usam `limit=10` por carregamento e um botão explícito "Carregar
+  mais" — mesmo padrão de interação de `useListagemNotificacoes` (028), mas com tamanho de lote
+  próprio (10, não 20), decidido pelo usuário do produto após a implementação inicial.
 - **Rationale**: Nenhuma tela no projeto usa rolagem infinita; "Carregar mais" já é o padrão
-  estabelecido para acumulação incremental sob demanda. Usar o mesmo tamanho de lote (20, acima do
-  padrão de 10 da API, mas bem abaixo do teto de 100) mantém consistência perceptível de UX entre
-  telas de listagem do sistema, sem exigir nova decisão de design.
+  estabelecido para acumulação incremental sob demanda. O tamanho de lote é uma escolha de UX
+  independente por tela — 10 coincide com o `limit` padrão já documentado em
+  `l1core/docs/openapi.yaml` para `/api/instrumentos` e `/api/atas` quando `page`/`limit` não são
+  informados, o que também simplifica o raciocínio sobre o comportamento da API.
 - **Alternativas consideradas**:
   - *Paginação numérica clássica (com números de página)*: rejeitada pelo mesmo motivo de 028 —
     misturaria "página do servidor" com "resultado pós-filtro" exibido, confundindo o usuário
     quando busca/filtro reduz a lista visível.
-  - *Usar o `limit` padrão da API (10)*: rejeitado — quebraria a consistência de UX com a tela de
-    notificações sem ganho claro.
+  - *Manter 20 (igual à tela de notificações)*: descartado a pedido do usuário do produto em favor
+    de lotes menores (10) nestas duas telas.
 
 ## 4. `useListarAtas()` (lista completa) precisa continuar existindo — Atas ganha um hook/método paralelo
 

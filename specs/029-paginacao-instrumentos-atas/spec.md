@@ -74,7 +74,7 @@ Como usuário das telas de Gestão de Instrumentos e Gestão de Atas, eu quero c
 - **RF-002**: A tela de Gestão de Atas DEVE carregar os registros em lotes, exibindo inicialmente apenas o primeiro lote em vez da coleção completa.
 - **RF-003**: Em ambas as telas, o usuário DEVE conseguir solicitar explicitamente o carregamento do próximo lote de registros, que é adicionado à lista já exibida.
 - **RF-004**: Em ambas as telas, o sistema DEVE indicar de forma clara quando não há mais registros a carregar (ex.: ocultando ou desabilitando a ação de carregar mais).
-- **RF-005**: O tamanho do lote de carregamento DEVE ser o mesmo já adotado na tela de listagem de notificações (20 registros por lote), para manter consistência de experiência entre as telas do sistema.
+- **RF-005**: O tamanho do lote de carregamento DEVE ser de 10 registros por lote.
 - **RF-006**: A busca por texto e os filtros (tipo, status) existentes em ambas as telas DEVEM continuar funcionando sobre os registros já carregados na tela, com a ação de carregar mais lotes disponível para ampliar o alcance da busca até o registro procurado ser encontrado ou todos os registros terem sido carregados.
 - **RF-007**: Ao aplicar ou alterar um termo de busca ou filtro, a busca/filtro DEVE ser reaplicada automaticamente a cada novo lote carregado, sem exigir que o usuário repita a ação.
 - **RF-008**: O cartão "Total na base" da tela de Gestão de Instrumentos DEVE continuar refletindo o total real de instrumentos cadastrados, independentemente de quantos lotes já foram carregados na tela. Os cartões de contagem por tipo ("Contratos" e "Notas de empenho") DEVEM refletir a contagem por tipo entre os registros já carregados na tela, com indicação visual de que o valor pode aumentar ao carregar mais lotes.
@@ -99,7 +99,7 @@ Como usuário das telas de Gestão de Instrumentos e Gestão de Atas, eu quero c
 ## Premissas
 
 - O padrão de "carregar mais" (carregamento incremental sob demanda, sem números de página nem seletor de itens por página) já validado na tela de listagem de notificações será reaproveitado nas duas telas, mantendo consistência de experiência no sistema.
-- O tamanho de lote de 20 registros, já usado na listagem de notificações, é adequado também para instrumentos e atas.
+- O tamanho de lote é de 10 registros (diferente do tamanho de 20 usado na listagem de notificações — cada tela pode ter seu próprio tamanho de lote conforme necessidade de UX).
 - A busca e os filtros continuarão operando apenas sobre os registros já carregados na tela (não sobre toda a base), mesma limitação já aceita e documentada na tela de listagem de notificações (028) — sem exigir mudanças de contrato de API para busca/filtro.
 - As APIs consumidas por estas telas (`GET /api/instrumentos` e `GET /api/atas`) já suportam paginação opcional via `page`/`limit` (confirmado em `l1core/docs/openapi.yaml`), retornando um envelope `{ data, meta: { page, limit, total, totalPages } }` quando esses parâmetros são informados — nenhuma mudança de backend é necessária para a paginação em si.
 - Não é necessário suporte a atualização em tempo real (real-time) da lista enquanto o usuário navega pelos lotes.

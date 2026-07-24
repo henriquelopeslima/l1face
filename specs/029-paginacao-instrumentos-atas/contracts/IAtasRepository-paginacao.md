@@ -29,12 +29,12 @@ envelope paginado:
 ```json
 {
   "data": [ /* AtaListagemResponse[] */ ],
-  "meta": { "page": 1, "limit": 20, "total": 37, "totalPages": 2 }
+  "meta": { "page": 1, "limit": 10, "total": 37, "totalPages": 4 }
 }
 ```
 
 - **Query params usados por esta feature**: `page` (incrementado a cada "Carregar mais"), `limit`
-  (fixo em 20 — ver research.md #3).
+  (fixo em 10 — ver research.md #3).
 - `listarAtas()` continua chamando `GET /api/atas` **sem** `page`/`limit`, recebendo o array
   simples de sempre (comportamento inalterado para os seletores de Cadastro).
 - Não existe filtro por `status` ou busca textual na API — ver research.md #2. Esses filtros
@@ -56,7 +56,7 @@ export class ListarAtasPaginadoUseCase {
 
 ## Consumo pelo novo hook (`useListagemAtas`)
 
-O hook chama `listarAtasPaginadoUseCase.execute({ page, limit: 20 })`, incrementando `page` a cada
+O hook chama `listarAtasPaginadoUseCase.execute({ page, limit: 10 })`, incrementando `page` a cada
 "Carregar mais", acumulando `itens` no estado local e usando `totalPaginas` para habilitar/
 desabilitar o botão. Busca e filtro de status continuam aplicados em memória sobre o acumulado,
 nunca enviados ao backend.
