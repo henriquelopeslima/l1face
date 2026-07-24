@@ -4,7 +4,7 @@ import { Breadcrumb } from '@/shared/components/ui/breadcrumb';
 import { LogOut } from 'iconoir-react';
 import { useNavigate } from 'react-router';
 import { AparenciaSection } from '../components/AparenciaSection';
-import { AssinaturaSection } from '../components/AssinaturaSection';
+// import { AssinaturaSection } from '../components/AssinaturaSection';
 import { GestaoAcessosSection } from '../components/GestaoAcessosSection';
 import { NotificacoesSection } from '../components/NotificacoesSection';
 import { PerfilSection } from '../components/PerfilSection';
@@ -31,7 +31,7 @@ export function ConfiguracoesPage() {
       <PerfilSection />
       <AparenciaSection />
       <NotificacoesSection />
-      {!isLoadingPapel && isAdmin && <AssinaturaSection />}
+      {/* {!isLoadingPapel && isAdmin && <AssinaturaSection />} */}
       <SegurancaSection />
       {!isLoadingPapel && isAdmin && <GestaoAcessosSection />}
 
