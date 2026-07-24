@@ -99,6 +99,10 @@ export function AppHeader({ breadcrumb = ['LicitaOne'] }: AppHeaderProps) {
                     <NotificacaoItem key={notificacao.id} notificacao={notificacao} onClick={abrirNotificacao} />
                   ))}
               </div>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem asChild className="justify-center text-sm text-[#0050FF] cursor-pointer">
+                <Link to="/notificacoes">Ver todas as notificações</Link>
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
