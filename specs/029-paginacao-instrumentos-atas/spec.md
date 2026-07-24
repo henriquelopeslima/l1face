@@ -43,17 +43,18 @@ Como usuário responsável pela gestão de atas de registro de preços, eu quero
 
 ### História de Usuário 3 - Buscar e filtrar continuam funcionando com paginação (Prioridade: P2)
 
-Como usuário das telas de Gestão de Instrumentos e Gestão de Atas, eu quero continuar buscando por texto e aplicando filtros (tipo, status) depois que a paginação for introduzida, para que eu encontre um registro específico mesmo que ele esteja em um lote ainda não carregado.
+Como usuário das telas de Gestão de Instrumentos e Gestão de Atas, eu quero continuar buscando por texto e aplicando filtros (tipo, status) depois que a paginação for introduzida, para que eu encontre rapidamente um registro entre os já carregados e possa carregar mais resultados quando o que procuro ainda não apareceu.
 
 **Por que esta prioridade**: A busca e os filtros já existem hoje e são essenciais para localizar registros específicos. Sem ajuste, paginar a listagem quebraria a busca atual (que hoje filtra sobre a lista inteira já carregada), então este comportamento precisa ser preservado ou conscientemente redefinido.
 
-**Teste Independente**: Pode ser testado digitando um termo de busca ou aplicando um filtro de tipo/status que corresponda a um registro que estaria em um lote além do primeiro, e confirmando que o registro é encontrado e exibido.
+**Teste Independente**: Pode ser testado digitando um termo de busca ou aplicando um filtro de tipo/status sobre os registros já carregados e confirmando que o resultado reflete corretamente esse subconjunto, e que carregar mais lotes amplia o alcance da busca.
 
 **Cenários de Aceite**:
 
-1. **Dado** que o usuário está na tela de Gestão de Instrumentos ou de Atas, **Quando** ele digita um termo de busca, **Então** o resultado exibido reflete todos os registros correspondentes, não apenas os já carregados na tela.
-2. **Dado** que um filtro (tipo, status) está aplicado, **Quando** o usuário rola a lista e carrega mais resultados, **Então** o filtro continua aplicado aos novos registros carregados.
-3. **Dado** que o usuário limpa a busca ou o filtro, **Quando** a lista é recarregada, **Então** a paginação reinicia a partir do primeiro lote.
+1. **Dado** que o usuário está na tela de Gestão de Instrumentos ou de Atas, **Quando** ele digita um termo de busca, **Então** o resultado exibido reflete os registros correspondentes entre os já carregados na tela.
+2. **Dado** que um termo de busca ou filtro está aplicado e o registro procurado ainda não foi carregado, **Quando** o usuário solicita carregar mais resultados, **Então** o próximo lote é carregado e o filtro/busca é reaplicado sobre o conjunto ampliado.
+3. **Dado** que um filtro (tipo, status) está aplicado, **Quando** o usuário rola a lista e carrega mais resultados, **Então** o filtro continua aplicado aos novos registros carregados.
+4. **Dado** que o usuário limpa a busca ou o filtro, **Quando** a lista é recarregada, **Então** a paginação reinicia a partir do primeiro lote.
 
 ---
 
@@ -62,7 +63,7 @@ Como usuário das telas de Gestão de Instrumentos e Gestão de Atas, eu quero c
 - O que acontece quando não existe nenhum instrumento ou nenhuma ata cadastrada? A tela deve exibir o estado vazio já existente, sem oferecer ação de carregar mais.
 - O que acontece se o carregamento de um lote adicional falhar (erro de rede ou do servidor)? O usuário deve ver uma mensagem de erro e poder tentar novamente sem perder os registros já carregados.
 - O que acontece se um novo instrumento ou ata for criado por outro usuário enquanto a lista está sendo navegada? Não é necessário atualizar a lista em tempo real; o registro aparecerá ao recarregar a tela.
-- O que acontece com os totais exibidos nos cartões de resumo (ex.: total de contratos, total de empenhos, saldo) quando nem todos os registros foram carregados? Os totais devem continuar representando o total real de registros, não apenas os já carregados na tela.
+- O que acontece com os totais exibidos nos cartões de resumo da tela de Instrumentos quando nem todos os registros foram carregados? "Total na base" continua exato (vem do total real de registros); "Contratos" e "Notas de empenho" refletem a contagem entre os itens já carregados, deixando claro ao usuário que pode aumentar ao carregar mais.
 - O que acontece ao trocar de aba/filtro (ex.: de "Contratos" para "Empenhos") enquanto múltiplos lotes já foram carregados? A lista deve reiniciar a partir do primeiro lote do novo filtro.
 
 ## Requisitos *(obrigatório)*
@@ -74,9 +75,9 @@ Como usuário das telas de Gestão de Instrumentos e Gestão de Atas, eu quero c
 - **RF-003**: Em ambas as telas, o usuário DEVE conseguir solicitar explicitamente o carregamento do próximo lote de registros, que é adicionado à lista já exibida.
 - **RF-004**: Em ambas as telas, o sistema DEVE indicar de forma clara quando não há mais registros a carregar (ex.: ocultando ou desabilitando a ação de carregar mais).
 - **RF-005**: O tamanho do lote de carregamento DEVE ser o mesmo já adotado na tela de listagem de notificações (20 registros por lote), para manter consistência de experiência entre as telas do sistema.
-- **RF-006**: A busca por texto e os filtros (tipo, status) existentes em ambas as telas DEVEM continuar permitindo localizar qualquer registro correspondente, mesmo que ele ainda não tenha sido carregado na tela.
-- **RF-007**: Ao aplicar ou alterar um termo de busca ou filtro, a listagem DEVE reiniciar a partir do primeiro lote de resultados correspondentes.
-- **RF-008**: Os cartões de resumo/estatísticas (totais, contagens, saldos agregados) exibidos nas duas telas DEVEM continuar refletindo o total real de registros correspondentes, independentemente de quantos lotes já foram carregados na tela.
+- **RF-006**: A busca por texto e os filtros (tipo, status) existentes em ambas as telas DEVEM continuar funcionando sobre os registros já carregados na tela, com a ação de carregar mais lotes disponível para ampliar o alcance da busca até o registro procurado ser encontrado ou todos os registros terem sido carregados.
+- **RF-007**: Ao aplicar ou alterar um termo de busca ou filtro, a busca/filtro DEVE ser reaplicada automaticamente a cada novo lote carregado, sem exigir que o usuário repita a ação.
+- **RF-008**: O cartão "Total na base" da tela de Gestão de Instrumentos DEVE continuar refletindo o total real de instrumentos cadastrados, independentemente de quantos lotes já foram carregados na tela. Os cartões de contagem por tipo ("Contratos" e "Notas de empenho") DEVEM refletir a contagem por tipo entre os registros já carregados na tela, com indicação visual de que o valor pode aumentar ao carregar mais lotes.
 - **RF-009**: Em caso de falha ao carregar um lote adicional, o sistema DEVE exibir uma mensagem de erro e permitir que o usuário tente novamente, preservando os registros já carregados.
 - **RF-010**: Ao trocar de filtro principal (ex.: tipo de instrumento, status da ata), a listagem DEVE reiniciar a partir do primeiro lote do novo filtro.
 
@@ -92,14 +93,14 @@ Como usuário das telas de Gestão de Instrumentos e Gestão de Atas, eu quero c
 
 - **CS-001**: A tela de Gestão de Instrumentos fica pronta para uso em menos de 2 segundos mesmo quando existem centenas de instrumentos cadastrados.
 - **CS-002**: A tela de Gestão de Atas fica pronta para uso em menos de 2 segundos mesmo quando existem centenas de atas cadastradas.
-- **CS-003**: Usuários conseguem localizar por busca ou filtro qualquer instrumento ou ata cadastrada, independentemente de quantos lotes já foram carregados na tela.
-- **CS-004**: 100% dos totais exibidos nos cartões de resumo continuam corretos (refletindo o total real de registros) após a introdução da paginação.
+- **CS-003**: Usuários conseguem localizar por busca ou filtro qualquer instrumento ou ata cadastrada, carregando mais lotes conforme necessário até encontrar o registro.
+- **CS-004**: O total geral de registros exibido na tela de Instrumentos ("Total na base") permanece 100% correto após a introdução da paginação, independentemente de quantos lotes foram carregados.
 
 ## Premissas
 
 - O padrão de "carregar mais" (carregamento incremental sob demanda, sem números de página nem seletor de itens por página) já validado na tela de listagem de notificações será reaproveitado nas duas telas, mantendo consistência de experiência no sistema.
 - O tamanho de lote de 20 registros, já usado na listagem de notificações, é adequado também para instrumentos e atas.
-- A busca e os filtros passarão a ser resolvidos considerando toda a base de registros (não apenas os já carregados), o que pode exigir que a busca/filtro seja processada nos mesmos moldes da paginação (por registro completo, não apenas pelos itens já exibidos na tela).
-- As APIs consumidas por estas telas serão estendidas (ou já preveem extensão) para suportar parâmetros de paginação, seguindo o mesmo padrão já usado pela API de notificações.
+- A busca e os filtros continuarão operando apenas sobre os registros já carregados na tela (não sobre toda a base), mesma limitação já aceita e documentada na tela de listagem de notificações (028) — sem exigir mudanças de contrato de API para busca/filtro.
+- As APIs consumidas por estas telas (`GET /api/instrumentos` e `GET /api/atas`) já suportam paginação opcional via `page`/`limit` (confirmado em `l1core/docs/openapi.yaml`), retornando um envelope `{ data, meta: { page, limit, total, totalPages } }` quando esses parâmetros são informados — nenhuma mudança de backend é necessária para a paginação em si.
 - Não é necessário suporte a atualização em tempo real (real-time) da lista enquanto o usuário navega pelos lotes.
 - Suporte a acessibilidade e navegação por teclado da ação "carregar mais" deve seguir os mesmos padrões já usados na tela de notificações.
