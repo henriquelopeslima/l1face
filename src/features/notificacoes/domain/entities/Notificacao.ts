@@ -1,4 +1,4 @@
-export type TipoOrigemNotificacao = 'instrumento' | 'ata' | 'of';
+export type TipoOrigemNotificacao = 'instrumento' | 'ata' | 'of' | 'colaborador';
 
 export interface ConteudoNotificacao {
   titulo: string;

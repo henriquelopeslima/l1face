@@ -1,4 +1,4 @@
-import { Clock, WarningTriangle } from 'iconoir-react';
+import { Clock, User, WarningTriangle } from 'iconoir-react';
 import { cn } from '@/shared/components/ui/utils';
 import type { NotificacaoClicavel, TipoOrigemNotificacao } from '../../domain/entities/Notificacao';
 
@@ -6,6 +6,7 @@ const TIPO_ORIGEM_ICONE: Record<TipoOrigemNotificacao, typeof Clock> = {
   instrumento: Clock,
   ata: Clock,
   of: WarningTriangle,
+  colaborador: User,
 };
 
 interface NotificacaoItemProps {

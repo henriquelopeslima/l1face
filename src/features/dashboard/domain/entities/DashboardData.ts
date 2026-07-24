@@ -33,7 +33,7 @@ export interface StatusInstrumentoResumo {
   quantidade: number;
 }
 
-export type TipoOrigemAlerta = 'instrumento' | 'ata' | 'of';
+export type TipoOrigemAlerta = 'instrumento' | 'ata' | 'of' | 'colaborador';
 
 export interface ConteudoAlertaDashboard {
   titulo: string;

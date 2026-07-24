@@ -19,6 +19,7 @@ const OPCOES_ORIGEM: { id: FiltroOrigem; label: string }[] = [
   { id: 'instrumento', label: 'Instrumento' },
   { id: 'ata', label: 'Ata' },
   { id: 'of', label: 'Ordem de fornecimento' },
+  { id: 'colaborador', label: 'Colaborador' },
 ];
 
 export function FiltroNotificacoes({
