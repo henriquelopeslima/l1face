@@ -163,15 +163,29 @@ export function ArpDetalhesPage() {
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={() => navigate(`/atas/${id}/gerar-contrato`)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Gerar Contrato
-          </Button>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="inline-flex">
+                <Button variant="outline" disabled>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Gerar Contrato
+                </Button>
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>Em breve!</TooltipContent>
+          </Tooltip>
           {ata.aceitaAdesao && (
-            <Button variant="outline" onClick={() => navigate(`/atas/${id}/registrar-adesao`)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Registrar Adesão
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="inline-flex">
+                  <Button variant="outline" disabled>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Registrar Adesão
+                  </Button>
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>Em breve!</TooltipContent>
+            </Tooltip>
           )}
         </div>
       </div>
@@ -421,16 +435,30 @@ export function ArpDetalhesPage() {
             <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <CardTitle>Contratos e Empenhos Gerados</CardTitle>
               <div className="flex flex-wrap gap-2">
-                <Button onClick={() => navigate(`/atas/${id}/gerar-contrato`)} disabled={saldoOrgao === 0}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Gerar Contrato
-                </Button>
+                {/* <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex">
+                      <Button disabled>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Gerar Contrato
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>Em breve!</TooltipContent>
+                </Tooltip>
                 {ata.aceitaAdesao && (
-                  <Button variant="outline" onClick={() => navigate(`/atas/${id}/registrar-adesao`)} disabled={saldoCarona === 0}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Registrar Adesão
-                  </Button>
-                )}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="inline-flex">
+                        <Button variant="outline" disabled>
+                          <Plus className="h-4 w-4 mr-2" />
+                          Registrar Adesão
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>Em breve!</TooltipContent>
+                  </Tooltip>
+                )} */}
               </div>
             </CardHeader>
             <CardContent>
