@@ -24,6 +24,7 @@ const dadosPncpFixture: DadosAtaPncp = {
 function makeRepo(overrides?: Partial<IAtasRepository>): IAtasRepository {
   return {
     listarAtas: vi.fn().mockResolvedValue([]),
+    listarAtasPaginado: vi.fn().mockResolvedValue({ itens: [], total: 0, paginaAtual: 1, totalPaginas: 0 }),
     getAta: vi.fn().mockResolvedValue({}),
     criarAta: vi.fn().mockResolvedValue({}),
     consultarAtaPncp: vi.fn().mockResolvedValue(dadosPncpFixture),
