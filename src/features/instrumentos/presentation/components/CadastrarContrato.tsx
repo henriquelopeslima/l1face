@@ -717,7 +717,7 @@ export function CadastrarContrato() {
                   )}
                 </div>
 
-                <div className="space-y-2">
+                {/* <div className="space-y-2">
                   <Label>Anexo do Contrato (opcional)</Label>
                   <div className="flex items-center gap-2">
                     <Input type="file" accept=".pdf"
@@ -727,7 +727,7 @@ export function CadastrarContrato() {
                       <Badge variant="outline" className="shrink-0">{dadosContrato.anexoContrato.name}</Badge>
                     )}
                   </div>
-                </div>
+                </div> */}
               </div>
             </div>
 
