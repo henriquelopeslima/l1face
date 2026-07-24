@@ -4,6 +4,7 @@ import type {
   InstrumentoDetalhe,
   InstrumentoListagem,
   ItemInstrumentoDetalhe,
+  ListaInstrumentos,
   StatusInstrumento,
   TipoInstrumento,
   TipoPrazo,
@@ -38,6 +39,22 @@ export function mapApiInstrumentoListagemToInstrumentoListagem(
     saldo: raw.saldo,
     status: raw.status,
     adesao: raw.adesao,
+  };
+}
+
+export interface ApiListaInstrumentosResponse {
+  data: ApiInstrumentoListagemResponse[];
+  meta: { page: number; limit: number; total: number; totalPages: number };
+}
+
+export function mapApiListaInstrumentosToListaInstrumentos(
+  raw: ApiListaInstrumentosResponse,
+): ListaInstrumentos {
+  return {
+    itens: raw.data.map(mapApiInstrumentoListagemToInstrumentoListagem),
+    total: raw.meta.total,
+    paginaAtual: raw.meta.page,
+    totalPaginas: raw.meta.totalPages,
   };
 }
 

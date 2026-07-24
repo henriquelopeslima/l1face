@@ -22,7 +22,7 @@ import {
 import { Plus, Search, NavArrowDown, NavArrowUp, WarningTriangle, RefreshDouble } from 'iconoir-react';
 import { LoadingLogo } from '@/shared/components/feedback/LoadingLogo';
 import type { Ata, AtaStatus } from '../../domain/entities/ata';
-import { useListarAtas } from '../hooks/useListarAtas';
+import { useListagemAtas } from '../hooks/useListagemAtas';
 
 type StatusFilter = 'todas' | AtaStatus;
 
@@ -63,7 +63,7 @@ function getBadgeVariant(status: AtaStatus): 'success' | 'warning' | 'outline' {
 
 export function ArpGestaoPage() {
   const navigate = useNavigate();
-  const { atas, isLoading, error, refetch } = useListarAtas();
+  const { atas, temMaisPaginas, isLoading, isLoadingMais, error, carregarMais, refetch } = useListagemAtas();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('todas');
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
@@ -89,7 +89,7 @@ export function ArpGestaoPage() {
     );
   }
 
-  if (error) {
+  if (error && atas.length === 0) {
     return (
       <div className="space-y-4 lg:space-y-6">
         <div className="space-y-1">
@@ -176,7 +176,11 @@ export function ArpGestaoPage() {
                 {filtradas.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
-                      {atas.length === 0 ? 'Nenhuma ARP cadastrada ainda.' : 'Nenhuma ARP encontrada para os filtros aplicados.'}
+                      {atas.length === 0
+                        ? 'Nenhuma ARP cadastrada ainda.'
+                        : temMaisPaginas
+                          ? 'Nenhuma ARP encontrada nos itens carregados. Carregue mais para continuar buscando.'
+                          : 'Nenhuma ARP encontrada para os filtros aplicados.'}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -364,6 +368,26 @@ export function ArpGestaoPage() {
           </div>
         </CardContent>
       </Card>
+
+      {error && atas.length > 0 && (
+        <div className="flex flex-col items-center gap-2 py-2 text-center">
+          <p className="flex items-center gap-2 text-sm text-[var(--danger)]">
+            <WarningTriangle className="h-4 w-4" />
+            {error}
+          </p>
+          <Button variant="outline" size="sm" onClick={carregarMais}>
+            Tentar novamente
+          </Button>
+        </div>
+      )}
+
+      {!error && temMaisPaginas && (
+        <div className="flex justify-center py-2">
+          <Button variant="outline" onClick={carregarMais} disabled={isLoadingMais}>
+            {isLoadingMais ? 'Carregando...' : 'Carregar mais'}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

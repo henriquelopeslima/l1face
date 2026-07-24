@@ -1,6 +1,6 @@
-import type { Ata, AtaStatus } from '../../domain/entities/ata';
+import type { Ata, AtaStatus, ListaAtas } from '../../domain/entities/ata';
 
-interface ApiAtaListagemResponse {
+export interface ApiAtaListagemResponse {
   id: string;
   numero: string;
   objeto: string;
@@ -33,5 +33,19 @@ export function mapApiAtaToAta(raw: ApiAtaListagemResponse): Ata {
     status: raw.status as AtaStatus,
     aceitaAdesao: raw.aceita_adesao,
     renovavel: raw.renovavel,
+  };
+}
+
+export interface ApiListaAtasResponse {
+  data: ApiAtaListagemResponse[];
+  meta: { page: number; limit: number; total: number; totalPages: number };
+}
+
+export function mapApiListaAtasToListaAtas(raw: ApiListaAtasResponse): ListaAtas {
+  return {
+    itens: raw.data.map(mapApiAtaToAta),
+    total: raw.meta.total,
+    paginaAtual: raw.meta.page,
+    totalPaginas: raw.meta.totalPages,
   };
 }

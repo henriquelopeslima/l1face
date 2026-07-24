@@ -1,13 +1,13 @@
 import { apiFetch } from '@/shared/infrastructure/apiClient';
-import { mapApiAtaToAta } from '../mappers/atasMappers';
+import { mapApiAtaToAta, mapApiListaAtasToListaAtas, type ApiListaAtasResponse } from '../mappers/atasMappers';
 import { mapApiAtaDetalhesToAtaDetalhes } from '../mappers/ataDetalhesMappers';
 import { mapCriarAtaInputToApiRequest } from '../mappers/criarAtaMappers';
 import { mapApiDadosAtaPncpToDadosAtaPncp } from '../mappers/pncpMappers';
-import type { Ata } from '../../domain/entities/ata';
+import type { Ata, ListaAtas } from '../../domain/entities/ata';
 import type { AtaDetalhes } from '../../domain/entities/ataDetalhes';
 import type { CriarAtaInput, DadosAtaPncp } from '../../domain/entities/criarAta';
 import { AtaError } from '../../domain/errors/ataErrors';
-import type { IAtasRepository } from '../../domain/repositories/IAtasRepository';
+import type { IAtasRepository, ListarAtasParams } from '../../domain/repositories/IAtasRepository';
 
 export class AtasRepository implements IAtasRepository {
   async criarAta(input: CriarAtaInput): Promise<AtaDetalhes> {
@@ -133,5 +133,35 @@ export class AtasRepository implements IAtasRepository {
 
     const data: unknown = await response.json();
     return (data as Parameters<typeof mapApiAtaToAta>[0][]).map(mapApiAtaToAta);
+  }
+
+  async listarAtasPaginado(params?: ListarAtasParams): Promise<ListaAtas> {
+    const page = params?.page ?? 1;
+    const limit = params?.limit ?? 20;
+    let response: Response;
+    try {
+      response = await apiFetch(`/api/atas?page=${page}&limit=${limit}`, { method: 'GET' });
+    } catch {
+      throw new AtaError('Serviço indisponível. Verifique sua conexão e tente novamente.');
+    }
+
+    if (response.status === 401) {
+      throw new AtaError('Sessão expirada. Faça login novamente.');
+    }
+
+    if (response.status === 403) {
+      throw new AtaError('Acesso negado. Você não tem permissão para visualizar estas atas.');
+    }
+
+    if (response.status === 400) {
+      throw new AtaError('Nenhum licitante ativo selecionado.');
+    }
+
+    if (!response.ok) {
+      throw new AtaError('Erro ao carregar atas. Tente novamente.');
+    }
+
+    const data = (await response.json()) as ApiListaAtasResponse;
+    return mapApiListaAtasToListaAtas(data);
   }
 }

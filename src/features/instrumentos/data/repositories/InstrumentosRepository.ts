@@ -2,7 +2,8 @@ import { apiFetch } from '@/shared/infrastructure/apiClient';
 import { mapApiDadosContratoPncpToDadosContratoPncp } from '../mappers/pncpContratosMappers';
 import {
   mapApiInstrumentoDetalhesToInstrumentoDetalhe,
-  mapApiInstrumentoListagemToInstrumentoListagem,
+  mapApiListaInstrumentosToListaInstrumentos,
+  type ApiListaInstrumentosResponse,
 } from '../mappers/instrumentosMappers';
 import { mapCriarContratoInputToApiRequest } from '../mappers/criarContratoMappers';
 import { mapCriarEmpenhoInputToApiRequest } from '../mappers/criarEmpenhoMappers';
@@ -13,7 +14,7 @@ import {
 import type { CriarContratoInput, CriarEmpenhoInput, DadosContratoPncp } from '../../domain/entities/criarContrato';
 import type {
   InstrumentoDetalhe,
-  InstrumentoListagem,
+  ListaInstrumentos,
   ListagemOrdensFornecimento,
   OrdemFornecimento,
   EmitirOrdemFornecimentoInput,
@@ -23,7 +24,10 @@ import type {
   RegistrarLiquidacaoInput,
   RegistrarPagamentoInput,
 } from '../../domain/entities/instrumentoContratual';
-import type { IInstrumentosRepository } from '../../domain/contracts/IInstrumentosRepository';
+import type {
+  IInstrumentosRepository,
+  ListarInstrumentosParams,
+} from '../../domain/contracts/IInstrumentosRepository';
 
 class InstrumentosError extends Error {
   constructor(message: string) {
@@ -33,10 +37,12 @@ class InstrumentosError extends Error {
 }
 
 export class InstrumentosRepository implements IInstrumentosRepository {
-  async listarInstrumentos(): Promise<InstrumentoListagem[]> {
+  async listarInstrumentos(params?: ListarInstrumentosParams): Promise<ListaInstrumentos> {
+    const page = params?.page ?? 1;
+    const limit = params?.limit ?? 20;
     let response: Response;
     try {
-      response = await apiFetch('/api/instrumentos', { method: 'GET' });
+      response = await apiFetch(`/api/instrumentos?page=${page}&limit=${limit}`, { method: 'GET' });
     } catch {
       throw new InstrumentosError('Serviço indisponível. Verifique sua conexão e tente novamente.');
     }
@@ -54,10 +60,8 @@ export class InstrumentosRepository implements IInstrumentosRepository {
       throw new InstrumentosError('Erro ao carregar instrumentos. Tente novamente.');
     }
 
-    const data: unknown = await response.json();
-    return (data as Parameters<typeof mapApiInstrumentoListagemToInstrumentoListagem>[0][]).map(
-      mapApiInstrumentoListagemToInstrumentoListagem,
-    );
+    const data = (await response.json()) as ApiListaInstrumentosResponse;
+    return mapApiListaInstrumentosToListaInstrumentos(data);
   }
 
   async criarContrato(input: CriarContratoInput): Promise<string> {

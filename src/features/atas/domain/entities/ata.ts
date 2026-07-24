@@ -16,3 +16,10 @@ export interface Ata {
   aceitaAdesao: boolean;
   renovavel: boolean;
 }
+
+export interface ListaAtas {
+  itens: Ata[];
+  total: number;
+  paginaAtual: number;
+  totalPaginas: number;
+}

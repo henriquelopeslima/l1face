@@ -13,9 +13,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/shared/components/ui/table';
-import { Search, Plus, Page, NavArrowDown, NavArrowUp, Cart } from 'iconoir-react';
+import { Search, Plus, Page, NavArrowDown, NavArrowUp, Cart, WarningTriangle } from 'iconoir-react';
 import { cn } from '@/shared/components/ui/utils';
-import { useListarInstrumentos } from '../hooks/useListarInstrumentos';
+import { useListagemInstrumentos } from '../hooks/useListagemInstrumentos';
 import type { TipoInstrumento, StatusInstrumento, InstrumentoListagem } from '@/features/instrumentos/domain/entities/instrumentoContratual';
 
 type FiltroSegmento = 'todos' | 'CONTRATO' | 'EMPENHO';
@@ -62,7 +62,8 @@ export function InstrumentosGestaoPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
 
-  const { instrumentos, isLoading, error } = useListarInstrumentos();
+  const { instrumentos, totalNaBase, temMaisPaginas, isLoading, isLoadingMais, error, carregarMais } =
+    useListagemInstrumentos();
 
   const setSegmento = (s: FiltroSegmento) => {
     const next = new URLSearchParams(searchParams);
@@ -81,7 +82,6 @@ export function InstrumentosGestaoPage() {
   }, [segmento, searchTerm, instrumentos]);
 
   const stats = useMemo(() => ({
-    total: instrumentos.length,
     contratos: instrumentos.filter((r) => r.tipo === 'CONTRATO').length,
     empenhos: instrumentos.filter((r) => r.tipo === 'EMPENHO').length,
   }), [instrumentos]);
@@ -103,7 +103,7 @@ export function InstrumentosGestaoPage() {
     );
   }
 
-  if (error) {
+  if (error && instrumentos.length === 0) {
     return (
       <div className="space-y-4 lg:space-y-6">
         <Breadcrumb items={[{ label: 'Página inicial', href: '/' }, { label: 'Instrumentos' }, { label: 'Gestão' }]} />
@@ -147,9 +147,19 @@ export function InstrumentosGestaoPage() {
       </div>
 
       <div className="grid gap-2 sm:grid-cols-3">
-        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Total na base</p><p className="text-2xl font-semibold">{stats.total}</p></CardContent></Card>
-        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Contratos</p><p className="text-2xl font-semibold text-[#0050FF]">{stats.contratos}</p></CardContent></Card>
-        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Notas de empenho</p><p className="text-2xl font-semibold text-[#4B5563]">{stats.empenhos}</p></CardContent></Card>
+        <Card><CardContent className="p-4"><p className="text-xs text-muted-foreground">Total na base</p><p className="text-2xl font-semibold">{totalNaBase}</p></CardContent></Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs text-muted-foreground">Contratos{temMaisPaginas ? ' (carregados)' : ''}</p>
+            <p className="text-2xl font-semibold text-[#0050FF]">{stats.contratos}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs text-muted-foreground">Notas de empenho{temMaisPaginas ? ' (carregados)' : ''}</p>
+            <p className="text-2xl font-semibold text-[#4B5563]">{stats.empenhos}</p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Desktop table */}
@@ -188,7 +198,9 @@ export function InstrumentosGestaoPage() {
                   <TableCell colSpan={9} className="py-10 text-center text-muted-foreground">
                     {instrumentos.length === 0
                       ? 'Nenhum instrumento cadastrado. Clique em "Cadastrar" para começar.'
-                      : 'Nenhum instrumento encontrado para os filtros aplicados.'}
+                      : temMaisPaginas
+                        ? 'Nenhum instrumento encontrado nos itens carregados. Carregue mais para continuar buscando.'
+                        : 'Nenhum instrumento encontrado para os filtros aplicados.'}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -272,7 +284,9 @@ export function InstrumentosGestaoPage() {
           <p className="py-8 text-center text-sm text-muted-foreground">
             {instrumentos.length === 0
               ? 'Nenhum instrumento cadastrado. Clique em "Cadastrar" para começar.'
-              : 'Nenhum instrumento encontrado.'}
+              : temMaisPaginas
+                ? 'Nenhum instrumento encontrado nos itens carregados. Carregue mais para continuar buscando.'
+                : 'Nenhum instrumento encontrado.'}
           </p>
         )}
         {filtrados.map((row: InstrumentoListagem) => (
@@ -304,6 +318,26 @@ export function InstrumentosGestaoPage() {
           </Card>
         ))}
       </div>
+
+      {error && instrumentos.length > 0 && (
+        <div className="flex flex-col items-center gap-2 py-2 text-center">
+          <p className="flex items-center gap-2 text-sm text-destructive">
+            <WarningTriangle className="h-4 w-4" />
+            {error}
+          </p>
+          <Button variant="outline" size="sm" onClick={carregarMais}>
+            Tentar novamente
+          </Button>
+        </div>
+      )}
+
+      {!error && temMaisPaginas && (
+        <div className="flex justify-center py-2">
+          <Button variant="outline" onClick={carregarMais} disabled={isLoadingMais}>
+            {isLoadingMais ? 'Carregando...' : 'Carregar mais'}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

@@ -18,6 +18,13 @@ export interface InstrumentoListagem {
   adesao: boolean;
 }
 
+export interface ListaInstrumentos {
+  itens: InstrumentoListagem[];
+  total: number;
+  paginaAtual: number;
+  totalPaginas: number;
+}
+
 export interface ItemInstrumentoDetalhe {
   id: string;
   descricao: string;
