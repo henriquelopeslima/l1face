@@ -7,6 +7,10 @@ export interface ItemAtaInput {
   qtdParaCarona: number;
 }
 
+export interface AtaCriada {
+  id: string;
+}
+
 export interface CriarAtaInput {
   numero: string;
   descricao: string;

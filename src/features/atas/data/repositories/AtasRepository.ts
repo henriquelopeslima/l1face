@@ -5,12 +5,12 @@ import { mapCriarAtaInputToApiRequest } from '../mappers/criarAtaMappers';
 import { mapApiDadosAtaPncpToDadosAtaPncp } from '../mappers/pncpMappers';
 import type { Ata, ListaAtas } from '../../domain/entities/ata';
 import type { AtaDetalhes } from '../../domain/entities/ataDetalhes';
-import type { CriarAtaInput, DadosAtaPncp } from '../../domain/entities/criarAta';
+import type { AtaCriada, CriarAtaInput, DadosAtaPncp } from '../../domain/entities/criarAta';
 import { AtaError } from '../../domain/errors/ataErrors';
 import type { IAtasRepository, ListarAtasParams } from '../../domain/repositories/IAtasRepository';
 
 export class AtasRepository implements IAtasRepository {
-  async criarAta(input: CriarAtaInput): Promise<AtaDetalhes> {
+  async criarAta(input: CriarAtaInput): Promise<AtaCriada> {
     let response: Response;
     try {
       response = await apiFetch('/api/atas', {
@@ -46,8 +46,8 @@ export class AtasRepository implements IAtasRepository {
       throw new AtaError('Erro ao cadastrar ata. Tente novamente.');
     }
 
-    const data: unknown = await response.json();
-    return mapApiAtaDetalhesToAtaDetalhes(data as Parameters<typeof mapApiAtaDetalhesToAtaDetalhes>[0]);
+    const data = (await response.json()) as { id: string };
+    return { id: data.id };
   }
 
   async consultarAtaPncp(codigo: string): Promise<DadosAtaPncp> {
