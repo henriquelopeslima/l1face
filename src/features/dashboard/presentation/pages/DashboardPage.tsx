@@ -259,7 +259,7 @@ export function DashboardPage() {
           <div className="flex items-center justify-between">
             <CardTitle className="text-base lg:text-xl">Alertas e pendências</CardTitle>
             <Button variant="ghost" size="sm" className="gap-1 text-[#0050FF]" asChild>
-              <Link to="/instrumentos/gestao">
+              <Link to="/notificacoes">
                 Ver todos <ArrowUpRight className="h-3.5 w-3.5" />
               </Link>
             </Button>
