@@ -22,9 +22,7 @@ import {
 import { Plus, Search, NavArrowDown, NavArrowUp, WarningTriangle, RefreshDouble } from 'iconoir-react';
 import { LoadingLogo } from '@/shared/components/feedback/LoadingLogo';
 import type { Ata, AtaStatus } from '../../domain/entities/ata';
-import { useListagemAtas } from '../hooks/useListagemAtas';
-
-type StatusFilter = 'todas' | AtaStatus;
+import { useListagemAtas, type AtaStatusFilter } from '../hooks/useListagemAtas';
 
 const STATUS_LABELS: Record<AtaStatus, string> = {
   ATIVA: 'Ativa',
@@ -63,21 +61,22 @@ function getBadgeVariant(status: AtaStatus): 'success' | 'warning' | 'outline' {
 
 export function ArpGestaoPage() {
   const navigate = useNavigate();
-  const { atas, temMaisPaginas, isLoading, isLoadingMais, error, carregarMais, refetch } = useListagemAtas();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('todas');
+  const {
+    atas,
+    searchTerm,
+    setSearchTerm,
+    statusFilter,
+    setStatusFilter,
+    temMaisPaginas,
+    isLoading,
+    isFiltering,
+    isLoadingMais,
+    error,
+    carregarMais,
+    refetch,
+    limparFiltros,
+  } = useListagemAtas();
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
-
-  const filtradas = atas.filter((ata) => {
-    const q = searchTerm.toLowerCase();
-    const matchSearch =
-      !q ||
-      ata.numero.toLowerCase().includes(q) ||
-      ata.orgaoGerenciador.nome.toLowerCase().includes(q) ||
-      ata.objeto.toLowerCase().includes(q);
-    const matchStatus = statusFilter === 'todas' || ata.status === statusFilter;
-    return matchSearch && matchStatus;
-  });
 
   const toggleExpand = (id: string) => setExpandedRow(expandedRow === id ? null : id);
 
@@ -129,7 +128,11 @@ export function ArpGestaoPage() {
         <CardContent className="pt-6">
           <div className="grid gap-4 lg:grid-cols-2">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              {isFiltering ? (
+                <RefreshDouble className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground animate-spin" />
+              ) : (
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              )}
               <Input
                 placeholder="Buscar por número, órgão ou objeto..."
                 value={searchTerm}
@@ -137,7 +140,7 @@ export function ArpGestaoPage() {
                 className="pl-10"
               />
             </div>
-            <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
+            <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as AtaStatusFilter)}>
               <SelectTrigger>
                 <SelectValue placeholder="Filtrar por status" />
               </SelectTrigger>
@@ -154,7 +157,7 @@ export function ArpGestaoPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>ARPs Cadastradas ({filtradas.length})</CardTitle>
+          <CardTitle>ARPs Cadastradas ({atas.length})</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -173,18 +176,23 @@ export function ArpGestaoPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtradas.length === 0 ? (
+                {atas.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
-                      {atas.length === 0
-                        ? 'Nenhuma ARP cadastrada ainda.'
-                        : temMaisPaginas
-                          ? 'Nenhuma ARP encontrada nos itens carregados. Carregue mais para continuar buscando.'
-                          : 'Nenhuma ARP encontrada para os filtros aplicados.'}
+                      {searchTerm || statusFilter !== 'todas' ? (
+                        <div className="flex flex-col items-center gap-3">
+                          <span>Nenhuma ARP encontrada para os filtros aplicados.</span>
+                          <Button variant="outline" size="sm" onClick={limparFiltros}>
+                            Limpar filtros
+                          </Button>
+                        </div>
+                      ) : (
+                        'Nenhuma ARP cadastrada ainda.'
+                      )}
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filtradas.flatMap((ata: Ata) => {
+                  atas.flatMap((ata: Ata) => {
                     const alerta = getAlertaVencimento(ata.vigenciaFinal, ata.status);
                     const isExpanded = expandedRow === ata.id;
                     const valorConsumido = ata.valorRegistrado - ata.saldo;

@@ -136,11 +136,15 @@ export class AtasRepository implements IAtasRepository {
   }
 
   async listarAtasPaginado(params?: ListarAtasParams): Promise<ListaAtas> {
-    const page = params?.page ?? 1;
-    const limit = params?.limit ?? 20;
+    const searchParams = new URLSearchParams();
+    searchParams.set('page', String(params?.page ?? 1));
+    searchParams.set('limit', String(params?.limit ?? 20));
+    if (params?.geral) searchParams.set('geral', params.geral);
+    if (params?.status) searchParams.set('status', params.status);
+
     let response: Response;
     try {
-      response = await apiFetch(`/api/atas?page=${page}&limit=${limit}`, { method: 'GET' });
+      response = await apiFetch(`/api/atas?${searchParams.toString()}`, { method: 'GET' });
     } catch {
       throw new AtaError('Serviço indisponível. Verifique sua conexão e tente novamente.');
     }
@@ -155,6 +159,10 @@ export class AtasRepository implements IAtasRepository {
 
     if (response.status === 400) {
       throw new AtaError('Nenhum licitante ativo selecionado.');
+    }
+
+    if (response.status === 422) {
+      throw new AtaError('Filtro de status inválido.');
     }
 
     if (!response.ok) {

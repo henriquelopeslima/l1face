@@ -1,10 +1,12 @@
-import type { Ata, ListaAtas } from '../entities/ata';
+import type { Ata, AtaStatus, ListaAtas } from '../entities/ata';
 import type { AtaDetalhes } from '../entities/ataDetalhes';
 import type { CriarAtaInput, DadosAtaPncp } from '../entities/criarAta';
 
 export interface ListarAtasParams {
   page?: number;
   limit?: number;
+  geral?: string;
+  status?: AtaStatus;
 }
 
 export interface IAtasRepository {
