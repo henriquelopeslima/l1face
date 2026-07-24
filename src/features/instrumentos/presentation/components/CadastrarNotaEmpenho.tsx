@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { RadioGroup, RadioGroupItem } from '@/shared/components/ui/radio-group';
 import { Separator } from '@/shared/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from '@/shared/components/ui/alert';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import {
   Table,
   TableBody,
@@ -465,31 +466,32 @@ export function CadastrarNotaEmpenho() {
         </CardContent>
       </Card>
 
-      {/* <Card>
+      <Card>
         <CardHeader>
           <CardTitle>Anexo</CardTitle>
           <CardDescription>Documento PDF da nota de empenho ou documento habilitador.</CardDescription>
         </CardHeader>
         <CardContent>
-          <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border p-8 transition-colors hover:bg-accent/50">
-            <CloudUpload className="h-8 w-8 text-muted-foreground" />
-            <span className="text-sm text-muted-foreground">
-              {anexo ? anexo.name : 'Clique para selecionar ou arraste um arquivo PDF'}
-            </span>
-            <input
-              type="file"
-              accept="application/pdf"
-              className="sr-only"
-              onChange={(e) => setAnexo(e.target.files?.[0] ?? null)}
-            />
-          </label>
-          {anexo && (
-            <p className="mt-2 text-xs text-muted-foreground">
-              Nota: o upload de arquivo ainda não está disponível. O anexo não será enviado.
-            </p>
-          )}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <label className="flex cursor-not-allowed flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border p-8 opacity-50 transition-opacity hover:opacity-70">
+                <CloudUpload className="h-8 w-8 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">
+                  {anexo ? anexo.name : 'Clique para selecionar ou arraste um arquivo PDF'}
+                </span>
+                <input
+                  type="file"
+                  accept="application/pdf"
+                  className="sr-only"
+                  disabled
+                  onChange={(e) => setAnexo(e.target.files?.[0] ?? null)}
+                />
+              </label>
+            </TooltipTrigger>
+            <TooltipContent>Em breve!</TooltipContent>
+          </Tooltip>
         </CardContent>
-      </Card> */}
+      </Card>
 
       <Separator />
 

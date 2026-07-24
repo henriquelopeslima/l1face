@@ -717,17 +717,22 @@ export function CadastrarContrato() {
                   )}
                 </div>
 
-                {/* <div className="space-y-2">
+                <div className="space-y-2">
                   <Label>Anexo do Contrato (opcional)</Label>
-                  <div className="flex items-center gap-2">
-                    <Input type="file" accept=".pdf"
-                      onChange={(e) => setDadosContrato({ ...dadosContrato, anexoContrato: e.target.files?.[0] })}
-                      className="cursor-pointer" />
-                    {dadosContrato.anexoContrato && (
-                      <Badge variant="outline" className="shrink-0">{dadosContrato.anexoContrato.name}</Badge>
-                    )}
-                  </div>
-                </div> */}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div className="flex cursor-not-allowed items-center gap-2 opacity-50">
+                        <Input type="file" accept=".pdf" disabled
+                          onChange={(e) => setDadosContrato({ ...dadosContrato, anexoContrato: e.target.files?.[0] })}
+                          className="pointer-events-none" />
+                        {dadosContrato.anexoContrato && (
+                          <Badge variant="outline" className="shrink-0">{dadosContrato.anexoContrato.name}</Badge>
+                        )}
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent>Em breve!</TooltipContent>
+                  </Tooltip>
+                </div>
               </div>
             </div>
 
