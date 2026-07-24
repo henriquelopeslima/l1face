@@ -1,6 +1,8 @@
+import { Link } from 'react-router';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { Badge } from '@/shared/components/ui/badge';
-import { Bell, WarningCircle } from 'iconoir-react';
+import { Button } from '@/shared/components/ui/button';
+import { ArrowUpRight, Bell, WarningCircle } from 'iconoir-react';
 import { useNotificacoes } from '@/features/notificacoes/presentation/context/NotificacoesContext';
 import { useAbrirNotificacao } from '@/features/notificacoes/presentation/hooks/useAbrirNotificacao';
 import { NotificacaoItem } from '@/features/notificacoes/presentation/components/NotificacaoItem';
@@ -10,6 +12,8 @@ const preferenciasNotificacao = [
   { id: 'financeiro', label: 'Pendências financeiras', desc: 'Alertas de pagamentos pendentes' },
   { id: 'email', label: 'E-mail diário', desc: 'Resumo das atividades do dia' },
 ];
+
+const MAX_ALERTAS_EXIBIDOS = 4;
 
 export function NotificacoesSection() {
   const { notificacoes, quantidadeNaoLidas, isLoading, error } = useNotificacoes();
@@ -68,12 +72,21 @@ export function NotificacoesSection() {
               )}
               {!isLoading &&
                 !error &&
-                notificacoes.map((n) => (
+                notificacoes.slice(0, MAX_ALERTAS_EXIBIDOS).map((n) => (
                   <div key={n.id} className="rounded-lg border border-border overflow-hidden">
                     <NotificacaoItem notificacao={n} onClick={abrirNotificacao} />
                   </div>
                 ))}
             </div>
+            {!isLoading && !error && notificacoes.length > 0 && (
+              <div className="flex justify-end">
+                <Button variant="ghost" size="sm" className="gap-1 text-[#0050FF]" asChild>
+                  <Link to="/notificacoes">
+                    Ver todos <ArrowUpRight className="h-3.5 w-3.5" />
+                  </Link>
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </CardContent>
