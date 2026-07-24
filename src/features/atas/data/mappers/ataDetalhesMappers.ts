@@ -13,8 +13,8 @@ interface ApiItemAtaResponse {
   valor_estimado: number;
   qtd_orgao: number;
   qtd_carona: number;
-  qtd_saldo_orgao: number;
-  qtd_saldo_carona: number;
+  qtd_saldo_orgao?: number;
+  qtd_saldo_carona?: number;
 }
 
 interface ApiAtaDetalhesResponse {
@@ -31,7 +31,7 @@ interface ApiAtaDetalhesResponse {
   anexo_url: string | null;
   status: string;
   itens: ApiItemAtaResponse[];
-  instrumentos: ApiInstrumentoListagemResponse[];
+  instrumentos?: ApiInstrumentoListagemResponse[];
 }
 
 export function mapApiItemAtaToItemAta(raw: ApiItemAtaResponse): ItemAta {
@@ -43,8 +43,9 @@ export function mapApiItemAtaToItemAta(raw: ApiItemAtaResponse): ItemAta {
     valorEstimado: raw.valor_estimado,
     qtdOrgao: raw.qtd_orgao,
     qtdCarona: raw.qtd_carona,
-    qtdSaldoOrgao: raw.qtd_saldo_orgao,
-    qtdSaldoCarona: raw.qtd_saldo_carona,
+    // Ata recém-criada não retorna saldo do backend (nada foi consumido ainda): saldo = quantidade total.
+    qtdSaldoOrgao: raw.qtd_saldo_orgao ?? raw.qtd_orgao,
+    qtdSaldoCarona: raw.qtd_saldo_carona ?? raw.qtd_carona,
   };
 }
 
@@ -63,6 +64,7 @@ export function mapApiAtaDetalhesToAtaDetalhes(raw: ApiAtaDetalhesResponse): Ata
     anexoUrl: raw.anexo_url,
     status: raw.status as AtaStatus,
     itens: raw.itens.map(mapApiItemAtaToItemAta),
-    instrumentos: raw.instrumentos.map(mapApiInstrumentoListagemToInstrumentoListagem),
+    // Ata recém-criada não retorna instrumentos do backend (nenhum vinculado ainda).
+    instrumentos: (raw.instrumentos ?? []).map(mapApiInstrumentoListagemToInstrumentoListagem),
   };
 }
