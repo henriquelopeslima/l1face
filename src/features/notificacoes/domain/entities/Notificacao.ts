@@ -19,6 +19,8 @@ export interface Notificacao {
 export interface ListaNotificacoes {
   itens: Notificacao[];
   total: number;
+  paginaAtual: number;
+  totalPaginas: number;
 }
 
 /**

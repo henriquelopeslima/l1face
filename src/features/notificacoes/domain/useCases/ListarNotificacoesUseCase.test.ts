@@ -23,6 +23,8 @@ const makeListaNotificacoes = (): ListaNotificacoes => ({
     },
   ],
   total: 1,
+  paginaAtual: 1,
+  totalPaginas: 1,
 });
 
 describe('ListarNotificacoesUseCase', () => {
@@ -35,7 +37,7 @@ describe('ListarNotificacoesUseCase', () => {
 
     expect(result).toEqual(lista);
     expect(repository.listar).toHaveBeenCalledOnce();
-    expect(repository.listar).toHaveBeenCalledWith();
+    expect(repository.listar).toHaveBeenCalledWith(undefined);
   });
 
   it('propaga erro lançado pelo repositório', async () => {
@@ -45,5 +47,16 @@ describe('ListarNotificacoesUseCase', () => {
     const useCase = new ListarNotificacoesUseCase(repository);
 
     await expect(useCase.execute()).rejects.toThrow('Não foi possível carregar as notificações. Tente novamente.');
+  });
+
+  it('repassa parâmetros de paginação ao repositório', async () => {
+    const lista = makeListaNotificacoes();
+    const repository = makeRepository({ listar: vi.fn().mockResolvedValue(lista) });
+    const useCase = new ListarNotificacoesUseCase(repository);
+
+    const result = await useCase.execute({ page: 2, limit: 20 });
+
+    expect(result).toEqual(lista);
+    expect(repository.listar).toHaveBeenCalledWith({ page: 2, limit: 20 });
   });
 });

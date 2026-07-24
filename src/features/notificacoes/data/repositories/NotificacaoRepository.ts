@@ -1,5 +1,5 @@
 import { apiFetch } from '@/shared/infrastructure/apiClient';
-import type { INotificacaoRepository } from '../../domain/contracts/INotificacaoRepository';
+import type { INotificacaoRepository, ListarNotificacoesParams } from '../../domain/contracts/INotificacaoRepository';
 import type { ListaNotificacoes, Notificacao } from '../../domain/entities/Notificacao';
 import {
   mapApiListaNotificacoesToListaNotificacoes,
@@ -39,10 +39,12 @@ function errorParaMarcarTodasLidas(status: number): string {
 }
 
 export class NotificacaoRepository implements INotificacaoRepository {
-  async listar(): Promise<ListaNotificacoes> {
+  async listar(params?: ListarNotificacoesParams): Promise<ListaNotificacoes> {
+    const page = params?.page ?? 1;
+    const limit = params?.limit ?? 20;
     let response: Response;
     try {
-      response = await apiFetch('/api/notificacoes?limit=20', { method: 'GET' });
+      response = await apiFetch(`/api/notificacoes?page=${page}&limit=${limit}`, { method: 'GET' });
     } catch {
       throw new NotificacaoError('Não foi possível carregar as notificações. Tente novamente.');
     }

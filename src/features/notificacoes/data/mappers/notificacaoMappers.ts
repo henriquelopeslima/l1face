@@ -31,5 +31,7 @@ export function mapApiListaNotificacoesToListaNotificacoes(raw: ApiListaNotifica
   return {
     itens: raw.data.map(mapApiNotificacaoToNotificacao),
     total: raw.meta.total,
+    paginaAtual: raw.meta.page,
+    totalPaginas: raw.meta.totalPages,
   };
 }
