@@ -345,7 +345,7 @@ export function CadastrarNotaEmpenho() {
         <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <CardTitle>Itens empenhados</CardTitle>
-            <CardDescription>Detalhamento do objeto por linha (opcional no cadastro inicial).</CardDescription>
+            <CardDescription>Detalhamento do objeto por linha.</CardDescription>
           </div>
           <Button type="button" variant="outline" size="sm" className="gap-2 shrink-0" onClick={addItem} disabled={isItensVinculadosArp}>
             <Plus className="h-4 w-4" />
@@ -465,7 +465,7 @@ export function CadastrarNotaEmpenho() {
         </CardContent>
       </Card>
 
-      <Card>
+      {/* <Card>
         <CardHeader>
           <CardTitle>Anexo</CardTitle>
           <CardDescription>Documento PDF da nota de empenho ou documento habilitador.</CardDescription>
@@ -489,7 +489,7 @@ export function CadastrarNotaEmpenho() {
             </p>
           )}
         </CardContent>
-      </Card>
+      </Card> */}
 
       <Separator />
 
