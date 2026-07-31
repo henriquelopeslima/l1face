@@ -18,7 +18,7 @@ import { useTodayDateMax } from '@/shared/hooks/useTodayDateMax';
 
 interface ItemOFFormulario {
   itemId: string;
-  qtdSolicitada: number;
+  qtdSolicitada: number | '';
 }
 
 interface CriarOrdemFornecimentoProps {
@@ -112,16 +112,19 @@ export function CriarOrdemFornecimento({
     }
     setDateError(null);
     setItensSelecionados(
-      selectedIds.map((id) => ({ itemId: id, qtdSolicitada: 1 }))
+      selectedIds.map((id) => ({ itemId: id, qtdSolicitada: '' }))
     );
     setSelectStep(2);
   };
 
-  const atualizarQtd = (itemId: string, qtd: number) => {
+  const atualizarQtd = (itemId: string, qtd: string) => {
+    const quantidade = qtd === '' ? '' : Math.max(1, Number(qtd));
     setItensSelecionados((prev) =>
-      prev.map((i) => (i.itemId === itemId ? { ...i, qtdSolicitada: Math.max(1, qtd) } : i))
+      prev.map((i) => (i.itemId === itemId ? { ...i, qtdSolicitada: quantidade } : i))
     );
   };
+
+  const possuiQuantidadeInvalida = itensSelecionados.some((i) => i.qtdSolicitada === '' || i.qtdSolicitada <= 0);
 
   const handleCriarOF = async () => {
     if (!dataRecebimento || !prazoEntrega) {
@@ -140,7 +143,7 @@ export function CriarOrdemFornecimento({
         prazoEntrega,
         itens: itensSelecionados.map((i) => ({
           itemInstrumentoId: i.itemId,
-          quantidadeFornecida: i.qtdSolicitada,
+          quantidadeFornecida: Number(i.qtdSolicitada),
         })),
       });
       onOpenChange(false);
@@ -317,9 +320,9 @@ export function CriarOrdemFornecimento({
                   <TableHeader>
                     <TableRow>
                       <TableHead>Item</TableHead>
-                      <TableHead className="w-[120px]">Qtd. Disponível</TableHead>
+                      <TableHead className="w-[120px]">Disponível</TableHead>
                       <TableHead className="w-[140px]">
-                        Qtd. Solicitada <span className="text-destructive">*</span>
+                       Solicitado <span className="text-destructive">*</span>
                       </TableHead>
                       <TableHead className="w-[80px]">Unidade</TableHead>
                       <TableHead className="w-[48px]" />
@@ -329,7 +332,8 @@ export function CriarOrdemFornecimento({
                     {itensSelecionados.map((sel) => {
                       const item = itensContrato.find((i) => i.id === sel.itemId);
                       if (!item) return null;
-                      const excedeSaldo = sel.qtdSolicitada > item.quantidadeDisponivel;
+                      const quantidadeSolicitada = sel.qtdSolicitada === '' ? 0 : sel.qtdSolicitada;
+                      const excedeSaldo = quantidadeSolicitada > item.quantidadeDisponivel;
                       return (
                         <TableRow key={sel.itemId}>
                           <TableCell className="font-medium">{item.descricao}</TableCell>
@@ -339,9 +343,9 @@ export function CriarOrdemFornecimento({
                           <TableCell>
                             <Input
                               type="number"
-                              min="1"
+                              min="0"
                               value={sel.qtdSolicitada}
-                              onChange={(e) => atualizarQtd(sel.itemId, Number(e.target.value))}
+                              onChange={(e) => atualizarQtd(sel.itemId, e.target.value)}
                               className={`h-8 text-right w-24 ${excedeSaldo ? 'border-destructive text-destructive' : ''}`}
                             />
                             {excedeSaldo && (
@@ -386,7 +390,7 @@ export function CriarOrdemFornecimento({
                 <Button
                   type="button"
                   onClick={() => { void handleCriarOF(); }}
-                  disabled={isLoading || itensSelecionados.length === 0}
+                  disabled={isLoading || itensSelecionados.length === 0 || possuiQuantidadeInvalida}
                 >
                   {isLoading ? 'Criando...' : 'Confirmar ordem de fornecimento'}
                 </Button>
