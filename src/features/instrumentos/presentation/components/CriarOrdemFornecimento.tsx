@@ -14,6 +14,7 @@ import {
 import { Trash, Plus } from 'iconoir-react';
 import type { ItemInstrumentoDetalhe, TipoPrazo } from '../../domain/entities/instrumentoContratual';
 import { useEmitirOrdemFornecimento } from '../hooks/useEmitirOrdemFornecimento';
+import { useTodayDateMax } from '@/shared/hooks/useTodayDateMax';
 
 interface ItemOFFormulario {
   itemId: string;
@@ -55,6 +56,7 @@ export function CriarOrdemFornecimento({
   onSuccess,
 }: CriarOrdemFornecimentoProps) {
   const { emitir, isLoading, error } = useEmitirOrdemFornecimento();
+  const todayDateMax = useTodayDateMax();
 
   const [itensSelecionados, setItensSelecionados] = useState<ItemOFFormulario[]>([]);
   const [selectStep, setSelectStep] = useState<1 | 2>(1);
@@ -194,6 +196,7 @@ export function CriarOrdemFornecimento({
                       id="of-data"
                       type="date"
                       value={dataRecebimento}
+                      max={todayDateMax}
                       onChange={(e) => {
                         const novaData = e.target.value;
                         setDataRecebimento(novaData);
