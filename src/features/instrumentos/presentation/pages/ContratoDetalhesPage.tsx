@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useParams, useNavigate } from 'react-router';
+import { useEffect, useRef, useState } from 'react';
+import { useParams, useNavigate, useSearchParams } from 'react-router';
 import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
@@ -161,6 +161,7 @@ const formatTipoPrazo = (tipo: 'UTEIS' | 'CORRIDOS' | null) => {
 export function ContratoDetalhesPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { instrumento, isLoading, error, refetch } = useBuscarInstrumento(id ?? '');
   const { dados: ordensData, isLoading: isLoadingOrdens, refetch: refetchOrdens } = useListarOrdensFornecimento(id ?? '');
   const { iniciar, isLoading: isSeparacaoLoading, error: separacaoError } = useIniciarSeparacaoOrdemFornecimento();
@@ -172,6 +173,21 @@ export function ContratoDetalhesPage() {
   const [paginaItens, setPaginaItens] = useState(1);
   const [emitirOFOpen, setEmitirOFOpen] = useState(false);
   const [openOfs, setOpenOfs] = useState<string[]>([]);
+  const [ofsDestacado, setOfsDestacado] = useState(false);
+  const ofsCardRef = useRef<HTMLDivElement>(null);
+  const focouOfsRef = useRef(false);
+
+  useEffect(() => {
+    if (focouOfsRef.current) return;
+    if (searchParams.get('foco') !== 'ofs') return;
+    if (isLoadingOrdens || !ofsCardRef.current) return;
+
+    focouOfsRef.current = true;
+    ofsCardRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setOfsDestacado(true);
+    const timeout = setTimeout(() => setOfsDestacado(false), 1500);
+    return () => clearTimeout(timeout);
+  }, [searchParams, isLoadingOrdens]);
 
   const [separacaoOpenId, setSeparacaoOpenId] = useState<string | null>(null);
   const [separacaoForm, setSeparacaoForm] = useState({ dataSeparacao: '' });
@@ -620,7 +636,10 @@ export function ContratoDetalhesPage() {
       </Card>
 
       {/* Ordens de Fornecimento */}
-      <Card>
+      <Card
+        ref={ofsCardRef}
+        className={ofsDestacado ? 'ring-2 ring-[#0050FF] transition-shadow' : 'transition-shadow'}
+      >
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>

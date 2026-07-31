@@ -257,7 +257,15 @@ export function InstrumentosGestaoPage() {
                                 <Page className="h-4 w-4" />
                                 Detalhes
                               </Button>
-                              <Button size="sm" className="gap-2" onClick={(e) => e.stopPropagation()}>
+                              <Button
+                                size="sm"
+                                className="gap-2"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (row.tipo === 'CONTRATO') navigate(`/contratos/detalhes/${row.id}?foco=ofs`);
+                                  else navigate(`/notas-empenho/detalhes/${row.id}?foco=ofs`);
+                                }}
+                              >
                                 <Cart className="h-4 w-4" />
                                 OFs
                               </Button>
