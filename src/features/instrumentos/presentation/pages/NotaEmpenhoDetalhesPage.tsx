@@ -35,6 +35,7 @@ import { useIniciarSeparacaoOrdemFornecimento } from '../hooks/useIniciarSeparac
 import { useRegistrarDespachoOrdemFornecimento } from '../hooks/useRegistrarDespachoOrdemFornecimento';
 import { useConfirmarEntregaOrdemFornecimento } from '../hooks/useConfirmarEntregaOrdemFornecimento';
 import { useRegistrarPagamentoOrdemFornecimento } from '../hooks/useRegistrarPagamentoOrdemFornecimento';
+import { useTodayDateMax } from '@/shared/hooks/useTodayDateMax';
 import type { StatusInstrumento, StatusOrdemFornecimento, StatusPagamento } from '../../domain/entities/instrumentoContratual';
 
 const formatCurrency = (value: number) =>
@@ -107,6 +108,7 @@ export function NotaEmpenhoDetalhesPage() {
   const { registrar: registrarDespacho, isLoading: isDespachoLoading, error: despachoError } = useRegistrarDespachoOrdemFornecimento();
   const { confirmar, isLoading: isEntregaLoading, error: entregaError } = useConfirmarEntregaOrdemFornecimento();
   const { registrar: registrarPagamento, isLoading: isRegistrarPagamentoLoading, error: registrarPagamentoError } = useRegistrarPagamentoOrdemFornecimento();
+  const todayDateMax = useTodayDateMax();
 
   const [detalhesExpandidos, setDetalhesExpandidos] = useState(true);
   const [paginaItens, setPaginaItens] = useState(1);
@@ -586,6 +588,7 @@ export function NotaEmpenhoDetalhesPage() {
                                 <Input
                                   type="date"
                                   value={separacaoForm.dataSeparacao}
+                                  max={todayDateMax}
                                   onChange={(e) =>
                                     setSeparacaoForm({ dataSeparacao: e.target.value })
                                   }
@@ -632,6 +635,7 @@ export function NotaEmpenhoDetalhesPage() {
                                 <Input
                                   type="date"
                                   value={despachoForm.dataDespacho}
+                                  max={todayDateMax}
                                   onChange={(e) =>
                                     setDespachoForm((f) => ({ ...f, dataDespacho: e.target.value }))
                                   }
@@ -703,6 +707,7 @@ export function NotaEmpenhoDetalhesPage() {
                                 <Input
                                   type="date"
                                   value={entregaForm.dataEntrega}
+                                  max={todayDateMax}
                                   onChange={(e) =>
                                     setEntregaForm((f) => ({ ...f, dataEntrega: e.target.value }))
                                   }
@@ -764,6 +769,7 @@ export function NotaEmpenhoDetalhesPage() {
                                 <Input
                                   type="date"
                                   value={pagamentoForm.dataPagamentoEfetivo}
+                                  max={todayDateMax}
                                   onChange={(e) => setPagamentoForm({ dataPagamentoEfetivo: e.target.value })}
                                 />
                               </div>
