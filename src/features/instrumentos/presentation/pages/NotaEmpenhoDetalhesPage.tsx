@@ -377,6 +377,7 @@ export function NotaEmpenhoDetalhesPage() {
                       <TableHead className="text-xs">Descrição</TableHead>
                       <TableHead className="text-xs">Unid. Med.</TableHead>
                       <TableHead className="text-right text-xs">Qtd. Total</TableHead>
+                      <TableHead className="text-right text-xs">Saldo</TableHead>
                       <TableHead className="text-right text-xs">Valor Unitário</TableHead>
                       <TableHead className="text-right text-xs">Valor Total</TableHead>
                     </TableRow>
@@ -387,6 +388,7 @@ export function NotaEmpenhoDetalhesPage() {
                         <TableCell className="font-medium">{item.descricao}</TableCell>
                         <TableCell className="font-mono text-sm">{item.unidadeMedida}</TableCell>
                         <TableCell className="text-right font-mono tabular-nums">{item.quantidadeTotal}</TableCell>
+                        <TableCell className="text-right font-mono tabular-nums">{item.quantidadeDisponivel}</TableCell>
                         <TableCell className="text-right font-mono tabular-nums text-sm">
                           {formatCurrency(item.valorUnitario)}
                         </TableCell>
