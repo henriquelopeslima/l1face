@@ -11,6 +11,13 @@ interface UseBuscarInstrumentoResult {
   isLoading: boolean;
   error: string | null;
   refetch: () => void;
+  /**
+   * Atualiza os dados em segundo plano, sem alternar `isLoading` nem `error`.
+   * Usado após uma mutação bem-sucedida (ex.: emitir uma OF) para refletir o
+   * novo saldo sem substituir a página inteira pelo skeleton de carregamento.
+   * Falhas são ignoradas silenciosamente — os dados anteriores permanecem.
+   */
+  refetchSilencioso: () => void;
 }
 
 export function useBuscarInstrumento(id: string): UseBuscarInstrumentoResult {
@@ -18,17 +25,23 @@ export function useBuscarInstrumento(id: string): UseBuscarInstrumentoResult {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const buscar = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
+  const buscar = useCallback(async (silencioso = false) => {
+    if (!silencioso) {
+      setIsLoading(true);
+      setError(null);
+    }
     try {
       const result = await buscarInstrumentoUseCase.execute(id);
       setInstrumento(result);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Erro ao carregar instrumento. Tente novamente.';
-      setError(message);
+      if (!silencioso) {
+        const message = err instanceof Error ? err.message : 'Erro ao carregar instrumento. Tente novamente.';
+        setError(message);
+      }
     } finally {
-      setIsLoading(false);
+      if (!silencioso) {
+        setIsLoading(false);
+      }
     }
   }, [id]);
 
@@ -36,5 +49,11 @@ export function useBuscarInstrumento(id: string): UseBuscarInstrumentoResult {
     void buscar();
   }, [buscar]);
 
-  return { instrumento, isLoading, error, refetch: buscar };
+  return {
+    instrumento,
+    isLoading,
+    error,
+    refetch: () => { void buscar(); },
+    refetchSilencioso: () => { void buscar(true); },
+  };
 }

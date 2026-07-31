@@ -162,7 +162,7 @@ export function ContratoDetalhesPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { instrumento, isLoading, error, refetch } = useBuscarInstrumento(id ?? '');
+  const { instrumento, isLoading, error, refetch, refetchSilencioso } = useBuscarInstrumento(id ?? '');
   const { dados: ordensData, isLoading: isLoadingOrdens, refetch: refetchOrdens } = useListarOrdensFornecimento(id ?? '');
   const { iniciar, isLoading: isSeparacaoLoading, error: separacaoError } = useIniciarSeparacaoOrdemFornecimento();
   const { registrar: registrarDespacho, isLoading: isDespachoLoading, error: despachoError } = useRegistrarDespachoOrdemFornecimento();
@@ -1246,7 +1246,7 @@ export function ContratoDetalhesPage() {
         itensContrato={itens}
         prazoEntregaInstrumento={contrato.prazoEntrega}
         tipoPrazoEntregaInstrumento={contrato.tipoPrazoEntrega}
-        onSuccess={refetchOrdens}
+        onSuccess={() => { refetchSilencioso(); refetchOrdens(); }}
       />
     </div>
   );
