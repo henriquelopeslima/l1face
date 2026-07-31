@@ -96,6 +96,8 @@ export function CriarOrdemFornecimento({
   });
 
   const toggleItem = (id: string) => {
+    const item = itensContrato.find((i) => i.id === id);
+    if (!item || item.quantidadeDisponivel <= 0) return;
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
@@ -271,21 +273,26 @@ export function CriarOrdemFornecimento({
                     ) : (
                       itensVisiveis.map((item) => {
                         const selecionado = selectedIds.includes(item.id);
+                        const semQuantidadeDisponivel = item.quantidadeDisponivel <= 0;
                         return (
                           <button
                             key={item.id}
                             type="button"
+                            disabled={semQuantidadeDisponivel}
                             onClick={() => toggleItem(item.id)}
                             className={`w-full flex items-center gap-3 px-4 py-3 text-left border-b last:border-0 transition-colors ${
                               selecionado
                                 ? 'bg-[#EDF4FF] dark:bg-[#0050FF]/15'
-                                : 'hover:bg-accent'
+                                : semQuantidadeDisponivel
+                                  ? 'opacity-60 cursor-not-allowed'
+                                  : 'hover:bg-accent'
                             }`}
                           >
                             <input
                               type="checkbox"
                               readOnly
                               checked={selecionado}
+                              disabled={semQuantidadeDisponivel}
                               className="h-4 w-4 rounded border-input accent-[#0050FF] pointer-events-none shrink-0"
                             />
                             <div className="flex-1 min-w-0">
