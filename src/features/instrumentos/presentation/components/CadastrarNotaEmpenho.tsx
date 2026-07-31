@@ -383,15 +383,15 @@ export function CadastrarNotaEmpenho() {
           {itens.length === 0 && !isItensVinculadosArp ? (
             <p className="text-sm text-muted-foreground">Nenhum item. Use "Adicionar item" para incluir linhas.</p>
           ) : itens.length > 0 ? (
-            <Table>
+            <Table className="table-fixed min-w-[980px]">
               <TableHeader>
                 <TableRow>
-                  <TableHead>Descrição</TableHead>
+                  <TableHead className="w-[50%]">Descrição</TableHead>
                   <TableHead className="w-[100px]">Unidade</TableHead>
                   <TableHead className="w-[110px]">
-                    {isItensVinculadosArp ? (isAdesao ? 'Qtd. / Saldo Carona' : 'Qtd. / Saldo Órgão') : 'Qtd.'}
+                    {isItensVinculadosArp ? (isAdesao ? 'Qtd. carona' : 'Qtd. órgão') : 'Qtd.'}
                   </TableHead>
-                  <TableHead className="w-[120px]">Valor unit. (R$)</TableHead>
+                  <TableHead className="w-[120px]">Valor unidade</TableHead>
                   <TableHead className="w-[48px]" />
                 </TableRow>
               </TableHeader>
@@ -402,7 +402,7 @@ export function CadastrarNotaEmpenho() {
                   const readonlyCls = isItensVinculadosArp ? 'bg-muted text-muted-foreground cursor-not-allowed select-none' : '';
                   return (
                     <TableRow key={row.id}>
-                      <TableCell>
+                      <TableCell className="w-[50%]">
                         <Input
                           value={row.descricao}
                           readOnly={isItensVinculadosArp}
@@ -421,20 +421,23 @@ export function CadastrarNotaEmpenho() {
                         />
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-1.5">
-                          <Input
-                            value={row.quantidade}
-                            disabled={semSaldo}
-                            className="min-w-0"
-                            onChange={(e) => updateQuantidade(row, e.target.value)}
-                            placeholder={semSaldo ? 'Sem saldo' : '0'}
-                          />
-                          {isItensVinculadosArp && (
-                            <span className={`text-xs whitespace-nowrap shrink-0 ${semSaldo ? 'text-destructive' : 'text-muted-foreground'}`}>
-                              {semSaldo ? 'Sem saldo' : `/ ${saldoAtual.toLocaleString('pt-BR')}`}
-                            </span>
-                          )}
-                        </div>
+                        {semSaldo ? (
+                          <span className="text-xs font-medium text-destructive">Sem saldo</span>
+                        ) : (
+                          <div className="flex items-center gap-1.5">
+                            <Input
+                              value={row.quantidade}
+                              className="min-w-0"
+                              onChange={(e) => updateQuantidade(row, e.target.value)}
+                              placeholder="0"
+                            />
+                            {isItensVinculadosArp && (
+                              <span className="text-xs whitespace-nowrap shrink-0 text-muted-foreground">
+                                / {saldoAtual.toLocaleString('pt-BR')}
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell>
                         <Input
