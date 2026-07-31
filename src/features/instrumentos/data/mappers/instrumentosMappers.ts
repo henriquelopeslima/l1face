@@ -63,6 +63,7 @@ interface ApiItemInstrumentoDetalheResponse {
   descricao: string;
   unidade_medida: string;
   quantidade_total: number;
+  quantidade_disponivel: number;
   valor_unitario: number;
   valor_total: number;
 }
@@ -117,6 +118,7 @@ function mapApiItem(raw: ApiItemInstrumentoDetalheResponse): ItemInstrumentoDeta
     descricao: raw.descricao,
     unidadeMedida: raw.unidade_medida,
     quantidadeTotal: raw.quantidade_total,
+    quantidadeDisponivel: raw.quantidade_disponivel,
     valorUnitario: raw.valor_unitario,
     valorTotal: raw.valor_total,
   };

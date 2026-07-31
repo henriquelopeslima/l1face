@@ -36,6 +36,7 @@ const contratoFixture: InstrumentoDetalhe = {
       descricao: 'Cimento Portland CP-II',
       unidadeMedida: 'saco 50kg',
       quantidadeTotal: 500,
+      quantidadeDisponivel: 350,
       valorUnitario: 35.0,
       valorTotal: 17500.0,
     },

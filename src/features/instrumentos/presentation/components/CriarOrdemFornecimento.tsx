@@ -288,7 +288,7 @@ export function CriarOrdemFornecimento({
                             <div className="flex-1 min-w-0">
                               <p className="text-sm font-medium truncate">{item.descricao}</p>
                               <p className="text-xs text-muted-foreground">
-                                Qtd. disponível: {item.quantidadeTotal} {item.unidadeMedida}
+                                Qtd. disponível: {item.quantidadeDisponivel} {item.unidadeMedida}
                               </p>
                             </div>
                           </button>
@@ -329,11 +329,12 @@ export function CriarOrdemFornecimento({
                     {itensSelecionados.map((sel) => {
                       const item = itensContrato.find((i) => i.id === sel.itemId);
                       if (!item) return null;
+                      const excedeSaldo = sel.qtdSolicitada > item.quantidadeDisponivel;
                       return (
                         <TableRow key={sel.itemId}>
                           <TableCell className="font-medium">{item.descricao}</TableCell>
-                          <TableCell className="text-muted-foreground">
-                            {item.quantidadeTotal}
+                          <TableCell className={excedeSaldo ? 'text-destructive font-medium' : 'text-muted-foreground'}>
+                            {item.quantidadeDisponivel}
                           </TableCell>
                           <TableCell>
                             <Input
@@ -341,8 +342,11 @@ export function CriarOrdemFornecimento({
                               min="1"
                               value={sel.qtdSolicitada}
                               onChange={(e) => atualizarQtd(sel.itemId, Number(e.target.value))}
-                              className="h-8 text-right w-24"
+                              className={`h-8 text-right w-24 ${excedeSaldo ? 'border-destructive text-destructive' : ''}`}
                             />
+                            {excedeSaldo && (
+                              <p className="text-xs text-destructive mt-1">Excede o saldo disponível</p>
+                            )}
                           </TableCell>
                           <TableCell className="text-muted-foreground font-mono text-sm">
                             {item.unidadeMedida}

@@ -30,6 +30,7 @@ export interface ItemInstrumentoDetalhe {
   descricao: string;
   unidadeMedida: string;
   quantidadeTotal: number;
+  quantidadeDisponivel: number;
   valorUnitario: number;
   valorTotal: number;
 }
