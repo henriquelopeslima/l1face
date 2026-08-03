@@ -2,25 +2,37 @@ import { useCallback, useState } from 'react';
 import { InstrumentosRepository } from '../../data/repositories/InstrumentosRepository';
 import type { CriarContratoInput } from '../../domain/entities/criarContrato';
 import { CriarContratoUseCase } from '../../domain/useCases/CriarContratoUseCase';
+import { UploadAnexoContratoUseCase } from '../../domain/useCases/UploadAnexoContratoUseCase';
 
 const repository = new InstrumentosRepository();
 const criarContratoUseCase = new CriarContratoUseCase(repository);
+const uploadAnexoContratoUseCase = new UploadAnexoContratoUseCase(repository);
 
 interface UseCriarContratoResult {
-  criar: (input: CriarContratoInput) => Promise<string | null>;
+  criar: (input: CriarContratoInput, arquivo?: File | null) => Promise<string | null>;
   isLoading: boolean;
   error: string | null;
+  anexoFalhouUpload: boolean;
 }
 
 export function useCriarContrato(): UseCriarContratoResult {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [anexoFalhouUpload, setAnexoFalhouUpload] = useState(false);
 
-  const criar = useCallback(async (input: CriarContratoInput): Promise<string | null> => {
+  const criar = useCallback(async (input: CriarContratoInput, arquivo?: File | null): Promise<string | null> => {
     setIsLoading(true);
     setError(null);
+    setAnexoFalhouUpload(false);
     try {
       const instrumentoId = await criarContratoUseCase.execute(input);
+      if (arquivo) {
+        try {
+          await uploadAnexoContratoUseCase.execute(instrumentoId, arquivo);
+        } catch {
+          setAnexoFalhouUpload(true);
+        }
+      }
       return instrumentoId;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erro ao cadastrar contrato. Tente novamente.';
@@ -31,5 +43,5 @@ export function useCriarContrato(): UseCriarContratoResult {
     }
   }, []);
 
-  return { criar, isLoading, error };
+  return { criar, isLoading, error, anexoFalhouUpload };
 }

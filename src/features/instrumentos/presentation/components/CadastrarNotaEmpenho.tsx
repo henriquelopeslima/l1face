@@ -9,7 +9,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { RadioGroup, RadioGroupItem } from '@/shared/components/ui/radio-group';
 import { Separator } from '@/shared/components/ui/separator';
 import { Alert, AlertDescription, AlertTitle } from '@/shared/components/ui/alert';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import {
   Table,
   TableBody,
@@ -19,6 +18,7 @@ import {
   TableRow,
 } from '@/shared/components/ui/table';
 import { InfoCircle, Plus, Trash, CloudUpload, Wallet, WarningTriangle } from 'iconoir-react';
+import { CadastroSucesso } from '@/shared/components/feedback/CadastroSucesso';
 import { useCriarEmpenho } from '../hooks/useCriarEmpenho';
 import { useListarAtas } from '@/features/atas/presentation/hooks/useListarAtas';
 import { AtasRepository } from '@/features/atas/data/repositories/AtasRepository';
@@ -57,8 +57,9 @@ function formatBRLInput(raw: string): string {
 
 export function CadastrarNotaEmpenho() {
   const navigate = useNavigate();
-  const { criar: criarEmpenho, isLoading: isSalvando, error: erroSalvar } = useCriarEmpenho();
+  const { criar: criarEmpenho, isLoading: isSalvando, error: erroSalvar, anexoFalhouUpload } = useCriarEmpenho();
   const { atas } = useListarAtas();
+  const [cadastroConcluido, setCadastroConcluido] = useState(false);
 
   const [numeroPncp, setNumeroPncp] = useState('');
   const [codigoEmpenho, setCodigoEmpenho] = useState('');
@@ -179,11 +180,38 @@ export function CadastrarNotaEmpenho() {
       ...(itensInput.length > 0 ? { itens: itensInput } : {}),
     };
 
-    const instrumentoId = await criarEmpenho(input);
+    const instrumentoId = await criarEmpenho(input, anexo);
     if (instrumentoId) {
-      navigate('/instrumentos/gestao');
+      setCadastroConcluido(true);
     }
   };
+
+  if (isSalvando || cadastroConcluido) {
+    return (
+      <div className="space-y-4 lg:space-y-6">
+        {cadastroConcluido && anexoFalhouUpload && (
+          <Alert>
+            <WarningTriangle className="h-4 w-4" />
+            <AlertTitle>Registro criado, mas o anexo não foi enviado</AlertTitle>
+            <AlertDescription>
+              O cadastro foi concluído normalmente. Não foi possível enviar o anexo — você pode
+              reenviá-lo mais tarde pelos detalhes do registro.
+            </AlertDescription>
+          </Alert>
+        )}
+        <CadastroSucesso
+          processando={isSalvando && !cadastroConcluido}
+          progresso={isSalvando ? 50 : 100}
+          titulo="Salvando nota de empenho..."
+          descricao="Estamos registrando o empenho e seus itens."
+          tituloSucesso="Nota de empenho cadastrada com sucesso"
+          descricaoSucesso="O empenho e seus itens foram registrados com sucesso. Você já pode acompanhar em Instrumentos."
+          etapaAtual={isSalvando ? 'Enviando dados do empenho...' : 'Concluído'}
+          onConcluir={() => navigate('/instrumentos/gestao')}
+        />
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={salvar} className="space-y-6">
@@ -475,24 +503,18 @@ export function CadastrarNotaEmpenho() {
           <CardDescription>Documento PDF da nota de empenho ou documento habilitador.</CardDescription>
         </CardHeader>
         <CardContent>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <label className="flex cursor-not-allowed flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border p-8 opacity-50 transition-opacity hover:opacity-70">
-                <CloudUpload className="h-8 w-8 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground">
-                  {anexo ? anexo.name : 'Clique para selecionar ou arraste um arquivo PDF'}
-                </span>
-                <input
-                  type="file"
-                  accept="application/pdf"
-                  className="sr-only"
-                  disabled
-                  onChange={(e) => setAnexo(e.target.files?.[0] ?? null)}
-                />
-              </label>
-            </TooltipTrigger>
-            <TooltipContent>Em breve!</TooltipContent>
-          </Tooltip>
+          <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border p-8 transition-opacity hover:opacity-80">
+            <CloudUpload className="h-8 w-8 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">
+              {anexo ? anexo.name : 'Clique para selecionar ou arraste um arquivo PDF'}
+            </span>
+            <input
+              type="file"
+              accept="application/pdf"
+              className="sr-only"
+              onChange={(e) => setAnexo(e.target.files?.[0] ?? null)}
+            />
+          </label>
         </CardContent>
       </Card>
 

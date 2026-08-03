@@ -73,7 +73,7 @@ const getAtaUseCase = new GetAtaUseCase(atasRepository);
 export function CadastrarContrato() {
   const navigate = useNavigate();
   const { consultar: consultarPncp, isLoading: isBuscandoPNCP, error: pncpError, dados: dadosPncp } = useConsultarContratoPncp();
-  const { criar: criarContrato, isLoading: isSalvando, error: erroSalvar } = useCriarContrato();
+  const { criar: criarContrato, isLoading: isSalvando, error: erroSalvar, anexoFalhouUpload } = useCriarContrato();
   const { atas } = useListarAtas();
   const [etapaAtual, setEtapaAtual] = useState(1);
 
@@ -315,7 +315,7 @@ export function CadastrarContrato() {
     setProgressoCadastro(40);
     setEtapaProcessamento('Salvando contrato...');
 
-    const instrumentoId = await criarContrato(input);
+    const instrumentoId = await criarContrato(input, dadosContrato.anexoContrato);
 
     if (instrumentoId) {
       setProgressoCadastro(100);
@@ -352,6 +352,16 @@ export function CadastrarContrato() {
             <WarningTriangle className="h-4 w-4" />
             <AlertTitle>Erro ao cadastrar</AlertTitle>
             <AlertDescription>{erroSalvar}</AlertDescription>
+          </Alert>
+        )}
+        {cadastroConcluido && anexoFalhouUpload && (
+          <Alert>
+            <WarningTriangle className="h-4 w-4" />
+            <AlertTitle>Registro criado, mas o anexo não foi enviado</AlertTitle>
+            <AlertDescription>
+              O cadastro foi concluído normalmente. Não foi possível enviar o anexo — você pode
+              reenviá-lo mais tarde pelos detalhes do registro.
+            </AlertDescription>
           </Alert>
         )}
         <CadastroSucesso
@@ -719,19 +729,13 @@ export function CadastrarContrato() {
 
                 <div className="space-y-2">
                   <Label>Anexo do Contrato (opcional)</Label>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div className="flex cursor-not-allowed items-center gap-2 opacity-50">
-                        <Input type="file" accept=".pdf" disabled
-                          onChange={(e) => setDadosContrato({ ...dadosContrato, anexoContrato: e.target.files?.[0] })}
-                          className="pointer-events-none" />
-                        {dadosContrato.anexoContrato && (
-                          <Badge variant="outline" className="shrink-0">{dadosContrato.anexoContrato.name}</Badge>
-                        )}
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent>Em breve!</TooltipContent>
-                  </Tooltip>
+                  <div className="flex items-center gap-2">
+                    <Input type="file" accept=".pdf"
+                      onChange={(e) => setDadosContrato({ ...dadosContrato, anexoContrato: e.target.files?.[0] })} />
+                    {dadosContrato.anexoContrato && (
+                      <Badge variant="outline" className="shrink-0">{dadosContrato.anexoContrato.name}</Badge>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
