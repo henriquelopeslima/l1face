@@ -20,7 +20,6 @@ export function mapCriarContratoInputToApiRequest(input: CriarContratoInput): Re
   if (input.prazoPagamento != null) body.prazo_pagamento = input.prazoPagamento;
   if (input.tipoPrazoPagamento != null) body.tipo_prazo_pagamento = input.tipoPrazoPagamento;
   if (input.enderecoEntrega != null) body.endereco_entrega = input.enderecoEntrega;
-  if (input.anexoUrl != null) body.anexo_url = input.anexoUrl;
 
   if (input.itens && input.itens.length > 0) {
     body.itens = input.itens.map((item) => {

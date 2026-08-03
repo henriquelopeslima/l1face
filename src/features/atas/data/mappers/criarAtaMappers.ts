@@ -20,7 +20,6 @@ interface ApiCriarAtaRequest {
   aceita_adesao: boolean;
   renovavel: boolean;
   numero_pncp: string | null;
-  anexo_url: string | null;
   itens: ApiItemAtaRequest[];
 }
 
@@ -47,7 +46,6 @@ export function mapCriarAtaInputToApiRequest(input: CriarAtaInput): ApiCriarAtaR
     aceita_adesao: input.aceitaAdesao,
     renovavel: input.renovavel,
     numero_pncp: input.numeroPncp,
-    anexo_url: input.anexoUrl || null,
     itens: input.itens.map(mapItemAtaInputToApiRequest),
   };
 }

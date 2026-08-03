@@ -34,7 +34,6 @@ export interface CriarContratoInput {
   tipoPrazoPagamento?: 'UTEIS' | 'CORRIDOS' | null;
   enderecoEntrega?: string | null;
   renovavel: boolean;
-  anexoUrl?: string | null;
   itens?: ItemInstrumentoInput[];
 }
 
@@ -46,6 +45,5 @@ export interface CriarEmpenhoInput {
   orgaoContratante: string;
   unidade: string;
   objeto: string;
-  anexoUrl?: string | null;
   itens?: ItemInstrumentoInput[];
 }

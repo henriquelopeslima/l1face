@@ -21,7 +21,6 @@ export interface CriarAtaInput {
   aceitaAdesao: boolean;
   renovavel: boolean;
   numeroPncp: string | null;
-  anexoUrl: string | null;
   itens: ItemAtaInput[];
 }
 
