@@ -5,8 +5,9 @@ import { mapCriarAtaInputToApiRequest } from '../mappers/criarAtaMappers';
 import { mapApiDadosAtaPncpToDadosAtaPncp } from '../mappers/pncpMappers';
 import type { Ata, ListaAtas } from '../../domain/entities/ata';
 import type { AtaDetalhes } from '../../domain/entities/ataDetalhes';
+import type { AnexoAtaResult } from '../../domain/entities/anexoAta';
 import type { AtaCriada, CriarAtaInput, DadosAtaPncp } from '../../domain/entities/criarAta';
-import { AtaError } from '../../domain/errors/ataErrors';
+import { ArquivoMuitoGrandeAnexoError, AtaError, FormatoInvalidoAnexoError } from '../../domain/errors/ataErrors';
 import type { IAtasRepository, ListarAtasParams } from '../../domain/repositories/IAtasRepository';
 
 export class AtasRepository implements IAtasRepository {
@@ -171,5 +172,58 @@ export class AtasRepository implements IAtasRepository {
 
     const data = (await response.json()) as ApiListaAtasResponse;
     return mapApiListaAtasToListaAtas(data);
+  }
+
+  async uploadAnexo(ataId: string, arquivo: File): Promise<AnexoAtaResult> {
+    const formData = new FormData();
+    formData.append('anexo', arquivo);
+
+    let response: Response;
+    try {
+      response = await apiFetch(`/api/atas/${encodeURIComponent(ataId)}/anexo`, {
+        method: 'PUT',
+        body: formData,
+      });
+    } catch {
+      throw new AtaError('Serviço indisponível. Verifique sua conexão e tente novamente.');
+    }
+
+    if (response.status === 404) {
+      throw new AtaError('Ata não encontrada.');
+    }
+    if (response.status === 415) {
+      throw new FormatoInvalidoAnexoError();
+    }
+    if (response.status === 422) {
+      const data = (await response.json()) as { error?: string };
+      if (data.error === 'arquivo_muito_grande') throw new ArquivoMuitoGrandeAnexoError();
+      throw new FormatoInvalidoAnexoError();
+    }
+    if (response.status === 503) {
+      throw new AtaError('Não foi possível armazenar o anexo. Tente novamente.');
+    }
+    if (!response.ok) {
+      throw new AtaError('Erro ao enviar anexo. Tente novamente.');
+    }
+
+    const data = (await response.json()) as { anexo_url: string };
+    return { anexoUrl: data.anexo_url };
+  }
+
+  async removerAnexo(ataId: string): Promise<void> {
+    let response: Response;
+    try {
+      response = await apiFetch(`/api/atas/${encodeURIComponent(ataId)}/anexo`, { method: 'DELETE' });
+    } catch {
+      throw new AtaError('Serviço indisponível. Verifique sua conexão e tente novamente.');
+    }
+
+    if (response.status === 204) return;
+    if (response.status === 404) {
+      throw new AtaError('Ata não encontrada.');
+    }
+    if (!response.ok) {
+      throw new AtaError('Erro ao remover anexo. Tente novamente.');
+    }
   }
 }

@@ -1,5 +1,6 @@
 import type { Ata, AtaStatus, ListaAtas } from '../entities/ata';
 import type { AtaDetalhes } from '../entities/ataDetalhes';
+import type { AnexoAtaResult } from '../entities/anexoAta';
 import type { AtaCriada, CriarAtaInput, DadosAtaPncp } from '../entities/criarAta';
 
 export interface ListarAtasParams {
@@ -15,4 +16,6 @@ export interface IAtasRepository {
   getAta(ataId: string): Promise<AtaDetalhes>;
   criarAta(input: CriarAtaInput): Promise<AtaCriada>;
   consultarAtaPncp(codigo: string): Promise<DadosAtaPncp>;
+  uploadAnexo(ataId: string, arquivo: File): Promise<AnexoAtaResult>;
+  removerAnexo(ataId: string): Promise<void>;
 }
