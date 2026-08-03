@@ -14,7 +14,6 @@ const inputFixture: CriarAtaInput = {
   aceitaAdesao: false,
   renovavel: false,
   numeroPncp: null,
-  anexoUrl: null,
   itens: [
     {
       numeroItem: 1,
@@ -38,6 +37,8 @@ function makeRepo(overrides?: Partial<IAtasRepository>): IAtasRepository {
     getAta: vi.fn(),
     criarAta: vi.fn().mockResolvedValue(ataCriadaFixture),
     consultarAtaPncp: vi.fn().mockResolvedValue({}),
+    uploadAnexo: vi.fn(),
+    removerAnexo: vi.fn(),
     ...overrides,
   };
 }

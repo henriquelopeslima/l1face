@@ -28,6 +28,8 @@ function makeRepo(overrides?: Partial<IAtasRepository>): IAtasRepository {
     getAta: vi.fn().mockResolvedValue({}),
     criarAta: vi.fn().mockResolvedValue({}),
     consultarAtaPncp: vi.fn().mockResolvedValue(dadosPncpFixture),
+    uploadAnexo: vi.fn(),
+    removerAnexo: vi.fn(),
     ...overrides,
   };
 }
