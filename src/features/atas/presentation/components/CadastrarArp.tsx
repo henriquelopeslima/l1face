@@ -57,7 +57,6 @@ interface DadosArp {
   aceitaAdesao: boolean;
   renovavel: boolean;
   numeroPncp: string | null;
-  anexoUrl: string;
 }
 
 function formatCurrency(v: number) {
@@ -74,7 +73,7 @@ const stepDescriptions = [
 
 export function CadastrarArp() {
   const navigate = useNavigate();
-  const { criarAta, isLoading: isSaving, error: saveError } = useCriarAta();
+  const { criarAta, isLoading: isSaving, error: saveError, anexoFalhouUpload } = useCriarAta();
   const { consultar: consultarPncp, isLoading: isBuscandoPNCP, error: pncpError, dados: dadosPncp } = useConsultarAtaPncp();
 
   const [etapaAtual, setEtapaAtual] = useState(1);
@@ -92,13 +91,13 @@ export function CadastrarArp() {
     aceitaAdesao: false,
     renovavel: false,
     numeroPncp: null,
-    anexoUrl: '',
   });
 
   const [modoItens, setModoItens] = useState<'manual' | 'planilha'>('manual');
   const [itensArp, setItensArp] = useState<ItemArp[]>([]);
   const [arquivoPlanilha, setArquivoPlanilha] = useState<File | null>(null);
   const [processandoPlanilha, setProcessandoPlanilha] = useState(false);
+  const [arquivoAnexo, setArquivoAnexo] = useState<File | null>(null);
 
   const sanitizeNumero = (value: string) => value.replace(/[^0-9/-]/g, '');
 
@@ -258,11 +257,10 @@ export function CadastrarArp() {
       aceitaAdesao: dadosArp.aceitaAdesao,
       renovavel: dadosArp.renovavel,
       numeroPncp: dadosArp.numeroPncp,
-      anexoUrl: dadosArp.anexoUrl || null,
       itens: itensInput,
     };
 
-    const result = await criarAta(input);
+    const result = await criarAta(input, arquivoAnexo);
     if (result) {
       setCadastroConcluido(true);
     }
@@ -278,6 +276,16 @@ export function CadastrarArp() {
   if (isSaving || cadastroConcluido) {
     return (
       <div className="space-y-4 lg:space-y-6">
+        {cadastroConcluido && anexoFalhouUpload && (
+          <Alert>
+            <WarningTriangle className="h-4 w-4" />
+            <AlertTitle>Registro criado, mas o anexo não foi enviado</AlertTitle>
+            <AlertDescription>
+              O cadastro foi concluído normalmente. Não foi possível enviar o anexo — você pode
+              reenviá-lo mais tarde pelos detalhes do registro.
+            </AlertDescription>
+          </Alert>
+        )}
         <CadastroSucesso
           processando={isSaving && !cadastroConcluido}
           progresso={isSaving ? 50 : 100}
@@ -451,17 +459,21 @@ export function CadastrarArp() {
                   />
                 </div>
 
-                {/* <div className="space-y-2">
-                  <Label htmlFor="anexoUrl">URL do Anexo da ARP (opcional)</Label>
-                  <Input
-                    id="anexoUrl"
-                    type="url"
-                    placeholder="https://pncp.gov.br/atas/..."
-                    value={dadosArp.anexoUrl}
-                    onChange={(e) => setDadosArp((p) => ({ ...p, anexoUrl: e.target.value }))}
-                  />
-                  <p className="text-muted-foreground text-xs">Informe a URL do documento PDF da ARP assinada (opcional)</p>
-                </div> */}
+                <div className="space-y-2">
+                  <Label>Anexo da ARP (opcional)</Label>
+                  <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border p-8 transition-opacity hover:opacity-80">
+                    <CloudUpload className="h-8 w-8 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">
+                      {arquivoAnexo ? arquivoAnexo.name : 'Clique para selecionar ou arraste um arquivo PDF'}
+                    </span>
+                    <input
+                      type="file"
+                      accept="application/pdf"
+                      className="sr-only"
+                      onChange={(e) => setArquivoAnexo(e.target.files?.[0] ?? null)}
+                    />
+                  </label>
+                </div>
               </div>
             </div>
           </CardContent>
@@ -736,12 +748,6 @@ export function CadastrarArp() {
                   <p className="text-sm text-muted-foreground">Renovável</p>
                   <p className="font-medium">{dadosArp.renovavel ? 'Sim' : 'Não'}</p>
                 </div>
-                {dadosArp.anexoUrl && (
-                  <div>
-                    <p className="text-sm text-muted-foreground">URL do Anexo</p>
-                    <p className="font-medium text-sm break-all">{dadosArp.anexoUrl}</p>
-                  </div>
-                )}
               </div>
             </CardContent>
           </Card>
