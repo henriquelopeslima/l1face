@@ -1,4 +1,5 @@
 import type { CriarContratoInput, CriarEmpenhoInput, DadosContratoPncp } from '../entities/criarContrato';
+import type { AnexoInstrumentoResult } from '../entities/anexoInstrumento';
 import type {
   InstrumentoDetalhe,
   ListagemOrdensFornecimento,
@@ -30,4 +31,8 @@ export interface IInstrumentosRepository {
   confirmarEntregaOrdemFornecimento(input: ConfirmarEntregaInput): Promise<OrdemFornecimento>;
   registrarLiquidacaoOrdemFornecimento(input: RegistrarLiquidacaoInput): Promise<OrdemFornecimento>;
   registrarPagamentoOrdemFornecimento(input: RegistrarPagamentoInput): Promise<OrdemFornecimento>;
+  uploadAnexoContrato(instrumentoId: string, arquivo: File): Promise<AnexoInstrumentoResult>;
+  removerAnexoContrato(instrumentoId: string): Promise<void>;
+  uploadAnexoEmpenho(instrumentoId: string, arquivo: File): Promise<AnexoInstrumentoResult>;
+  removerAnexoEmpenho(instrumentoId: string): Promise<void>;
 }

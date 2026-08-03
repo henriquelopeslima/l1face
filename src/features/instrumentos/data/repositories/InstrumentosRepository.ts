@@ -12,6 +12,12 @@ import {
   mapApiListagemOrdensToListagemOrdensFornecimento,
 } from '../mappers/ordemFornecimentoMappers';
 import type { CriarContratoInput, CriarEmpenhoInput, DadosContratoPncp } from '../../domain/entities/criarContrato';
+import type { AnexoInstrumentoResult } from '../../domain/entities/anexoInstrumento';
+import {
+  ArquivoMuitoGrandeAnexoError,
+  FormatoInvalidoAnexoError,
+  InstrumentosError,
+} from '../../domain/errors/instrumentosErrors';
 import type {
   InstrumentoDetalhe,
   ListaInstrumentos,
@@ -28,13 +34,6 @@ import type {
   IInstrumentosRepository,
   ListarInstrumentosParams,
 } from '../../domain/contracts/IInstrumentosRepository';
-
-class InstrumentosError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'InstrumentosError';
-  }
-}
 
 export class InstrumentosRepository implements IInstrumentosRepository {
   async listarInstrumentos(params?: ListarInstrumentosParams): Promise<ListaInstrumentos> {
@@ -441,5 +440,71 @@ export class InstrumentosRepository implements IInstrumentosRepository {
     return mapApiOrdemFornecimentoToOrdemFornecimento(
       data as Parameters<typeof mapApiOrdemFornecimentoToOrdemFornecimento>[0],
     );
+  }
+
+  async uploadAnexoContrato(instrumentoId: string, arquivo: File): Promise<AnexoInstrumentoResult> {
+    return this.uploadAnexo(`/api/instrumentos/contratos/${instrumentoId}/anexo`, arquivo);
+  }
+
+  async removerAnexoContrato(instrumentoId: string): Promise<void> {
+    return this.removerAnexo(`/api/instrumentos/contratos/${instrumentoId}/anexo`);
+  }
+
+  async uploadAnexoEmpenho(instrumentoId: string, arquivo: File): Promise<AnexoInstrumentoResult> {
+    return this.uploadAnexo(`/api/instrumentos/empenhos/${instrumentoId}/anexo`, arquivo);
+  }
+
+  async removerAnexoEmpenho(instrumentoId: string): Promise<void> {
+    return this.removerAnexo(`/api/instrumentos/empenhos/${instrumentoId}/anexo`);
+  }
+
+  private async uploadAnexo(url: string, arquivo: File): Promise<AnexoInstrumentoResult> {
+    const formData = new FormData();
+    formData.append('anexo', arquivo);
+
+    let response: Response;
+    try {
+      response = await apiFetch(url, { method: 'PUT', body: formData });
+    } catch {
+      throw new InstrumentosError('Serviço indisponível. Verifique sua conexão e tente novamente.');
+    }
+
+    if (response.status === 404) {
+      throw new InstrumentosError('Instrumento não encontrado.');
+    }
+    if (response.status === 415) {
+      throw new FormatoInvalidoAnexoError();
+    }
+    if (response.status === 422) {
+      const data = (await response.json()) as { error?: string };
+      if (data.error === 'arquivo_muito_grande') throw new ArquivoMuitoGrandeAnexoError();
+      throw new FormatoInvalidoAnexoError();
+    }
+    if (response.status === 503) {
+      throw new InstrumentosError('Não foi possível armazenar o anexo. Tente novamente.');
+    }
+    if (!response.ok) {
+      throw new InstrumentosError('Erro ao enviar anexo. Tente novamente.');
+    }
+
+    const data = (await response.json()) as { anexo_url: string };
+    return { anexoUrl: data.anexo_url };
+  }
+
+  private async removerAnexo(url: string): Promise<void> {
+    let response: Response;
+    try {
+      response = await apiFetch(url, { method: 'DELETE' });
+    } catch {
+      throw new InstrumentosError('Serviço indisponível. Verifique sua conexão e tente novamente.');
+    }
+
+    if (response.status === 204) return;
+    if (response.status === 404) {
+      throw new InstrumentosError('Instrumento não encontrado.');
+    }
+    if (!response.ok) {
+      throw new InstrumentosError('Erro ao remover anexo. Tente novamente.');
+    }
   }
 }
