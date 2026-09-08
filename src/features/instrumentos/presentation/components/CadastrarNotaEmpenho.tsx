@@ -17,7 +17,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/shared/components/ui/table';
-import { InfoCircle, Plus, Trash, CloudUpload, Wallet, WarningTriangle } from 'iconoir-react';
+import { InfoCircle, Plus, Trash, /* TEMP(anexo): CloudUpload, */ Wallet, WarningTriangle } from 'iconoir-react';
 import { CadastroSucesso } from '@/shared/components/feedback/CadastroSucesso';
 import { useCriarEmpenho } from '../hooks/useCriarEmpenho';
 import { useListarAtas } from '@/features/atas/presentation/hooks/useListarAtas';
@@ -57,7 +57,9 @@ function formatBRLInput(raw: string): string {
 
 export function CadastrarNotaEmpenho() {
   const navigate = useNavigate();
-  const { criar: criarEmpenho, isLoading: isSalvando, error: erroSalvar, anexoFalhouUpload } = useCriarEmpenho();
+  // TEMP(anexo): upload desativado enquanto anexo_object_key não está disponível no backend.
+  // Restaurar: const { criar: criarEmpenho, isLoading: isSalvando, error: erroSalvar, anexoFalhouUpload } = useCriarEmpenho();
+  const { criar: criarEmpenho, isLoading: isSalvando, error: erroSalvar } = useCriarEmpenho();
   const { atas } = useListarAtas();
   const [cadastroConcluido, setCadastroConcluido] = useState(false);
 
@@ -69,7 +71,7 @@ export function CadastrarNotaEmpenho() {
   const [secretaria, setSecretaria] = useState('');
   const [objeto, setObjeto] = useState('');
   const [itens, setItens] = useState<ItemLinha[]>([]);
-  const [anexo, setAnexo] = useState<File | null>(null);
+  // TEMP(anexo): const [anexo, setAnexo] = useState<File | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [isCarregandoItensArp, setIsCarregandoItensArp] = useState(false);
   const [erroItensArp, setErroItensArp] = useState<string | null>(null);
@@ -180,7 +182,8 @@ export function CadastrarNotaEmpenho() {
       ...(itensInput.length > 0 ? { itens: itensInput } : {}),
     };
 
-    const instrumentoId = await criarEmpenho(input, anexo);
+    // TEMP(anexo): const instrumentoId = await criarEmpenho(input, anexo);
+    const instrumentoId = await criarEmpenho(input);
     if (instrumentoId) {
       setCadastroConcluido(true);
     }
@@ -189,6 +192,7 @@ export function CadastrarNotaEmpenho() {
   if (isSalvando || cadastroConcluido) {
     return (
       <div className="space-y-4 lg:space-y-6">
+        {/* TEMP(anexo): alerta de falha de upload desativado junto com o envio do anexo.
         {cadastroConcluido && anexoFalhouUpload && (
           <Alert>
             <WarningTriangle className="h-4 w-4" />
@@ -199,6 +203,7 @@ export function CadastrarNotaEmpenho() {
             </AlertDescription>
           </Alert>
         )}
+        */}
         <CadastroSucesso
           processando={isSalvando && !cadastroConcluido}
           progresso={isSalvando ? 50 : 100}
@@ -497,6 +502,7 @@ export function CadastrarNotaEmpenho() {
         </CardContent>
       </Card>
 
+      {/* TEMP(anexo): card de anexo oculto enquanto o upload está desativado.
       <Card>
         <CardHeader>
           <CardTitle>Anexo</CardTitle>
@@ -517,6 +523,7 @@ export function CadastrarNotaEmpenho() {
           </label>
         </CardContent>
       </Card>
+      */}
 
       <Separator />
 

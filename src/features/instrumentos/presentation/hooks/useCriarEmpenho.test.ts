@@ -57,7 +57,8 @@ describe('useCriarEmpenho', () => {
     expect(result.current.error).toBeNull();
   });
 
-  it('cria o empenho com arquivo e upload bem-sucedido: anexoFalhouUpload permanece false', async () => {
+  // TEMP(anexo): upload desativado no frontend; reativar junto com o envio do anexo.
+  it.skip('cria o empenho com arquivo e upload bem-sucedido: anexoFalhouUpload permanece false', async () => {
     mockCriarEmpenhoExecute.mockResolvedValue('empenho-uuid-456');
     mockUploadExecute.mockResolvedValue({ anexoUrl: 'https://example.com/anexo.pdf' });
     const { result } = renderHook(() => useCriarEmpenho());
@@ -73,7 +74,8 @@ describe('useCriarEmpenho', () => {
     expect(result.current.anexoFalhouUpload).toBe(false);
   });
 
-  it('cria o empenho com sucesso mas upload falha: retorna o id normalmente e sinaliza anexoFalhouUpload', async () => {
+  // TEMP(anexo): upload desativado no frontend; reativar junto com o envio do anexo.
+  it.skip('cria o empenho com sucesso mas upload falha: retorna o id normalmente e sinaliza anexoFalhouUpload', async () => {
     mockCriarEmpenhoExecute.mockResolvedValue('empenho-uuid-456');
     mockUploadExecute.mockRejectedValue(new Error('Erro ao enviar anexo. Tente novamente.'));
     const { result } = renderHook(() => useCriarEmpenho());

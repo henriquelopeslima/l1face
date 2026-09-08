@@ -73,7 +73,9 @@ const stepDescriptions = [
 
 export function CadastrarArp() {
   const navigate = useNavigate();
-  const { criarAta, isLoading: isSaving, error: saveError, anexoFalhouUpload } = useCriarAta();
+  // TEMP(anexo): upload desativado enquanto anexo_object_key não está disponível no backend.
+  // Restaurar: const { criarAta, isLoading: isSaving, error: saveError, anexoFalhouUpload } = useCriarAta();
+  const { criarAta, isLoading: isSaving, error: saveError } = useCriarAta();
   const { consultar: consultarPncp, isLoading: isBuscandoPNCP, error: pncpError, dados: dadosPncp } = useConsultarAtaPncp();
 
   const [etapaAtual, setEtapaAtual] = useState(1);
@@ -97,7 +99,7 @@ export function CadastrarArp() {
   const [itensArp, setItensArp] = useState<ItemArp[]>([]);
   const [arquivoPlanilha, setArquivoPlanilha] = useState<File | null>(null);
   const [processandoPlanilha, setProcessandoPlanilha] = useState(false);
-  const [arquivoAnexo, setArquivoAnexo] = useState<File | null>(null);
+  // TEMP(anexo): const [arquivoAnexo, setArquivoAnexo] = useState<File | null>(null);
 
   const sanitizeNumero = (value: string) => value.replace(/[^0-9/-]/g, '');
 
@@ -260,7 +262,8 @@ export function CadastrarArp() {
       itens: itensInput,
     };
 
-    const result = await criarAta(input, arquivoAnexo);
+    // TEMP(anexo): const result = await criarAta(input, arquivoAnexo);
+    const result = await criarAta(input);
     if (result) {
       setCadastroConcluido(true);
     }
@@ -276,6 +279,7 @@ export function CadastrarArp() {
   if (isSaving || cadastroConcluido) {
     return (
       <div className="space-y-4 lg:space-y-6">
+        {/* TEMP(anexo): alerta de falha de upload desativado junto com o envio do anexo.
         {cadastroConcluido && anexoFalhouUpload && (
           <Alert>
             <WarningTriangle className="h-4 w-4" />
@@ -286,6 +290,7 @@ export function CadastrarArp() {
             </AlertDescription>
           </Alert>
         )}
+        */}
         <CadastroSucesso
           processando={isSaving && !cadastroConcluido}
           progresso={isSaving ? 50 : 100}
@@ -459,6 +464,7 @@ export function CadastrarArp() {
                   />
                 </div>
 
+                {/* TEMP(anexo): campo de anexo oculto enquanto o upload está desativado.
                 <div className="space-y-2">
                   <Label>Anexo da ARP (opcional)</Label>
                   <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border p-8 transition-opacity hover:opacity-80">
@@ -474,6 +480,7 @@ export function CadastrarArp() {
                     />
                   </label>
                 </div>
+                */}
               </div>
             </div>
           </CardContent>

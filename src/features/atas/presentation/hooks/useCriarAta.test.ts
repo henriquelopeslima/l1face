@@ -66,7 +66,8 @@ describe('useCriarAta', () => {
     expect(result.current.error).toBeNull();
   });
 
-  it('cria a ata com arquivo e upload bem-sucedido: anexoFalhouUpload permanece false', async () => {
+  // TEMP(anexo): upload desativado no frontend; reativar junto com o envio do anexo.
+  it.skip('cria a ata com arquivo e upload bem-sucedido: anexoFalhouUpload permanece false', async () => {
     mockCriarAtaExecute.mockResolvedValue(ataCriadaFixture);
     mockUploadExecute.mockResolvedValue({ anexoUrl: 'https://example.com/anexo.pdf' });
     const { result } = renderHook(() => useCriarAta());
@@ -82,7 +83,8 @@ describe('useCriarAta', () => {
     expect(result.current.anexoFalhouUpload).toBe(false);
   });
 
-  it('cria a ata com sucesso mas upload falha: retorna a ata normalmente e sinaliza anexoFalhouUpload', async () => {
+  // TEMP(anexo): upload desativado no frontend; reativar junto com o envio do anexo.
+  it.skip('cria a ata com sucesso mas upload falha: retorna a ata normalmente e sinaliza anexoFalhouUpload', async () => {
     mockCriarAtaExecute.mockResolvedValue(ataCriadaFixture);
     mockUploadExecute.mockRejectedValue(new Error('Erro ao enviar anexo. Tente novamente.'));
     const { result } = renderHook(() => useCriarAta());

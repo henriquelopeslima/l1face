@@ -60,7 +60,8 @@ describe('useCriarContrato', () => {
     expect(result.current.error).toBeNull();
   });
 
-  it('cria o contrato com arquivo e upload bem-sucedido: anexoFalhouUpload permanece false', async () => {
+  // TEMP(anexo): upload desativado no frontend; reativar junto com o envio do anexo.
+  it.skip('cria o contrato com arquivo e upload bem-sucedido: anexoFalhouUpload permanece false', async () => {
     mockCriarContratoExecute.mockResolvedValue('instrumento-uuid-123');
     mockUploadExecute.mockResolvedValue({ anexoUrl: 'https://example.com/anexo.pdf' });
     const { result } = renderHook(() => useCriarContrato());
@@ -76,7 +77,8 @@ describe('useCriarContrato', () => {
     expect(result.current.anexoFalhouUpload).toBe(false);
   });
 
-  it('cria o contrato com sucesso mas upload falha: retorna o id normalmente e sinaliza anexoFalhouUpload', async () => {
+  // TEMP(anexo): upload desativado no frontend; reativar junto com o envio do anexo.
+  it.skip('cria o contrato com sucesso mas upload falha: retorna o id normalmente e sinaliza anexoFalhouUpload', async () => {
     mockCriarContratoExecute.mockResolvedValue('instrumento-uuid-123');
     mockUploadExecute.mockRejectedValue(new Error('Erro ao enviar anexo. Tente novamente.'));
     const { result } = renderHook(() => useCriarContrato());

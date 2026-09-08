@@ -3,11 +3,11 @@ import { AtasRepository } from '../../data/repositories/AtasRepository';
 import type { AtaCriada, CriarAtaInput } from '../../domain/entities/criarAta';
 import { AtaError } from '../../domain/errors/ataErrors';
 import { CriarAtaUseCase } from '../../domain/usecases/CriarAtaUseCase';
-import { UploadAnexoAtaUseCase } from '../../domain/usecases/UploadAnexoAtaUseCase';
+// TEMP(anexo): import { UploadAnexoAtaUseCase } from '../../domain/usecases/UploadAnexoAtaUseCase';
 
 const repository = new AtasRepository();
 const criarAtaUseCase = new CriarAtaUseCase(repository);
-const uploadAnexoAtaUseCase = new UploadAnexoAtaUseCase(repository);
+// TEMP(anexo): const uploadAnexoAtaUseCase = new UploadAnexoAtaUseCase(repository);
 
 interface UseCriarAtaResult {
   criarAta: (input: CriarAtaInput, arquivo?: File | null) => Promise<AtaCriada | null>;
@@ -27,13 +27,15 @@ export function useCriarAta(): UseCriarAtaResult {
     setAnexoFalhouUpload(false);
     try {
       const criada = await criarAtaUseCase.execute(input);
-      if (arquivo) {
-        try {
-          await uploadAnexoAtaUseCase.execute(criada.id, arquivo);
-        } catch {
-          setAnexoFalhouUpload(true);
-        }
-      }
+      // TEMP(anexo): upload desativado enquanto anexo_object_key não está disponível no backend.
+      // if (arquivo) {
+      //   try {
+      //     await uploadAnexoAtaUseCase.execute(criada.id, arquivo);
+      //   } catch {
+      //     setAnexoFalhouUpload(true);
+      //   }
+      // }
+      void arquivo;
       return criada;
     } catch (err) {
       const message = err instanceof AtaError ? err.message : 'Erro ao cadastrar ata. Tente novamente.';

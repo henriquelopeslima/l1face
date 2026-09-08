@@ -10,7 +10,7 @@ import { Textarea } from '@/shared/components/ui/textarea';
 import { Switch } from '@/shared/components/ui/switch';
 import { Alert, AlertDescription, AlertTitle } from '@/shared/components/ui/alert';
 import { Table as TableComponent, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/shared/components/ui/table';
-import { Badge } from '@/shared/components/ui/badge';
+// TEMP(anexo): import { Badge } from '@/shared/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/shared/components/ui/tooltip';
 import { CadastroSucesso } from '@/shared/components/feedback/CadastroSucesso';
 import { useConsultarContratoPncp } from '../hooks/useConsultarContratoPncp';
@@ -63,7 +63,7 @@ interface DadosContrato {
   tipoPrazoPagamento: 'corrido' | 'util';
   renovavel: boolean;
   arpOrigem?: string;
-  anexoContrato?: File;
+  // TEMP(anexo): anexoContrato?: File;
 }
 
 const atasRepository = new AtasRepository();
@@ -73,7 +73,9 @@ const getAtaUseCase = new GetAtaUseCase(atasRepository);
 export function CadastrarContrato() {
   const navigate = useNavigate();
   const { consultar: consultarPncp, isLoading: isBuscandoPNCP, error: pncpError, dados: dadosPncp } = useConsultarContratoPncp();
-  const { criar: criarContrato, isLoading: isSalvando, error: erroSalvar, anexoFalhouUpload } = useCriarContrato();
+  // TEMP(anexo): upload desativado enquanto anexo_object_key não está disponível no backend.
+  // Restaurar: const { criar: criarContrato, isLoading: isSalvando, error: erroSalvar, anexoFalhouUpload } = useCriarContrato();
+  const { criar: criarContrato, isLoading: isSalvando, error: erroSalvar } = useCriarContrato();
   const { atas } = useListarAtas();
   const [etapaAtual, setEtapaAtual] = useState(1);
 
@@ -315,7 +317,8 @@ export function CadastrarContrato() {
     setProgressoCadastro(40);
     setEtapaProcessamento('Salvando contrato...');
 
-    const instrumentoId = await criarContrato(input, dadosContrato.anexoContrato);
+    // TEMP(anexo): const instrumentoId = await criarContrato(input, dadosContrato.anexoContrato);
+    const instrumentoId = await criarContrato(input);
 
     if (instrumentoId) {
       setProgressoCadastro(100);
@@ -354,6 +357,7 @@ export function CadastrarContrato() {
             <AlertDescription>{erroSalvar}</AlertDescription>
           </Alert>
         )}
+        {/* TEMP(anexo): alerta de falha de upload desativado junto com o envio do anexo.
         {cadastroConcluido && anexoFalhouUpload && (
           <Alert>
             <WarningTriangle className="h-4 w-4" />
@@ -364,6 +368,7 @@ export function CadastrarContrato() {
             </AlertDescription>
           </Alert>
         )}
+        */}
         <CadastroSucesso
           processando={processandoCadastro && !cadastroConcluido}
           progresso={progressoCadastro}
@@ -727,6 +732,7 @@ export function CadastrarContrato() {
                   )}
                 </div>
 
+                {/* TEMP(anexo): campo de anexo oculto enquanto o upload está desativado.
                 <div className="space-y-2">
                   <Label>Anexo do Contrato (opcional)</Label>
                   <div className="flex items-center gap-2">
@@ -737,6 +743,7 @@ export function CadastrarContrato() {
                     )}
                   </div>
                 </div>
+                */}
               </div>
             </div>
 

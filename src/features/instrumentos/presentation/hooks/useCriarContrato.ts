@@ -2,11 +2,11 @@ import { useCallback, useState } from 'react';
 import { InstrumentosRepository } from '../../data/repositories/InstrumentosRepository';
 import type { CriarContratoInput } from '../../domain/entities/criarContrato';
 import { CriarContratoUseCase } from '../../domain/useCases/CriarContratoUseCase';
-import { UploadAnexoContratoUseCase } from '../../domain/useCases/UploadAnexoContratoUseCase';
+// TEMP(anexo): import { UploadAnexoContratoUseCase } from '../../domain/useCases/UploadAnexoContratoUseCase';
 
 const repository = new InstrumentosRepository();
 const criarContratoUseCase = new CriarContratoUseCase(repository);
-const uploadAnexoContratoUseCase = new UploadAnexoContratoUseCase(repository);
+// TEMP(anexo): const uploadAnexoContratoUseCase = new UploadAnexoContratoUseCase(repository);
 
 interface UseCriarContratoResult {
   criar: (input: CriarContratoInput, arquivo?: File | null) => Promise<string | null>;
@@ -26,13 +26,15 @@ export function useCriarContrato(): UseCriarContratoResult {
     setAnexoFalhouUpload(false);
     try {
       const instrumentoId = await criarContratoUseCase.execute(input);
-      if (arquivo) {
-        try {
-          await uploadAnexoContratoUseCase.execute(instrumentoId, arquivo);
-        } catch {
-          setAnexoFalhouUpload(true);
-        }
-      }
+      // TEMP(anexo): upload desativado enquanto anexo_object_key não está disponível no backend.
+      // if (arquivo) {
+      //   try {
+      //     await uploadAnexoContratoUseCase.execute(instrumentoId, arquivo);
+      //   } catch {
+      //     setAnexoFalhouUpload(true);
+      //   }
+      // }
+      void arquivo;
       return instrumentoId;
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Erro ao cadastrar contrato. Tente novamente.';
